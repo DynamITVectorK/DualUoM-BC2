@@ -1,7 +1,19 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/v8.3/.Modules/settings.schema.json",
-  "country": "us",
-  "appFolders": [],
-  "testFolders": [],
-  "bcptTestFolders": []
+  "type": "PTE",
+  "templateUrl": "https://github.com/microsoft/AL-Go-PTE@main",
+  "country": "w1",
+  "artifact": "bcartifacts/sandbox/25/w1/latest",
+  "appFolders": ["app"],
+  "testFolders": ["test"],
+  "bcptTestFolders": [],
+  "environments": ["Sandbox"],
+  "excludeEnvironments": [],
+  "compileModifiedOnly": true,
+  "cacheImageName": "",
+  "doNotPublishApps": true,
+  "skipUpgrade": true,
+  "useCompilerFolder": true,
+  "buildModes": ["Default"],
+  "runs-on": "ubuntu-latest"
 }
