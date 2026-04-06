@@ -2,7 +2,7 @@
 /// Temporary pipeline validation codeunit.
 /// Will be deleted when Issue DynamITVectorK/DualUoM-BC2#2 (Calc Engine) is merged.
 /// </summary>
-codeunit 50000 "DualUoM Pipeline Check"
+codeunit 50100 "DualUoM Pipeline Check"
 {
     Access = Internal;
 

@@ -1,4 +1,4 @@
-codeunit 50100 "DualUoM Pipeline Check Tests"
+codeunit 50200 "DualUoM Pipeline Check Tests"
 {
     Subtype = Test;
 
