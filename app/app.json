@@ -1,0 +1,27 @@
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "DualUoM-BC",
+  "publisher": "DynamITVectorK",
+  "version": "1.0.0.0",
+  "brief": "Dual Unit of Measure support for Business Central",
+  "description": "Adds dual unit of measure (UoM) support to Business Central SaaS modules (Sales, Purchase, Inventory, Warehouse). Excludes Manufacturing, Projects and Service.",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "",
+  "dependencies": [],
+  "screenshots": [],
+  "platform": "25.0.0.0",
+  "application": "25.0.0.0",
+  "idRanges": [
+    {
+      "from": 50000,
+      "to": 50099
+    }
+  ],
+  "showMyCode": true,
+  "runtime": "13.0",
+  "target": "Cloud",
+  "features": ["TranslationFile"]
+}
