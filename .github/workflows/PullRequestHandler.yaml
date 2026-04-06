@@ -1,12 +1,12 @@
+# DualUoM-BC: PR handler set to manual-only to minimize runner minutes.
+# Run manually after review before merge.
 name: 'Pull Request Build'
 
 on:
-  pull_request:
-    branches: [ 'main' ]
-  merge_group:
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'merge_group' && github.run_id || github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:

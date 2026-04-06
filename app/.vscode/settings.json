@@ -1,0 +1,12 @@
+{
+  "al.enableCodeAnalysis": true,
+  "al.codeAnalyzers": [
+    "${CodeCop}",
+    "${UICop}",
+    "${PerTenantExtensionCop}"
+  ],
+  "al.ruleSetPath": "",
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "files.encoding": "utf8bom"
+}

@@ -166,6 +166,14 @@ jobs:
           projectDependenciesJson: ${{ inputs.projectDependenciesJson }}
           baselineWorkflowRunId: ${{ inputs.baselineWorkflowRunId }}
 
+      - name: Cache AL compiler
+        if: steps.DetermineBuildProject.outputs.BuildIt == 'True'
+        uses: actions/cache@v4
+        with:
+          path: ~/.alcache
+          key: al-compiler-${{ hashFiles('.github/AL-Go-Settings.json') }}
+          restore-keys: al-compiler-
+
       - name: Build
         uses: microsoft/AL-Go-Actions/RunPipeline@v8.3
         if: steps.DetermineBuildProject.outputs.BuildIt == 'True'

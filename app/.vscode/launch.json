@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "al",
+      "request": "launch",
+      "name": "Your own server",
+      "server": "http://localhost",
+      "serverInstance": "BC",
+      "authentication": "UserPassword",
+      "startupObjectId": 22,
+      "startupObjectType": "Page",
+      "breakOnError": true,
+      "launchBrowser": true,
+      "enableSqlInformationDebugger": true,
+      "enableLongRunningSqlStatements": true,
+      "longRunningSqlStatementsThreshold": 500,
+      "numberOfSqlStatements": 10
+    }
+  ]
+}
