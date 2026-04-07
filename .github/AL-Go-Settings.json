@@ -8,7 +8,6 @@
   "cacheImageName": "",
   "doNotPublishApps": true,
   "skipUpgrade": true,
-  "useCompilerFolder": true,
   "excludeEnvironments": ["*"],
   "buildModes": ["Default"],
   "runs-on": "ubuntu-latest"

@@ -9,15 +9,26 @@ and the workflow files.
 |---|---|---|
 | `type` | `"PTE"` | Per-Tenant Extension — correct app type for BC SaaS customisations |
 | `country` | `"w1"` | Single locale build; no matrix expansion across countries |
-| `artifact` | `"bcartifacts/sandbox/25/w1/latest"` | Sandbox artifact is the smallest BC image available (~40% smaller than OnPrem) |
+| `artifact` | `"bcartifacts/sandbox/27/w1/latest"` | Sandbox artifact is the smallest BC image available (~40% smaller than OnPrem) |
 | `compileModifiedOnly` | `true` | Skip compiling unchanged AL files — dramatically reduces compile time on large repos |
-| `cacheImageName` | `""` | Disable Docker image caching (not needed when `useCompilerFolder` is true) |
+| `cacheImageName` | `""` | Disable Docker image caching — BC artifact cache is used instead |
 | `doNotPublishApps` | `true` | No automatic deploy to sandbox on CI — publish is a deliberate manual step |
 | `skipUpgrade` | `true` | No upgrade tests — no previous published version exists yet |
-| `useCompilerFolder` | `true` | Uses AL compiler folder instead of a Docker container, avoiding container startup overhead |
 | `excludeEnvironments` | `["*"]` | Never auto-deploy to any environment from CI; all deployments are manual |
 | `buildModes` | `["Default"]` | Skip Clean and Translated build modes — only one build pass per run |
-| `runs-on` | `"ubuntu-latest"` | Linux runner costs ~$0.008/min vs Windows ~$0.016/min (~50% saving) |
+| `runs-on` | `"windows-latest"` | Windows runner is required for BC Docker container execution (test execution needs a running BC service tier) |
+
+### Note on `useCompilerFolder` (removed)
+
+`useCompilerFolder: true` was previously set as a cost-saving measure to avoid Docker container
+startup overhead. However, this setting **prevents test execution entirely**: AL-Go in
+compiler-folder mode can only compile AL apps — it cannot run tests because there is no
+BC service tier. The root cause of missing `TestResults.xml` artifacts was this setting.
+
+The setting has been removed so that AL-Go spins up a BC Docker container on the Windows
+runner and executes the test codeunits. The build job now runs on `windows-latest`
+(required for Docker). The trade-off is accepted: automated test execution takes precedence
+over the marginal cost saving from compiler-only mode.
 
 ## Workflow triggers
 
