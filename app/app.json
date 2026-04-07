@@ -20,7 +20,6 @@
       "to": 50199
     }
   ],
-  "showMyCode": true,
   "runtime": "13.0",
   "target": "Cloud",
   "features": ["TranslationFile"]
