@@ -14,5 +14,10 @@
   "skipUpgrade": true,
   "useCompilerFolder": true,
   "buildModes": ["Default"],
-  "runs-on": "ubuntu-latest"
+  "runs-on": "ubuntu-latest",
+  "installTestApps": [
+    "Microsoft_Library Assert_27.0.0.0.app",
+    "Microsoft_Any_27.0.0.0.app",
+    "Microsoft_System Application Test Library_27.0.0.0.app"
+  ]
 }
