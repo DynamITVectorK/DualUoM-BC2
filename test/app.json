@@ -16,6 +16,12 @@
       "name": "DualUoM-BC",
       "publisher": "DynamITVectorK",
       "version": "1.0.0.0"
+    },
+    {
+      "id": "dd0be2ea-f733-4d65-bb34-a28f4624fb14",
+      "name": "Library Assert",
+      "publisher": "Microsoft",
+      "version": "27.0.0.0"
     }
   ],
   "screenshots": [],
@@ -27,7 +33,8 @@
       "to": 50299
     }
   ],
-  "showMyCode": true,
-  "runtime": "13.0",
-  "target": "Cloud"
+  "target": "Cloud",
+  "features": [
+    "NoImplicitWith"
+  ]
 }
