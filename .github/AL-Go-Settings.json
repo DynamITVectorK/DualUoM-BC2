@@ -3,7 +3,7 @@
   "type": "PTE",
   "templateUrl": "https://github.com/microsoft/AL-Go-PTE@main",
   "country": "w1",
-  "artifact": "bcartifacts/sandbox/25/w1/latest",
+  "artifact": "bcartifacts/sandbox/27/w1/latest",
   "compileModifiedOnly": true,
   "cacheImageName": "",
   "doNotPublishApps": true,
