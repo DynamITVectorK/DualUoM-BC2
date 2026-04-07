@@ -12,11 +12,25 @@ and the workflow files.
 | `artifact` | `"bcartifacts/sandbox/27/w1/latest"` | Sandbox artifact is the smallest BC image available (~40% smaller than OnPrem) |
 | `compileModifiedOnly` | `true` | Skip compiling unchanged AL files — dramatically reduces compile time on large repos |
 | `cacheImageName` | `""` | Disable Docker image caching — BC artifact cache is used instead |
-| `doNotPublishApps` | `true` | No automatic deploy to sandbox on CI — publish is a deliberate manual step |
+| `doNotPublishApps` | `false` | Apps must be installed into the Docker container so test apps can run; deployment to online environments is blocked separately by `excludeEnvironments: ["*"]` in the global settings |
 | `skipUpgrade` | `true` | No upgrade tests — no previous published version exists yet |
 | `excludeEnvironments` | `["*"]` | Never auto-deploy to any environment from CI; all deployments are manual |
 | `buildModes` | `["Default"]` | Skip Clean and Translated build modes — only one build pass per run |
 | `runs-on` | `"windows-latest"` | Windows runner is required for BC Docker container execution (test execution needs a running BC service tier) |
+
+### Note on `System Application Test Library` (removed from dependencies)
+
+`Microsoft_System Application Test Library` was listed as a dependency in `test/app.json` and
+in `installTestApps` in `.AL-Go/settings.json`, but it is not used by any test codeunit in
+this repository. In Docker/container build mode (when `useCompilerFolder` is not set), the
+AL-Go runtime cannot download symbols for this library with the `27.0.0.0` version specifier,
+because the actual file in the BC 27.5 sandbox artifact uses the full build version
+(e.g. `27.5.xxx.xxx`) and the download fails with `WARNING: Unable to download symbols`.
+This caused a fatal `AL1022` compile error.
+
+Both the dependency entry in `test/app.json` and the `installTestApps` entry in
+`.AL-Go/settings.json` have been removed. Any future test that requires types from this
+library should re-add the dependency with the correct resolved version.
 
 ### Note on `useCompilerFolder` (removed)
 
