@@ -4,9 +4,9 @@ codeunit 50200 "DualUoM Pipeline Check Tests"
     [Test]
     procedure TestPipelineIsAlive()
     var
-        Assert: Codeunit "Assert";  // ✅ corregido
+        LibraryAssert: Codeunit "Library Assert";
     begin
         // [GIVEN/WHEN/THEN] Pipeline validation — always passes
-        Assert.IsTrue(true, 'Pipeline check passed');
+        LibraryAssert.IsTrue(true, 'Pipeline check passed');
     end;
 }
