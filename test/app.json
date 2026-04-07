@@ -2,7 +2,7 @@
   "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
   "name": "DualUoM-BC.Test",
   "publisher": "DynamITVectorK",
-  "version": "1.0.0.0",
+  "version": "1.0.7.0",
   "brief": "Tests for DualUoM-BC extension",
   "description": "Automated tests for the DualUoM-BC Business Central extension.",
   "privacyStatement": "",
@@ -20,12 +20,6 @@
     {
       "id": "dd0be2ea-f733-4d65-bb34-a28f4624fb14",
       "name": "Library Assert",
-      "publisher": "Microsoft",
-      "version": "25.0.0.0"
-    },
-    {
-      "id": "5d69d1e3-95d0-4f28-a87b-87eee66ab6f6",
-      "name": "Any",
       "publisher": "Microsoft",
       "version": "25.0.0.0"
     },
