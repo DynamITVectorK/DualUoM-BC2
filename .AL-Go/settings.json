@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/AL-Go-Actions/v8.3/.Modules/settings.schema.json",
   "type": "PTE",
   "country": "w1",
-  "artifact": "bcartifacts/sandbox/25/w1/latest",
+"artifact": "bcartifacts/sandbox/27/w1/latest",
   "appFolders": ["app"],
   "testFolders": ["test"],
   "bcptTestFolders": [],
