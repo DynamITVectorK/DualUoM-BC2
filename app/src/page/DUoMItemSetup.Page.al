@@ -5,6 +5,7 @@
 page 50100 "DUoM Item Setup"
 {
     Caption = 'DUoM Item Setup';
+    InsertAllowed = false;
     PageType = Card;
     SourceTable = "DUoM Item Setup";
     UsageCategory = None;
