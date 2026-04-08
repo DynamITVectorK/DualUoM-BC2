@@ -1,98 +1,109 @@
-# DualUoM-BC — Copilot Instructions
+# DualUoM-BC — Instrucciones para Copilot
 
-## Project purpose
+## Idioma del proyecto
 
-This repository contains the **DualUoM-BC** Business Central SaaS extension.
-The goal is to add dual unit of measure (UoM) support to all BC modules
-**except** Manufacturing, Projects and Service.
+**El idioma oficial del proyecto es el español.**
 
-Business example: purchase 10 KG of lettuce received as 8 pieces. Both quantities must
-be stored, posted and tracked, with support for variable and lot-specific ratios.
+- Toda documentación nueva, comentarios en issues y PRs, mensajes de commit y respuestas del agente Copilot deben escribirse en **español**.
+- Los identificadores de objetos AL, nombres de campos, nombres de archivos y mensajes de error de BC se mantienen en inglés (requisito del lenguaje AL y las APIs de BC).
+- Los comentarios dentro del código AL (`// [GIVEN] / [WHEN] / [THEN]`) pueden escribirse en inglés o en español, a elección del equipo.
+- Los bloques de código y nombres de archivos/objetos permanecen en su forma original (inglés).
 
-Tech stack: AL · AL-Go for GitHub · Business Central SaaS (BC 27 / runtime 15) · TDD
+---
 
-## Repository layout
+## Propósito del proyecto
+
+Este repositorio contiene la extensión **DualUoM-BC** para Business Central SaaS.
+El objetivo es añadir soporte de doble unidad de medida (UdM) a todos los módulos de BC
+**excepto** Fabricación, Proyectos y Servicio.
+
+Ejemplo de negocio: se compran 10 KG de lechuga y se reciben como 8 piezas. Ambas cantidades deben
+almacenarse, contabilizarse y rastrearse, con soporte para ratios variables y por lote.
+
+Stack tecnológico: AL · AL-Go for GitHub · Business Central SaaS (BC 27 / runtime 15) · TDD
+
+## Estructura del repositorio
 
 ```
-app/          Main extension (PTE)
-  app.json    Extension manifest — platform 27, runtime 15, target Cloud
+app/          Extensión principal (PTE)
+  app.json    Manifiesto de la extensión — plataforma 27, runtime 15, destino Cloud
   src/
-    enum/             AL enum objects
-    table/            AL table objects
-    tableextension/   AL tableextension objects
-    codeunit/         AL codeunit objects
-    page/             AL page objects
-    pageextension/    AL pageextension objects
-    permissionset/    AL permissionset objects
-    report/           AL report objects
+    enum/             Objetos enum de AL
+    table/            Objetos table de AL
+    tableextension/   Objetos tableextension de AL
+    codeunit/         Objetos codeunit de AL
+    page/             Objetos page de AL
+    pageextension/    Objetos pageextension de AL
+    permissionset/    Objetos permissionset de AL
+    report/           Objetos report de AL
 
-test/         Test extension
-  app.json    Test app manifest (depends on app/)
+test/         Extensión de pruebas
+  app.json    Manifiesto de la app de pruebas (depende de app/)
   src/
-    codeunit/ AL test codeunits (testability framework)
+    codeunit/ Codeunits de prueba AL (testability framework)
 
 .github/
-  AL-Go-Settings.json   Repository-level AL-Go configuration
-  workflows/            GitHub Actions — ALL manual (workflow_dispatch) only
-  copilot-instructions.md  (this file)
+  AL-Go-Settings.json   Configuración AL-Go a nivel de repositorio
+  workflows/            GitHub Actions — TODOS manuales (workflow_dispatch)
+  copilot-instructions.md  (este archivo)
 
 docs/
-  00-vision.md              Project objective, business need, target modules
-  01-scope-mvp.md           MVP vs later phases vs out of scope
-  02-functional-design.md   Conversion modes, propagation, lot ratios
-  03-technical-architecture.md  Extension design, events, SaaS principles
-  05-testing-strategy.md    TDD rules, test types, CI validation
-  06-backlog.md             Ordered delivery backlog
-  ci-cost-decisions.md      CI cost-saving choices
+  00-vision.md              Objetivo del proyecto, necesidad de negocio, módulos objetivo
+  01-scope-mvp.md           MVP vs fases posteriores vs fuera de alcance
+  02-functional-design.md   Modos de conversión, propagación, ratios por lote
+  03-technical-architecture.md  Diseño de la extensión, eventos, principios SaaS
+  05-testing-strategy.md    Reglas TDD, tipos de prueba, validación en CI
+  06-backlog.md             Backlog de entrega ordenado
+  ci-cost-decisions.md      Decisiones de ahorro de costes en CI
 ```
 
-## AL coding conventions
+## Convenciones de codificación AL
 
-- Object ID range: **50100–50199** (app), **50200–50299** (tests)
-- Follow Microsoft AL coding guidelines and PascalCase naming
-- Every new AL feature must have a corresponding test codeunit in `test/src/codeunit/`
-- Use `PerTenantExtensionCop`, `CodeCop`, and `UICop` analysers — zero warnings policy
-- Use `NoImplicitWith` — never rely on implicit `with` scoping
-- Modules in scope: Sales, Purchase, Inventory, Warehouse
-- Modules **out of scope**: Manufacturing, Projects, Service
+- Rango de IDs de objeto: **50100–50199** (app), **50200–50299** (pruebas)
+- Seguir las directrices de codificación AL de Microsoft y nomenclatura PascalCase
+- Cada nueva funcionalidad AL debe tener un codeunit de prueba correspondiente en `test/src/codeunit/`
+- Usar los analizadores `PerTenantExtensionCop`, `CodeCop` y `UICop` — política de cero advertencias
+- Usar `NoImplicitWith` — nunca depender del ámbito implícito `with`
+- Módulos en alcance: Sales, Purchase, Inventory, Warehouse
+- Módulos **fuera de alcance**: Manufacturing, Projects, Service
 
-## Permission set rule (mandatory)
+## Regla de permission sets (obligatoria)
 
-Any new table or other securable object that requires permission coverage **must** be accompanied by a corresponding permission set update in the **same issue/PR**. Specifically:
+Cualquier nueva tabla u otro objeto asegurable que requiera cobertura de permisos **debe** ir acompañado de una actualización del permission set en el **mismo issue/PR**. En concreto:
 
-- Every new `table` object must have a matching `tabledata` entry (RIMD or appropriate subset) in a `permissionset` object under `app/src/permissionset/`.
-- The permission set file must follow the naming convention `<Name>.PermissionSet.al` and use the project ID range (50100–50199).
-- The project-wide permission set is `permissionset 50100 "DUoM - All"` (`app/src/permissionset/DUoMAll.PermissionSet.al`). Add new table entries there; create additional permission sets only if different access levels are needed.
-- Failure to include this causes build error `PTE0004` — a zero-tolerance policy applies.
+- Cada nuevo objeto `table` debe tener una entrada `tabledata` correspondiente (RIMD o subconjunto apropiado) en un objeto `permissionset` bajo `app/src/permissionset/`.
+- El archivo de permission set debe seguir la convención de nombres `<Nombre>.PermissionSet.al` y usar el rango de IDs del proyecto (50100–50199).
+- El permission set global del proyecto es `permissionset 50100 "DUoM - All"` (`app/src/permissionset/DUoMAll.PermissionSet.al`). Añadir nuevas entradas de tabla ahí; crear permission sets adicionales solo si se necesitan niveles de acceso diferentes.
+- No incluirlo provoca el error de compilación `PTE0004` — se aplica una política de tolerancia cero.
 
-## Business Central SaaS constraints
+## Restricciones de Business Central SaaS
 
-- Extension-only: no base app modifications, no direct SQL, no RPC
-- All standard BC integration must go through published integration events
-- No intrusive patterns: no global state, no `OnBeforeInsert` that blocks posting flows
-- No deprecated APIs — always use current BC 27 patterns
-- SaaS deployments are cloud-only; no OnPrem-specific code
-- Do not assume access to Docker or file system at runtime
+- Solo extensión: sin modificaciones a la app base, sin SQL directo, sin RPC
+- Toda integración estándar de BC debe realizarse a través de eventos de integración publicados
+- Sin patrones intrusivos: sin estado global, sin `OnBeforeInsert` que bloquee flujos de contabilización
+- Sin APIs deprecadas — usar siempre los patrones actuales de BC 27
+- Los despliegues SaaS son solo en la nube; sin código específico para OnPrem
+- No asumir acceso a Docker ni al sistema de archivos en tiempo de ejecución
 
-## Delivery rules
+## Reglas de entrega
 
-- Implement only what the current issue explicitly requires — no speculative scope
-- Every issue must include passing automated tests before it is considered done
-- Follow the backlog order in `docs/06-backlog.md` — later issues depend on earlier ones
-- Do not implement warehouse or lot logic until the relevant Phase 2 issues are opened
-- Do not implement costing or value entry logic unless explicitly scoped
+- Implementar solo lo que el issue actual requiere explícitamente — sin alcance especulativo
+- Cada issue debe incluir pruebas automatizadas que pasen antes de considerarse terminado
+- Seguir el orden del backlog en `docs/06-backlog.md` — los issues posteriores dependen de los anteriores
+- No implementar lógica de almacén o lotes hasta que se abran los issues relevantes de Fase 2
+- No implementar lógica de costes o entradas de valor a menos que esté explícitamente en el alcance
 
-## Testing rules
+## Reglas de pruebas
 
-- TDD is mandatory: write a failing test first, then the production code
-- Test codeunits use `Subtype = Test` and `[Test]` attribute per procedure
-- Use the `// [GIVEN] / [WHEN] / [THEN]` comment pattern
-- Use `Library Assert` (Microsoft) for all assertions
-- No test may be skipped or disabled to make CI pass
+- TDD es obligatorio: primero escribir una prueba que falle, luego el código de producción
+- Los codeunits de prueba usan `Subtype = Test` y el atributo `[Test]` en cada procedimiento
+- Usar el patrón de comentarios `// [GIVEN] / [WHEN] / [THEN]`
+- Usar `Library Assert` (Microsoft) para todas las aserciones
+- Ninguna prueba puede omitirse ni desactivarse para que pase el CI
 
-## CI/CD — cost-first approach
+## CI/CD — enfoque de mínimo coste
 
-Every workflow file uses **only** `workflow_dispatch:` trigger.
-See `docs/ci-cost-decisions.md` for the full rationale.
+Cada archivo de workflow usa **únicamente** el disparador `workflow_dispatch:`.
+Consultar `docs/ci-cost-decisions.md` para la justificación completa.
 
-Do NOT add automatic triggers (`push:`, `pull_request:`, `schedule:`) to any workflow.
+NO añadir disparadores automáticos (`push:`, `pull_request:`, `schedule:`) a ningún workflow.

@@ -1,103 +1,103 @@
-# Technical Architecture — DualUoM-BC
+# Arquitectura Técnica — DualUoM-BC
 
-## Extension-Only Approach
+## Enfoque de solo extensión
 
-The solution is delivered exclusively as a **Per-Tenant Extension (PTE)** running on
-Business Central SaaS. No base application code is modified. All additions use:
+La solución se entrega exclusivamente como una **extensión de inquilino propio (PTE)** que se ejecuta en
+Business Central SaaS. No se modifica ningún código de la aplicación base. Todas las adiciones usan:
 
-- Table extensions (`tableextension`) to add fields to standard tables
-- Page extensions (`pageextension`) to surface new fields on existing pages
-- New custom tables and pages for DUoM-specific setup and configuration
-- Event subscribers to intercept standard posting, validation and calculation flows
-- Codeunits for business logic, entirely independent of the standard code path
+- Extensiones de tabla (`tableextension`) para añadir campos a las tablas estándar
+- Extensiones de página (`pageextension`) para mostrar los nuevos campos en las páginas existentes
+- Nuevas tablas y páginas personalizadas para la configuración específica de DUoM
+- Suscriptores de eventos para interceptar los flujos estándar de contabilización, validación y cálculo
+- Codeunits para la lógica de negocio, completamente independientes del código estándar
 
-This guarantees compatibility with future BC updates and safe uninstallation.
+Esto garantiza la compatibilidad con futuras actualizaciones de BC y una desinstalación segura.
 
 ---
 
-## SaaS-Safe Design Principles
+## Principios de diseño seguros para SaaS
 
-| Principle | Rationale |
+| Principio | Justificación |
 |---|---|
-| No direct table access to internal BC tables via `RecordRef` where avoidable | Fragile against schema changes |
-| No `OnBeforeInsert`/`OnBeforeModify` subscribers that throw errors mid-flow | Prefer `OnAfterValidate` and dedicated validation codeunits |
-| No `BLOB` fields unless unavoidable | Performance and upgrade risk |
-| No hardcoded object IDs from the base application | Use `Codeunit.RUN` and `Page.RUN` by name where possible |
-| No deprecated BC APIs | Always use current-release patterns |
-| No UI-blocking logic in table triggers | Move validation to page/codeunit layer |
+| Sin acceso directo a tablas internas de BC mediante `RecordRef` cuando sea evitable | Frágil ante cambios de esquema |
+| Sin suscriptores `OnBeforeInsert`/`OnBeforeModify` que lancen errores a mitad de flujo | Preferir `OnAfterValidate` y codeunits de validación dedicados |
+| Sin campos `BLOB` salvo que sea inevitable | Riesgo de rendimiento y actualización |
+| Sin IDs de objeto hardcodeados de la aplicación base | Usar `Codeunit.RUN` y `Page.RUN` por nombre donde sea posible |
+| Sin APIs deprecadas de BC | Usar siempre los patrones de la versión actual |
+| Sin lógica que bloquee la UI en disparadores de tabla | Mover la validación a la capa de página/codeunit |
 
 ---
 
-## Standard-First Philosophy
+## Filosofía estándar primero
 
-Before adding any new field, table or logic, consider whether a standard BC mechanism
-already covers the need:
+Antes de añadir cualquier nuevo campo, tabla o lógica, considerar si un mecanismo estándar de BC
+ya cubre la necesidad:
 
-- Use existing `Item Unit of Measure` table for fixed ratio base data
-- Use existing `Item Tracking` infrastructure for lot linkage (Phase 2)
-- Use existing `Warehouse Activity Line` structure for warehouse extensions (Phase 2)
-- Only extend or add when standard BC genuinely cannot support the requirement
+- Usar la tabla existente `Item Unit of Measure` para los datos base de ratio fijo
+- Usar la infraestructura existente de `Item Tracking` para el vínculo de lotes (Fase 2)
+- Usar la estructura existente de `Warehouse Activity Line` para las extensiones de almacén (Fase 2)
+- Solo extender o añadir cuando BC estándar genuinamente no pueda soportar el requisito
 
 ---
 
-## Object Structure
+## Estructura de objetos
 
-### Custom Tables
+### Tablas personalizadas
 
-| Object | ID | Purpose |
+| Objeto | ID | Propósito |
 |---|---|---|
-| `DUoM Item Setup` | 50100 | Per-item DUoM configuration (enabled, second UoM, mode, ratio) |
+| `DUoM Item Setup` | 50100 | Configuración DUoM por artículo (habilitado, segunda UdM, modo, ratio) |
 
-### Table Extensions
+### Extensiones de tabla
 
-| Object | ID | Extended Table | Purpose |
+| Objeto | ID | Tabla extendida | Propósito |
 |---|---|---|---|
-| `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Second qty and ratio fields |
-| `DUoM Sales Line Ext` | 50111 | `Sales Line` | Second qty and ratio fields |
-| `DUoM Item Journal Line Ext` | 50112 | `Item Journal Line` | Second qty and ratio fields |
-| `DUoM Item Ledger Entry Ext` | 50113 | `Item Ledger Entry` | Second qty and ratio (posted, immutable) |
+| `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Campos de segunda cantidad y ratio |
+| `DUoM Sales Line Ext` | 50111 | `Sales Line` | Campos de segunda cantidad y ratio |
+| `DUoM Item Journal Line Ext` | 50112 | `Item Journal Line` | Campos de segunda cantidad y ratio |
+| `DUoM Item Ledger Entry Ext` | 50113 | `Item Ledger Entry` | Segunda cantidad y ratio (contabilizado, inmutable) |
 
-_Exact object IDs are assigned at implementation time within the 50100–50199 range._
+_Los IDs exactos de objeto se asignan en el momento de la implementación dentro del rango 50100–50199._
 
 ### Codeunits
 
-| Object | ID | Purpose |
+| Objeto | ID | Propósito |
 |---|---|---|
-| `DualUoM Pipeline Check` | 50100 | Build pipeline validation (temporary) |
-| `DUoM Calc Engine` | 50101 | Core second-quantity computation and validation |
-| `DUoM Purchase Subscribers` | 50102 | Event subscribers for purchase flow |
-| `DUoM Sales Subscribers` | 50103 | Event subscribers for sales flow |
-| `DUoM Inventory Subscribers` | 50104 | Event subscribers for item journal / ILE flow |
+| `DualUoM Pipeline Check` | 50100 | Validación del pipeline de compilación (temporal) |
+| `DUoM Calc Engine` | 50101 | Cálculo y validación de la segunda cantidad (núcleo) |
+| `DUoM Purchase Subscribers` | 50102 | Suscriptores de eventos para el flujo de compras |
+| `DUoM Sales Subscribers` | 50103 | Suscriptores de eventos para el flujo de ventas |
+| `DUoM Inventory Subscribers` | 50104 | Suscriptores de eventos para el flujo de diario de artículos / ILE |
 
 ---
 
-## Event-Based Design
+## Diseño basado en eventos
 
-All integration with standard BC flows is done via **published integration events**
-(`[IntegrationEvent(false, false)]`) and **business events** where available.
+Toda la integración con los flujos estándar de BC se realiza mediante **eventos de integración publicados**
+(`[IntegrationEvent(false, false)]`) y **eventos de negocio** donde estén disponibles.
 
-Subscriber codeunits are kept small and focused. Each module (Purchase, Sales, Inventory,
-Warehouse) has its own subscriber codeunit to limit blast radius of changes.
+Los codeunits de suscriptores se mantienen pequeños y enfocados. Cada módulo (Compras, Ventas, Inventario,
+Almacén) tiene su propio codeunit de suscriptores para limitar el impacto de los cambios.
 
-No subscriber codeunit should contain posting logic. Posting logic lives in dedicated
-codeunits called from subscribers.
-
----
-
-## Testing-First Expectations
-
-- Every codeunit must have a corresponding test codeunit in `test/src/codeunit/`
-- Tests use the standard AL testability framework (`Subtype = Test`)
-- `Library Assert` (Microsoft) is the only allowed assertion library
-- No production code is merged without at least one passing test covering the new behavior
-- See `docs/05-testing-strategy.md` for full strategy
+Ningún codeunit de suscriptores debe contener lógica de contabilización. La lógica de contabilización reside en codeunits
+dedicados llamados desde los suscriptores.
 
 ---
 
-## Upgrade-Friendly Architecture
+## Expectativas de pruebas primero
 
-- No data migrations in MVP (no data exists yet)
-- When data migrations become necessary, use `OnUpgradePerCompany` / `OnInstallAppPerCompany`
-  in a dedicated install/upgrade codeunit
-- Table extensions fields use `ObsoleteState` appropriately when deprecated
-- Never rename or renumber existing published objects — create new ones instead
+- Cada codeunit debe tener un codeunit de prueba correspondiente en `test/src/codeunit/`
+- Las pruebas usan el framework estándar de pruebas AL (`Subtype = Test`)
+- `Library Assert` (Microsoft) es la única biblioteca de aserciones permitida
+- Ningún código de producción se fusiona sin al menos una prueba que pase y cubra el nuevo comportamiento
+- Ver `docs/05-testing-strategy.md` para la estrategia completa
+
+---
+
+## Arquitectura preparada para actualizaciones
+
+- Sin migraciones de datos en el MVP (aún no existen datos)
+- Cuando las migraciones de datos sean necesarias, usar `OnUpgradePerCompany` / `OnInstallAppPerCompany`
+  en un codeunit de instalación/actualización dedicado
+- Los campos de extensiones de tabla usan `ObsoleteState` apropiadamente cuando se deprecan
+- Nunca renombrar ni renumerar objetos publicados existentes — crear nuevos en su lugar

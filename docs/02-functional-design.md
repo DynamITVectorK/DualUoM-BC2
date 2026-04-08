@@ -1,102 +1,101 @@
-# Functional Design — DualUoM-BC
+# Diseño Funcional — DualUoM-BC
 
-## Item DUoM Setup
+## Configuración DUoM del artículo
 
-Each item that participates in dual UoM requires the following configuration:
+Cada artículo que participa en la doble UdM requiere la siguiente configuración:
 
-| Field | Description |
+| Campo | Descripción |
 |---|---|
-| `Dual UoM Enabled` | Boolean — activates DUoM for this item |
-| `Second UoM Code` | The second unit of measure code (e.g. PCS while base is KG) |
-| `Conversion Mode` | Fixed / Variable / Always-Variable (see below) |
-| `Fixed Ratio` | Used only when Conversion Mode = Fixed |
+| `Dual UoM Enabled` | Booleano — activa DUoM para este artículo |
+| `Second UoM Code` | El código de la segunda unidad de medida (p. ej. PZS cuando la base es KG) |
+| `Conversion Mode` | Fixed / Variable / Always-Variable (ver más abajo) |
+| `Fixed Ratio` | Usado solo cuando el modo de conversión es Fixed |
 
-This setup is stored on the item itself (table extension on `Item`) or on a dedicated
-DUoM Item Setup table linked by item number. The exact design is decided at implementation
-time; the functional intent is item-level configuration.
+Esta configuración se almacena en una tabla dedicada de configuración DUoM del artículo vinculada
+por número de artículo. La intención funcional es la configuración a nivel de artículo.
 
 ---
 
-## Conversion Modes
+## Modos de conversión
 
-### Fixed
+### Fixed (Fijo)
 
-The ratio between the two units is constant across all transactions and lots.
+El ratio entre las dos unidades es constante en todas las transacciones y lotes.
 
 ```
-Second Qty = First Qty × Fixed Ratio
+Segunda Cantidad = Primera Cantidad × Ratio Fijo
 ```
 
-Example: 1 box always contains exactly 12 pieces.
+Ejemplo: 1 caja contiene siempre exactamente 12 piezas.
 
 ### Variable
 
-The system proposes a default ratio (from the item setup), but the user can override it
-per document line. The override is stored on the line and propagated to entries.
+El sistema propone un ratio predeterminado (de la configuración del artículo), pero el usuario puede sobreescribirlo
+por línea de documento. La sobreescritura se almacena en la línea y se propaga a los asientos.
 
-Example: A KG/pcs ratio of ~1.25 KG/pcs is the default, but the actual weight
-of the batch on this receipt is 1.31 KG/pcs, so the user adjusts the field.
+Ejemplo: Un ratio KG/pzs de ~1,25 KG/pzs es el predeterminado, pero el peso real
+del lote en esta recepción es 1,31 KG/pzs, por lo que el usuario ajusta el campo.
 
-### Always-Variable
+### Always-Variable (Siempre Variable)
 
-No default ratio is provided. The user must enter the second quantity manually on
-every document line. The system never derives it automatically.
+No se proporciona ratio predeterminado. El usuario debe introducir la segunda cantidad manualmente en
+cada línea de documento. El sistema nunca la deriva automáticamente.
 
-Example: Fresh produce sold by weight but counted by piece — each shipment differs.
-
----
-
-## Second Quantity Propagation
-
-The second quantity must be visible and editable (subject to conversion mode) at:
-
-1. **Purchase Order Line** — entered or derived at order time
-2. **Purchase Receipt Line** — confirmed or adjusted at receipt
-3. **Item Ledger Entry** — posted from the receipt; immutable after posting
-4. **Sales Order Line** — entered or derived at order entry
-5. **Sales Shipment Line** — confirmed at shipment
-6. **Item Journal Line** — entered manually for adjustments
-
-In all cases, the ratio used at posting time is stored alongside the quantity so that
-historical analysis is possible without recalculation.
+Ejemplo: Producto fresco vendido por peso pero contado por pieza — cada envío es diferente.
 
 ---
 
-## Lot-Specific Real Ratio
+## Propagación de la segunda cantidad
 
-When item tracking by lot is active, the real conversion ratio for a given lot can
-differ from the default. The actual weighed ratio is:
+La segunda cantidad debe ser visible y editable (según el modo de conversión) en:
 
-- entered by the user at receipt (warehouse or purchase)
-- stored against the lot number (Item Tracking extension)
-- used as the default for all subsequent transactions involving that lot
+1. **Línea de pedido de compra** — introducida o derivada en el momento del pedido
+2. **Línea de recepción de compra** — confirmada o ajustada en la recepción
+3. **Asiento del libro de artículos** — contabilizado desde la recepción; inmutable tras la contabilización
+4. **Línea de pedido de venta** — introducida o derivada al crear el pedido
+5. **Línea de envío de venta** — confirmada en el envío
+6. **Línea del diario de artículos** — introducida manualmente para ajustes
 
-This is a Phase 2 feature. In MVP, the ratio is stored on the document line only.
+En todos los casos, el ratio utilizado en el momento de la contabilización se almacena junto
+a la cantidad para que el análisis histórico sea posible sin recalcular.
 
 ---
 
-## Expected Impact Across Modules
+## Ratio real específico por lote
 
-### Purchasing
+Cuando el seguimiento de artículos por lote está activo, el ratio de conversión real para un lote determinado puede
+diferir del predeterminado. El ratio real pesado es:
 
-- Purchase order lines and receipt lines get a `Second Qty` and `Second UoM Code` field
-- Posting propagates second qty to Item Ledger Entry
-- Purchase invoice line shows second qty (read-only from receipt, adjustable on direct invoices)
+- introducido por el usuario en la recepción (almacén o compra)
+- almacenado contra el número de lote (extensión de seguimiento de artículos)
+- usado como predeterminado para todas las transacciones posteriores que involucren ese lote
 
-### Sales
+Esta es una funcionalidad de la Fase 2. En el MVP, el ratio se almacena solo en la línea del documento.
 
-- Sales order lines and shipment lines get a `Second Qty` field
-- Picking (basic warehouse) deducts based on primary qty; second qty is informational
-- Invoice line shows second qty from shipment
+---
 
-### Inventory
+## Impacto esperado en los módulos
 
-- Item journal lines get a `Second Qty` field
-- Item ledger entries record second qty for all relevant entry types
-- Physical inventory counts support second qty entry
+### Compras
 
-### Warehouse (Phase 2)
+- Las líneas de pedido de compra y líneas de recepción obtienen un campo `Second Qty` y `Second UoM Code`
+- La contabilización propaga la segunda cantidad al asiento del libro de artículos
+- La línea de factura de compra muestra la segunda cantidad (solo lectura desde la recepción, ajustable en facturas directas)
 
-- Warehouse receipt and shipment lines get `Second Qty`
-- Directed pick/put-away lines get `Second Qty` for double-checking
-- Warehouse entries record second qty
+### Ventas
+
+- Las líneas de pedido de venta y líneas de envío obtienen un campo `Second Qty`
+- El picking (almacén básico) descuenta basándose en la cantidad principal; la segunda cantidad es informativa
+- La línea de factura muestra la segunda cantidad del envío
+
+### Inventario
+
+- Las líneas del diario de artículos obtienen un campo `Second Qty`
+- Los asientos del libro de artículos registran la segunda cantidad para todos los tipos de asiento relevantes
+- Los recuentos de inventario físico admiten la introducción de segunda cantidad
+
+### Almacén (Fase 2)
+
+- Las líneas de recepción y envío de almacén obtienen `Second Qty`
+- Las líneas de picking/put-away dirigido obtienen `Second Qty` para doble verificación
+- Los asientos de almacén registran la segunda cantidad

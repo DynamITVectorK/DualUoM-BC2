@@ -1,58 +1,58 @@
-# Scope & MVP — DualUoM-BC
+# Alcance y MVP — DualUoM-BC
 
-## MVP (Phase 1)
+## MVP (Fase 1)
 
-The MVP delivers the minimum working set required to purchase, receive, sell and ship
-an item using two units of measure with a variable conversion ratio.
+El MVP entrega el conjunto mínimo de funcionalidades necesarias para comprar, recepcionar, vender y enviar
+un artículo usando dos unidades de medida con un ratio de conversión variable.
 
-### In scope for MVP
+### En alcance para el MVP
 
-- **Item DUoM Setup** — per-item flag to enable DUoM, choice of conversion mode
-  (fixed / variable / always-variable), second UoM code
-- **Calculation Engine** — codeunit to compute and validate second quantity from first
-  quantity using the active conversion mode
-- **Purchase Lines** — second quantity field on purchase order lines and receipt lines
-- **Item Ledger Entries** — second quantity and ratio persisted on item ledger entries
-- **Sales Lines** — second quantity field on sales order lines and shipment lines
-- **Inventory Journal** — second quantity field on item journal lines
-- **Basic Posting Validation** — ensure second quantity is present when DUoM is enabled
-  before posting
-- **Automated Tests** — unit + integration tests for all of the above
+- **Configuración DUoM del artículo** — indicador por artículo para activar DUoM, elección del modo de conversión
+  (fijo / variable / siempre variable), código de segunda UdM
+- **Motor de cálculo** — codeunit para calcular y validar la segunda cantidad a partir de la primera
+  usando el modo de conversión activo
+- **Líneas de compra** — campo de segunda cantidad en líneas de pedido de compra y líneas de recepción
+- **Asientos del libro de artículos** — segunda cantidad y ratio persistidos en los asientos del libro de artículos
+- **Líneas de venta** — campo de segunda cantidad en líneas de pedido de venta y líneas de envío
+- **Diario de inventario** — campo de segunda cantidad en líneas del diario de artículos
+- **Validación básica de contabilización** — garantizar que la segunda cantidad esté presente cuando DUoM está habilitado
+  antes de contabilizar
+- **Pruebas automatizadas** — pruebas unitarias e integradas para todo lo anterior
 
-### MVP success criteria
+### Criterios de éxito del MVP
 
-- An item with DUoM enabled can be purchased with both quantities visible and posted
-- An item with DUoM enabled can be sold with both quantities visible and posted
-- Item ledger entries carry the correct second quantity and ratio
-- All tests pass in CI
-
----
-
-## Phase 2
-
-- Lot-specific real ratio (second qty per lot stored on Item Tracking)
-- Physical inventory with second quantity
-- Warehouse receipts and shipments with second quantity
-- Directed put-away and pick with second quantity
-- Value entry propagation (for costing accuracy)
-- Reporting extensions (second qty columns on standard reports)
+- Un artículo con DUoM habilitado puede comprarse con ambas cantidades visibles y contabilizadas
+- Un artículo con DUoM habilitado puede venderse con ambas cantidades visibles y contabilizadas
+- Los asientos del libro de artículos llevan la segunda cantidad y el ratio correctos
+- Todas las pruebas pasan en CI
 
 ---
 
-## Phase 3 / Later
+## Fase 2
 
-- Transfer orders with second quantity
-- Return orders (purchase and sales) with second quantity
-- Assembly (if ever added to scope)
-- Intercompany flows
+- Ratio real específico por lote (segunda cantidad por lote almacenada en Seguimiento de artículos)
+- Inventario físico con segunda cantidad
+- Recepciones y envíos de almacén con segunda cantidad
+- Put-away y picking dirigido con segunda cantidad
+- Propagación de asientos de valor (para la precisión de costes)
+- Extensiones de informes (columnas de segunda cantidad en informes estándar)
 
 ---
 
-## Permanently Out of Scope
+## Fase 3 / Posterior
 
-- Manufacturing (production orders, output journal, capacity)
-- Projects (job planning, job ledger)
-- Service Management (service orders)
-- Scale / hardware integration
-- Multi-language translation (translation file feature is enabled but not a delivery goal)
-- E-Document / EDI mapping for second quantity
+- Pedidos de transferencia con segunda cantidad
+- Pedidos de devolución (compra y venta) con segunda cantidad
+- Ensamblado (si alguna vez se añade al alcance)
+- Flujos entre empresas
+
+---
+
+## Permanentemente fuera de alcance
+
+- Fabricación (órdenes de producción, diario de salida, capacidad)
+- Proyectos (planificación de trabajo, libro de trabajo)
+- Gestión de Servicios (órdenes de servicio)
+- Integración con básculas / hardware
+- Traducción a múltiples idiomas (la característica de archivo de traducción está habilitada pero no es un objetivo de entrega)
+- Mapeo E-Document / EDI para segunda cantidad

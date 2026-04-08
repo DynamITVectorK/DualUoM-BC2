@@ -1,87 +1,87 @@
-# DUoM Item Setup — Data Model Design Note
+# Configuración DUoM del artículo — Nota de diseño del modelo de datos
 
-## Decision: Option B — Dedicated Setup Table
+## Decisión: Opción B — Tabla de configuración dedicada
 
-The DUoM item setup is stored in a dedicated table (`DUoM Item Setup`, ID 50100)
-keyed by `Item No.`, rather than extending the `Item` table directly.
-
----
-
-## Rationale
-
-### Why not Option A (Item table extension)?
-
-Extending `Item` directly would pollute the most-used table in BC with DUoM fields
-that are irrelevant for the majority of items. It also creates a tighter coupling
-that makes removal or refactoring harder, and increases upgrade-time risk (any
-schema change to Item is BC's responsibility and can block extension upgrades).
-
-### Why not Option C (hybrid)?
-
-A hybrid approach adds complexity: a flag on `Item` for enablement plus a
-separate table for details. The flag on `Item` gives minimal benefit (quick
-filter without join) but adds maintenance overhead if the setup table is queried
-anyway. Given that BC performance at this scale is not a concern, the extra join
-is acceptable and keeping all DUoM setup in one place is cleaner.
-
-### Why Option B?
-
-- **Clean base**: the Item table is unchanged. Upgrade safety is maximised.
-- **Absence = not configured**: a missing `DUoM Item Setup` record means no DUoM
-  for that item — no null-flag fields to check across all items.
-- **Single source of truth**: all DUoM item configuration lives in one table with
-  a clear primary key.
-- **Extensible**: adding future fields (lot tracking linkage, warehouse-specific
-  flags, costing fields) does not require additional Item table extensions.
-- **SaaS safe**: follows the *dedicated extension table* pattern recommended for
-  PTE extensions that attach complex configuration to standard entities.
+La configuración DUoM del artículo se almacena en una tabla dedicada (`DUoM Item Setup`, ID 50100)
+indexada por `Item No.`, en lugar de extender directamente la tabla `Item`.
 
 ---
 
-## Table Structure
+## Justificación
 
-| Field | Type | Purpose |
+### ¿Por qué no la Opción A (extensión de la tabla Item)?
+
+Extender `Item` directamente contaminaría la tabla más utilizada en BC con campos DUoM
+irrelevantes para la mayoría de los artículos. También crea un acoplamiento más estrecho
+que dificulta la eliminación o refactorización, y aumenta el riesgo en el momento de actualización (cualquier
+cambio de esquema en Item es responsabilidad de BC y puede bloquear las actualizaciones de la extensión).
+
+### ¿Por qué no la Opción C (híbrida)?
+
+Un enfoque híbrido añade complejidad: un indicador en `Item` para la habilitación más una
+tabla separada para los detalles. El indicador en `Item` aporta un beneficio mínimo (filtro rápido
+sin join) pero añade sobrecarga de mantenimiento si la tabla de configuración se consulta
+igualmente. Dado que el rendimiento de BC a esta escala no es una preocupación, el join adicional
+es aceptable y mantener toda la configuración DUoM en un solo lugar es más limpio.
+
+### ¿Por qué la Opción B?
+
+- **Base limpia**: la tabla Item no se modifica. La seguridad en las actualizaciones es máxima.
+- **Ausencia = no configurado**: un registro `DUoM Item Setup` ausente significa que no hay DUoM
+  para ese artículo — sin campos de indicador nulo que verificar en todos los artículos.
+- **Fuente única de verdad**: toda la configuración DUoM del artículo reside en una tabla con
+  una clave primaria clara.
+- **Extensible**: añadir futuros campos (vínculo de seguimiento de lotes, indicadores específicos de almacén,
+  campos de costes) no requiere extensiones adicionales de la tabla Item.
+- **Seguro para SaaS**: sigue el patrón de *tabla de extensión dedicada* recomendado para
+  extensiones PTE que asocian configuración compleja a entidades estándar.
+
+---
+
+## Estructura de la tabla
+
+| Campo | Tipo | Propósito |
 |---|---|---|
-| `Item No.` | Code[20] PK | Links to `Item`; defines setup scope |
-| `Dual UoM Enabled` | Boolean | Master switch; clearing this resets all other fields |
-| `Second UoM Code` | Code[10] | The secondary UoM (e.g. PCS when base is KG) |
+| `Item No.` | Code[20] PK | Vincula a `Item`; define el ámbito de configuración |
+| `Dual UoM Enabled` | Boolean | Interruptor principal; desactivarlo limpia todos los demás campos |
+| `Second UoM Code` | Code[10] | La UdM secundaria (p. ej. PZS cuando la base es KG) |
 | `Conversion Mode` | Enum `DUoM Conversion Mode` | Fixed / Variable / Always Variable |
-| `Fixed Ratio` | Decimal(0:5) | Ratio when mode is Fixed or Variable; cleared for Always Variable |
+| `Fixed Ratio` | Decimal(0:5) | Ratio cuando el modo es Fixed o Variable; se limpia para Always Variable |
 
 ---
 
 ## Enum: DUoM Conversion Mode
 
-| Value | Meaning |
+| Valor | Significado |
 |---|---|
-| Fixed | Ratio is constant; stored in `Fixed Ratio` field; derived automatically |
-| Variable | Default ratio in `Fixed Ratio`; user can override per document line |
-| Always Variable | No default ratio; user must enter manually on every document line |
+| Fixed | El ratio es constante; almacenado en el campo `Fixed Ratio`; derivado automáticamente |
+| Variable | Ratio predeterminado en `Fixed Ratio`; el usuario puede sobreescribirlo por línea de documento |
+| Always Variable | Sin ratio predeterminado; el usuario debe introducirlo manualmente en cada línea de documento |
 
 ---
 
-## Validation Rules
+## Reglas de validación
 
-| Rule | Enforcement point |
+| Regla | Punto de aplicación |
 |---|---|
-| If DUoM disabled → Second UoM Code, Conversion Mode, Fixed Ratio are cleared | `Dual UoM Enabled` OnValidate trigger |
-| If DUoM enabled → Second UoM Code must be set | `ValidateSetup()` procedure |
-| Second UoM Code ≠ Item base UoM | `Second UoM Code` OnValidate trigger + `ValidateSetup()` |
-| If Fixed mode → Fixed Ratio > 0 | `ValidateSetup()` procedure |
-| Switching from Fixed to Variable/Always Variable → Fixed Ratio cleared | `Conversion Mode` OnValidate trigger |
+| Si DUoM deshabilitado → Second UoM Code, Conversion Mode, Fixed Ratio se limpian | Disparador OnValidate de `Dual UoM Enabled` |
+| Si DUoM habilitado → Second UoM Code debe estar establecido | Procedimiento `ValidateSetup()` |
+| Second UoM Code ≠ UdM base del artículo | Disparador OnValidate de `Second UoM Code` + `ValidateSetup()` |
+| Si modo Fixed → Fixed Ratio > 0 | Procedimiento `ValidateSetup()` |
+| Cambio de Fixed a Variable/Always Variable → Fixed Ratio se limpia | Disparador OnValidate de `Conversion Mode` |
 
-`ValidateSetup()` is a public procedure intended for use by document/posting flows
-(future issues) to assert setup consistency before using DUoM data.
+`ValidateSetup()` es un procedimiento público destinado a ser usado por los flujos de documento/contabilización
+(issues futuros) para verificar la consistencia de la configuración antes de usar los datos DUoM.
 
 ---
 
-## Future Extensibility
+## Extensibilidad futura
 
-- **Lot-specific ratios (Phase 2)**: will be stored in a separate table keyed by
-  `(Item No., Lot No.)` — no changes needed to `DUoM Item Setup`.
-- **Warehouse fields (Phase 2)**: additional boolean flags (e.g. `Track in WMS`)
-  can be added to `DUoM Item Setup` as new fields without breaking existing data.
-- **Document propagation**: document line codeunits will call `DUoM Item Setup.Get()`
-  to retrieve the conversion mode and ratio — the table key design supports this.
-- **Mass update tooling**: a future issue can add a report/page to bulk-enable DUoM
-  for multiple items without changing the table structure.
+- **Ratios específicos por lote (Fase 2)**: se almacenarán en una tabla separada indexada por
+  `(Item No., Lot No.)` — no se necesitan cambios en `DUoM Item Setup`.
+- **Campos de almacén (Fase 2)**: se pueden añadir indicadores booleanos adicionales (p. ej. `Track in WMS`)
+  a `DUoM Item Setup` como nuevos campos sin romper los datos existentes.
+- **Propagación de documentos**: los codeunits de líneas de documento llamarán a `DUoM Item Setup.Get()`
+  para recuperar el modo de conversión y el ratio — el diseño de clave de tabla soporta esto.
+- **Herramientas de actualización masiva**: un issue futuro puede añadir un informe/página para habilitar DUoM en masa
+  para múltiples artículos sin cambiar la estructura de la tabla.

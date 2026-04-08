@@ -1,45 +1,43 @@
 # DualUoM-BC
 
-**Dual Unit of Measure extension for Microsoft Dynamics 365 Business Central SaaS.**
+**Extensión de Doble Unidad de Medida para Microsoft Dynamics 365 Business Central SaaS.**
 
-## What This Is
+## Qué es esto
 
-A Per-Tenant Extension (PTE) that enables items to carry two independent quantities
-simultaneously through purchasing, sales, inventory and warehouse flows.
+Una extensión de inquilino propio (PTE) que permite a los artículos llevar dos cantidades independientes de forma simultánea a través de los flujos de compras, ventas, inventario y almacén.
 
-**Example:** 10 KG of lettuce received as 8 pieces. Both quantities are stored, posted
-and tracked — even when the ratio varies by lot.
+**Ejemplo:** 10 KG de lechuga recibida como 8 piezas. Ambas cantidades se almacenan, contabilizan y rastrean, incluso cuando el ratio varía por lote.
 
-## Tech Stack
+## Stack tecnológico
 
-- Language: **AL**
-- Platform: **Business Central SaaS** (BC 27 / runtime 15)
-- CI/CD: **AL-Go for GitHub** (manual `workflow_dispatch` triggers only)
-- Testing: **AL Testability Framework** — TDD mandatory
+- Lenguaje: **AL**
+- Plataforma: **Business Central SaaS** (BC 27 / runtime 15)
+- CI/CD: **AL-Go for GitHub** (únicamente disparadores manuales `workflow_dispatch`)
+- Pruebas: **AL Testability Framework** — TDD obligatorio
 
-## Quick Links
+## Enlaces rápidos
 
-| Document | Description |
+| Documento | Descripción |
 |---|---|
-| [Vision](docs/00-vision.md) | Project objective, business need, target modules |
-| [Scope & MVP](docs/01-scope-mvp.md) | What is in MVP, Phase 2, and out of scope |
-| [Functional Design](docs/02-functional-design.md) | Item setup, conversion modes, propagation |
-| [Technical Architecture](docs/03-technical-architecture.md) | Extension design, events, SaaS principles |
-| [Testing Strategy](docs/05-testing-strategy.md) | TDD rules, test types, CI validation |
-| [Backlog](docs/06-backlog.md) | Ordered delivery backlog |
-| [CI Cost Decisions](docs/ci-cost-decisions.md) | Why CI is configured the way it is |
+| [Visión](docs/00-vision.md) | Objetivo del proyecto, necesidad de negocio, módulos objetivo |
+| [Alcance y MVP](docs/01-scope-mvp.md) | Qué está en el MVP, Fase 2 y fuera de alcance |
+| [Diseño Funcional](docs/02-functional-design.md) | Configuración de artículo, modos de conversión, propagación |
+| [Arquitectura Técnica](docs/03-technical-architecture.md) | Diseño de la extensión, eventos, principios SaaS |
+| [Estrategia de Pruebas](docs/05-testing-strategy.md) | Reglas TDD, tipos de prueba, validación en CI |
+| [Backlog](docs/06-backlog.md) | Backlog de entrega ordenado |
+| [Decisiones de CI/Costo](docs/ci-cost-decisions.md) | Por qué el CI está configurado de esa manera |
 
-## Modules in Scope
+## Módulos en alcance
 
-- Purchasing · Sales · Inventory · Warehouse
+- Compras · Ventas · Inventario · Almacén
 
-## Modules Out of Scope
+## Módulos fuera de alcance
 
-- Manufacturing · Projects · Service Management
+- Fabricación · Proyectos · Gestión de Servicios
 
-## Object ID Ranges
+## Rangos de IDs de objeto
 
-| Extension | Range |
+| Extensión | Rango |
 |---|---|
 | App (`app/`) | 50100 – 50199 |
-| Tests (`test/`) | 50200 – 50299 |
+| Pruebas (`test/`) | 50200 – 50299 |

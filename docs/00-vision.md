@@ -1,54 +1,54 @@
-# Vision — DualUoM-BC
+# Visión — DualUoM-BC
 
-## Project Objective
+## Objetivo del proyecto
 
-Build a **Dual Unit of Measure (DUoM)** Business Central SaaS extension that allows items to
-carry two independent quantities simultaneously throughout the full document, entry and
-warehouse lifecycle — without modifying the standard BC application.
+Construir una extensión de **Doble Unidad de Medida (DUoM)** para Business Central SaaS que permita a los artículos
+llevar dos cantidades independientes de forma simultánea a lo largo del ciclo de vida completo de documentos, entradas
+y almacén — sin modificar la aplicación estándar de BC.
 
-## Business Need
+## Necesidad de negocio
 
-Many industries (food, chemicals, agriculture, metals) trade goods measured in two distinct
-units at the same time. A batch of lettuce may be:
+Muchas industrias (alimentación, química, agricultura, metales) comercian bienes medidos en dos unidades distintas
+al mismo tiempo. Un lote de lechuga puede ser:
 
-- purchased as **10 KG** (weight — invoiced and costed)
-- received as **8 pcs** (pieces — picked, counted and tracked)
+- comprado como **10 KG** (peso — facturado y costado)
+- recibido como **8 pzs** (piezas — recogidas, contadas y rastreadas)
 
-Both quantities are legally and operationally relevant. Neither can be derived reliably from
-the other using a fixed ratio, because the real conversion varies by lot.
+Ambas cantidades son legal y operativamente relevantes. Ninguna puede derivarse de forma fiable de
+la otra usando un ratio fijo, porque la conversión real varía por lote.
 
-Standard BC supports a single alternate UoM (the `Qty. per Unit of Measure` factor on the
-Item Unit of Measure table), but this covers only a fixed, item-level ratio. It cannot:
+BC estándar soporta una única UdM alternativa (el factor `Qty. per Unit of Measure` en la tabla
+Item Unit of Measure), pero esto solo cubre un ratio fijo a nivel de artículo. No puede:
 
-- store a variable ratio per transaction or per lot
-- carry a second quantity independently through all document lines and ledger entries
-- enforce per-lot ratio tracking for traceability
+- almacenar un ratio variable por transacción o por lote
+- llevar una segunda cantidad de forma independiente a través de todas las líneas de documento y asientos contables
+- exigir el seguimiento de ratios por lote para la trazabilidad
 
-## Why Standard BC UoM Is Insufficient
+## Por qué la UdM estándar de BC es insuficiente
 
-| Requirement | Standard BC | DUoM Extension |
+| Requisito | BC estándar | Extensión DUoM |
 |---|---|---|
-| Fixed ratio between two UoMs | ✔ Item UoM table | ✔ reused |
-| Variable ratio per transaction | ✗ | ✔ DUoM field on lines |
-| Always-variable (ratio never fixed) | ✗ | ✔ item setup flag |
-| Per-lot real ratio | ✗ | ✔ lot-level ratio field |
-| Second qty on document lines | ✗ | ✔ table extension |
-| Second qty on value/item ledger entries | ✗ | ✔ table extension |
-| Warehouse pick/put-away with two qtys | ✗ | ✔ warehouse extension |
+| Ratio fijo entre dos UdMs | ✔ Tabla Item UoM | ✔ reutilizado |
+| Ratio variable por transacción | ✗ | ✔ campo DUoM en líneas |
+| Siempre variable (ratio nunca fijo) | ✗ | ✔ indicador en configuración del artículo |
+| Ratio real por lote | ✗ | ✔ campo de ratio a nivel de lote |
+| Segunda cantidad en líneas de documento | ✗ | ✔ extensión de tabla |
+| Segunda cantidad en asientos de valor/inventario | ✗ | ✔ extensión de tabla |
+| Picking/put-away en almacén con dos cantidades | ✗ | ✔ extensión de almacén |
 
-## Target Modules
+## Módulos objetivo
 
-- **Purchasing** — purchase orders, receipts, invoices, credit memos
-- **Sales** — sales orders, shipments, invoices, credit memos, return orders
-- **Inventory** — item ledger entries, value entries, item journals, physical inventory
-- **Warehouse** — warehouse receipts, shipments, put-away, pick, warehouse entries
+- **Compras** — pedidos de compra, recepciones, facturas, notas de crédito
+- **Ventas** — pedidos de venta, envíos, facturas, notas de crédito, pedidos de devolución
+- **Inventario** — asientos del libro de artículos, asientos de valor, diarios de artículos, inventario físico
+- **Almacén** — recepciones de almacén, envíos, put-away, picking, asientos de almacén
 
-## Exclusions
+## Exclusiones
 
-The following BC modules are **permanently out of scope** for this project:
+Los siguientes módulos de BC están **permanentemente fuera de alcance** para este proyecto:
 
-- Manufacturing (production orders, routings, output)
-- Projects (job planning lines, job ledger entries)
-- Service Management (service orders, service items)
+- Fabricación (órdenes de producción, rutas, salida)
+- Proyectos (líneas de planificación de trabajo, asientos de libro de trabajo)
+- Gestión de Servicios (órdenes de servicio, artículos de servicio)
 
-Scale integration (automatic weight capture from hardware) is also out of scope for all phases.
+La integración con básculas (captura automática de peso desde hardware) también está fuera de alcance en todas las fases.

@@ -1,127 +1,127 @@
 # Backlog — DualUoM-BC
 
-This is the proposed ordered backlog for controlled, incremental delivery.
-Each item is scoped to be implementable in a single focused issue by GitHub Copilot.
+Este es el backlog ordenado propuesto para una entrega controlada e incremental.
+Cada elemento está definido para poder ser implementado en un único issue enfocado por GitHub Copilot.
 
 ---
 
-## Phase 1 — MVP
+## Fase 1 — MVP
 
-### Issue 1 — Project Governance Baseline *(this issue)*
+### Issue 1 — Base de gobernanza del proyecto *(este issue)*
 
-Create documentation baseline: vision, scope, functional design, architecture, testing
-strategy, backlog. Update README and copilot-instructions.
+Crear la base de documentación: visión, alcance, diseño funcional, arquitectura, estrategia de pruebas,
+backlog. Actualizar README e instrucciones de copilot.
 
-### Issue 2 — DUoM Calculation Engine
+### Issue 2 — Motor de cálculo DUoM
 
-Create `DUoM Calc Engine` codeunit (ID 50101) with:
-- `ComputeSecondQty(FirstQty, Ratio, Mode)` function
-- Input validation (qty must be non-negative, ratio must be positive for Fixed/Variable)
-- Unit tests covering Fixed, Variable, Always-Variable modes and edge cases (zero qty, rounding)
+Crear el codeunit `DUoM Calc Engine` (ID 50101) con:
+- Función `ComputeSecondQty(FirstQty, Ratio, Mode)`
+- Validación de entrada (la cantidad debe ser no negativa, el ratio debe ser positivo para Fixed/Variable)
+- Pruebas unitarias cubriendo los modos Fixed, Variable, Always-Variable y casos extremos (cantidad cero, redondeo)
 
-**Deliverables:** `DualUoMCalcEngine.Codeunit.al`, `DualUoMCalcEngineTests.Codeunit.al`
+**Entregables:** `DualUoMCalcEngine.Codeunit.al`, `DualUoMCalcEngineTests.Codeunit.al`
 
-### Issue 3 — Item DUoM Setup Table and Page
+### Issue 3 — Tabla y página de configuración DUoM del artículo
 
-Create `DUoM Item Setup` table (ID 50100) linked to `Item`:
-- Fields: `Item No.`, `Dual UoM Enabled`, `Second UoM Code`, `Conversion Mode` (enum),
+Crear la tabla `DUoM Item Setup` (ID 50100) vinculada a `Item`:
+- Campos: `Item No.`, `Dual UoM Enabled`, `Second UoM Code`, `Conversion Mode` (enum),
   `Fixed Ratio`
-- Create setup page (ID 50100)
-- Create page extension on Item Card to open the setup page
-- Unit tests for setup validation rules
+- Crear página de configuración (ID 50100)
+- Crear extensión de página en la ficha de artículo para abrir la página de configuración
+- Pruebas unitarias para las reglas de validación de configuración
 
-**Deliverables:** `DUoMItemSetup.Table.al`, `DUoMConversionMode.Enum.al`,
+**Entregables:** `DUoMItemSetup.Table.al`, `DUoMConversionMode.Enum.al`,
 `DUoMItemSetup.Page.al`, `ItemCard.PageExt.al`, `DUoMItemSetupTests.Codeunit.al`
 
-### Issue 4 — Purchase Line DUoM Fields
+### Issue 4 — Campos DUoM en líneas de compra
 
-Extend `Purchase Line` with `DUoM Second Qty` and `DUoM Ratio` fields (table extension).
-Extend Purchase Order Line subpage to show the fields.
-Wire `OnAfterValidate` on `Quantity` to call the Calc Engine for auto-derivation.
-Integration tests: create a purchase order line, verify second qty is computed.
+Extender `Purchase Line` con los campos `DUoM Second Qty` y `DUoM Ratio` (extensión de tabla).
+Extender la subpágina de líneas de pedido de compra para mostrar los campos.
+Conectar `OnAfterValidate` en `Quantity` para llamar al motor de cálculo para la derivación automática.
+Pruebas de integración: crear una línea de pedido de compra, verificar que se calcula la segunda cantidad.
 
-**Deliverables:** `DUoMPurchaseLine.TableExt.al`, `DUoMPurchaseOrderSubform.PageExt.al`,
+**Entregables:** `DUoMPurchaseLine.TableExt.al`, `DUoMPurchaseOrderSubform.PageExt.al`,
 `DUoMPurchaseSubscribers.Codeunit.al`, `DUoMPurchaseTests.Codeunit.al`
 
-### Issue 5 — Purchase Posting — ILE Second Qty
+### Issue 5 — Contabilización de compras — Segunda cantidad en ILE
 
-Subscribe to purchase receipt posting events to propagate `DUoM Second Qty` and
-`DUoM Ratio` from `Purchase Line` to `Item Ledger Entry` (table extension on ILE).
-Integration tests: post a purchase receipt, verify ILE fields.
+Suscribirse a los eventos de contabilización de recepciones de compra para propagar `DUoM Second Qty` y
+`DUoM Ratio` desde `Purchase Line` a `Item Ledger Entry` (extensión de tabla en ILE).
+Pruebas de integración: contabilizar una recepción de compra, verificar los campos ILE.
 
-**Deliverables:** `DUoMItemLedgerEntry.TableExt.al`, update `DUoMPurchaseSubscribers`,
-update `DUoMPurchaseTests`
+**Entregables:** `DUoMItemLedgerEntry.TableExt.al`, actualizar `DUoMPurchaseSubscribers`,
+actualizar `DUoMPurchaseTests`
 
-### Issue 6 — Sales Line DUoM Fields
+### Issue 6 — Campos DUoM en líneas de venta
 
-Extend `Sales Line` with `DUoM Second Qty` and `DUoM Ratio` fields.
-Extend Sales Order Line subpage to show the fields.
-Wire `OnAfterValidate` on `Quantity`.
-Integration tests.
+Extender `Sales Line` con los campos `DUoM Second Qty` y `DUoM Ratio`.
+Extender la subpágina de líneas de pedido de venta para mostrar los campos.
+Conectar `OnAfterValidate` en `Quantity`.
+Pruebas de integración.
 
-**Deliverables:** `DUoMSalesLine.TableExt.al`, `DUoMSalesOrderSubform.PageExt.al`,
+**Entregables:** `DUoMSalesLine.TableExt.al`, `DUoMSalesOrderSubform.PageExt.al`,
 `DUoMSalesSubscribers.Codeunit.al`, `DUoMSalesTests.Codeunit.al`
 
-### Issue 7 — Sales Posting — ILE Second Qty
+### Issue 7 — Contabilización de ventas — Segunda cantidad en ILE
 
-Subscribe to sales shipment posting events to propagate DUoM fields to ILE.
-Integration tests: post a sales shipment, verify ILE fields.
+Suscribirse a los eventos de contabilización de envíos de venta para propagar los campos DUoM al ILE.
+Pruebas de integración: contabilizar un envío de venta, verificar los campos ILE.
 
-**Deliverables:** update `DUoMSalesSubscribers`, update `DUoMSalesTests`
+**Entregables:** actualizar `DUoMSalesSubscribers`, actualizar `DUoMSalesTests`
 
-### Issue 8 — Item Journal DUoM Fields and Posting
+### Issue 8 — Campos DUoM en diario de artículos y contabilización
 
-Extend `Item Journal Line` with DUoM fields.
-Subscribe to item journal posting to propagate to ILE.
-Integration tests: post an item journal line, verify ILE fields.
+Extender `Item Journal Line` con los campos DUoM.
+Suscribirse a la contabilización del diario de artículos para propagar al ILE.
+Pruebas de integración: contabilizar una línea de diario de artículos, verificar los campos ILE.
 
-**Deliverables:** `DUoMItemJournalLine.TableExt.al`, `DUoMInventorySubscribers.Codeunit.al`,
+**Entregables:** `DUoMItemJournalLine.TableExt.al`, `DUoMInventorySubscribers.Codeunit.al`,
 `DUoMInventoryTests.Codeunit.al`
 
 ---
 
-## Phase 2
+## Fase 2
 
-### Issue 9 — Lot-Specific Real Ratio
+### Issue 9 — Ratio real específico por lote
 
-Store the actual ratio per lot on Item Tracking Lines.
-Pre-fill the DUoM Ratio on document lines when a lot is selected.
-Tests: assign a lot, verify ratio pre-fill.
+Almacenar el ratio real por lote en las líneas de seguimiento de artículos.
+Rellenar previamente el ratio DUoM en las líneas de documento cuando se selecciona un lote.
+Pruebas: asignar un lote, verificar el relleno previo del ratio.
 
-### Issue 10 — Warehouse Receipt and Shipment DUoM Fields
+### Issue 10 — Campos DUoM en recepciones y envíos de almacén
 
-Extend Warehouse Receipt Line and Warehouse Shipment Line.
-Propagate to Warehouse Entry and ILE at posting.
+Extender la línea de recepción de almacén y la línea de envío de almacén.
+Propagar al asiento de almacén y al ILE en la contabilización.
 
-### Issue 11 — Directed Put-Away and Pick DUoM Fields
+### Issue 11 — Campos DUoM en put-away y picking dirigido
 
-Extend Warehouse Activity Line for directed warehouse.
-Show second qty on put-away and pick documents.
+Extender la línea de actividad de almacén para almacén dirigido.
+Mostrar la segunda cantidad en los documentos de put-away y picking.
 
-### Issue 12 — Physical Inventory DUoM
+### Issue 12 — DUoM en inventario físico
 
-Extend physical inventory journal to support second qty counting.
+Extender el diario de inventario físico para soportar el recuento de segunda cantidad.
 
-### Issue 13 — Reporting Extensions
+### Issue 13 — Extensiones de informes
 
-Add second qty columns to key standard reports (purchase receipt, sales shipment,
-inventory valuation) using report extensions.
-
----
-
-## Phase 3 / Later
-
-- Transfer order DUoM support (Issue 14+)
-- Return order DUoM support (Issue 15+)
-- Assembly order DUoM support (if ever in scope)
+Añadir columnas de segunda cantidad a los informes estándar clave (recepción de compra, envío de venta,
+valoración de inventario) usando extensiones de informes.
 
 ---
 
-## Notes
+## Fase 3 / Posterior
 
-- Issues should be implemented in order; later issues depend on earlier ones.
-- Each issue must include tests before it can be considered done.
-- The `DualUoM Pipeline Check` codeunit (ID 50100) and its test (ID 50200) are
-  temporary and will be deleted when Issue 2 (Calc Engine) is merged. The Calc
-  Engine codeunit takes ID 50101 and its test takes 50203 (50201 and 50202 are
-  already used by `DUoM Item Setup Tests` and `DUoM Item Card Opening Tests`).
+- Soporte DUoM en pedidos de transferencia (Issue 14+)
+- Soporte DUoM en pedidos de devolución (Issue 15+)
+- Soporte DUoM en pedidos de ensamblado (si alguna vez está en el alcance)
+
+---
+
+## Notas
+
+- Los issues deben implementarse en orden; los posteriores dependen de los anteriores.
+- Cada issue debe incluir pruebas antes de considerarse terminado.
+- El codeunit `DualUoM Pipeline Check` (ID 50100) y su prueba (ID 50200) son
+  temporales y se eliminarán cuando se fusione el Issue 2 (Motor de cálculo). El codeunit del motor de
+  cálculo usa el ID 50101 y su prueba usa el 50203 (50201 y 50202 ya están
+  usados por `DUoM Item Setup Tests` y `DUoM Item Card Opening Tests`).

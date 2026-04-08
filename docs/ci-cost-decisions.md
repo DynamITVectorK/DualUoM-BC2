@@ -1,62 +1,62 @@
-# CI Cost Decisions — DualUoM-BC
+# Decisiones de CI/Coste — DualUoM-BC
 
-This document explains every cost-saving setting applied in `.github/AL-Go-Settings.json`
-and the workflow files.
+Este documento explica cada ajuste de ahorro de costes aplicado en `.github/AL-Go-Settings.json`
+y en los archivos de workflow.
 
 ## AL-Go-Settings.json
 
-| Setting | Value | Reason |
+| Ajuste | Valor | Motivo |
 |---|---|---|
-| `type` | `"PTE"` | Per-Tenant Extension — correct app type for BC SaaS customisations |
-| `country` | `"w1"` | Single locale build; no matrix expansion across countries |
-| `artifact` | `"bcartifacts/sandbox/27/w1/latest"` | Sandbox artifact is the smallest BC image available (~40% smaller than OnPrem) |
-| `compileModifiedOnly` | `true` | Skip compiling unchanged AL files — dramatically reduces compile time on large repos |
-| `cacheImageName` | `""` | Disable Docker image caching — BC artifact cache is used instead |
-| `doNotPublishApps` | `false` | Apps must be installed into the Docker container so test apps can run; deployment to online environments is blocked separately by `excludeEnvironments: ["*"]` in the global settings |
-| `skipUpgrade` | `true` | No upgrade tests — no previous published version exists yet |
-| `excludeEnvironments` | `["*"]` | Never auto-deploy to any environment from CI; all deployments are manual |
-| `buildModes` | `["Default"]` | Skip Clean and Translated build modes — only one build pass per run |
-| `runs-on` | `"windows-latest"` | Windows runner is required for BC Docker container execution (test execution needs a running BC service tier) |
+| `type` | `"PTE"` | Extensión de inquilino propio — tipo de app correcto para personalizaciones de BC SaaS |
+| `country` | `"w1"` | Compilación de una sola localización; sin expansión de matriz entre países |
+| `artifact` | `"bcartifacts/sandbox/27/w1/latest"` | El artefacto sandbox es la imagen BC más pequeña disponible (~40% más pequeña que OnPrem) |
+| `compileModifiedOnly` | `true` | Omitir la compilación de archivos AL sin cambios — reduce drásticamente el tiempo de compilación en repos grandes |
+| `cacheImageName` | `""` | Deshabilitar el caché de imagen Docker — en su lugar se usa el caché de artefactos BC |
+| `doNotPublishApps` | `false` | Las apps deben instalarse en el contenedor Docker para que las apps de prueba puedan ejecutarse; el despliegue en entornos online se bloquea por separado con `excludeEnvironments: ["*"]` en la configuración global |
+| `skipUpgrade` | `true` | Sin pruebas de actualización — aún no existe una versión publicada anterior |
+| `excludeEnvironments` | `["*"]` | No desplegar automáticamente en ningún entorno desde CI; todos los despliegues son manuales |
+| `buildModes` | `["Default"]` | Omitir los modos de compilación Clean y Translated — solo una pasada de compilación por ejecución |
+| `runs-on` | `"windows-latest"` | El runner de Windows es necesario para la ejecución del contenedor Docker de BC (la ejecución de pruebas necesita un nivel de servicio BC en ejecución) |
 
-### Note on `System Application Test Library` (removed from dependencies)
+### Nota sobre `System Application Test Library` (eliminado de las dependencias)
 
-`Microsoft_System Application Test Library` was listed as a dependency in `test/app.json` and
-in `installTestApps` in `.AL-Go/settings.json`, but it is not used by any test codeunit in
-this repository. In Docker/container build mode (when `useCompilerFolder` is not set), the
-AL-Go runtime cannot download symbols for this library with the `27.0.0.0` version specifier,
-because the actual file in the BC 27.5 sandbox artifact uses the full build version
-(e.g. `27.5.xxx.xxx`) and the download fails with `WARNING: Unable to download symbols`.
-This caused a fatal `AL1022` compile error.
+`Microsoft_System Application Test Library` estaba listado como dependencia en `test/app.json` y
+en `installTestApps` en `.AL-Go/settings.json`, pero no es usado por ningún codeunit de prueba en
+este repositorio. En modo de compilación Docker/contenedor (cuando `useCompilerFolder` no está establecido), el
+runtime de AL-Go no puede descargar símbolos para esta biblioteca con el especificador de versión `27.0.0.0`,
+porque el archivo real en el artefacto sandbox de BC 27.5 usa la versión de compilación completa
+(p. ej. `27.5.xxx.xxx`) y la descarga falla con `WARNING: Unable to download symbols`.
+Esto causaba un error de compilación fatal `AL1022`.
 
-Both the dependency entry in `test/app.json` and the `installTestApps` entry in
-`.AL-Go/settings.json` have been removed. Any future test that requires types from this
-library should re-add the dependency with the correct resolved version.
+Se han eliminado tanto la entrada de dependencia en `test/app.json` como la entrada `installTestApps` en
+`.AL-Go/settings.json`. Cualquier prueba futura que requiera tipos de esta biblioteca debe
+volver a añadir la dependencia con la versión correcta resuelta.
 
-### Note on `useCompilerFolder` (removed)
+### Nota sobre `useCompilerFolder` (eliminado)
 
-`useCompilerFolder: true` was previously set as a cost-saving measure to avoid Docker container
-startup overhead. However, this setting **prevents test execution entirely**: AL-Go in
-compiler-folder mode can only compile AL apps — it cannot run tests because there is no
-BC service tier. The root cause of missing `TestResults.xml` artifacts was this setting.
+`useCompilerFolder: true` se estableció previamente como medida de ahorro de costes para evitar la
+sobrecarga de inicio del contenedor Docker. Sin embargo, este ajuste **impide completamente la ejecución de pruebas**: AL-Go en
+modo compiler-folder solo puede compilar apps AL — no puede ejecutar pruebas porque no hay
+nivel de servicio BC. La causa raíz de los artefactos `TestResults.xml` faltantes era este ajuste.
 
-The setting has been removed so that AL-Go spins up a BC Docker container on the Windows
-runner and executes the test codeunits. The build job now runs on `windows-latest`
-(required for Docker). The trade-off is accepted: automated test execution takes precedence
-over the marginal cost saving from compiler-only mode.
+El ajuste se ha eliminado para que AL-Go arranque un contenedor Docker de BC en el runner de Windows
+y ejecute los codeunits de prueba. El job de compilación ahora se ejecuta en `windows-latest`
+(necesario para Docker). La compensación es aceptada: la ejecución automatizada de pruebas tiene prioridad
+sobre el ahorro marginal de costes del modo solo compilador.
 
-## Workflow triggers
+## Disparadores de workflow
 
-All workflow files use **only** `workflow_dispatch:` trigger.
+Todos los archivos de workflow usan **únicamente** el disparador `workflow_dispatch:`.
 
-Removed triggers:
-- `push:` — would fire on every commit, consuming minutes continuously
-- `pull_request:` — would fire on every PR update
-- `schedule:` — would fire periodically even with no code changes
-- `workflow_call:` auto-chaining — removed from `PullRequestHandler.yaml` to prevent automatic invocation
+Disparadores eliminados:
+- `push:` — se dispararía en cada commit, consumiendo minutos continuamente
+- `pull_request:` — se dispararía en cada actualización de PR
+- `schedule:` — se dispararía periódicamente incluso sin cambios de código
+- encadenamiento automático `workflow_call:` — eliminado de `PullRequestHandler.yaml` para evitar la invocación automática
 
-## Concurrency control
+## Control de concurrencia
 
-Every workflow that could be triggered manually more than once includes:
+Cada workflow que puede dispararse manualmente más de una vez incluye:
 
 ```yaml
 concurrency:
@@ -64,12 +64,12 @@ concurrency:
   cancel-in-progress: true
 ```
 
-This cancels a queued or in-progress run of the same workflow on the same branch
-when a newer run is dispatched, preventing duplicate billing.
+Esto cancela una ejecución en cola o en curso del mismo workflow en la misma rama
+cuando se lanza una ejecución más reciente, evitando la facturación duplicada.
 
-## AL compiler cache
+## Caché del compilador AL
 
-A `actions/cache@v4` step is added in `_BuildALGoProject.yaml` before the AL build step:
+Se añade un paso `actions/cache@v4` en `_BuildALGoProject.yaml` antes del paso de compilación AL:
 
 ```yaml
 - name: Cache AL compiler
@@ -80,12 +80,12 @@ A `actions/cache@v4` step is added in `_BuildALGoProject.yaml` before the AL bui
     restore-keys: al-compiler-
 ```
 
-This caches the AL compiler folder between runs. The cache key is based on the
-`AL-Go-Settings.json` file, so the cache is invalidated whenever the BC artifact
-version or other build settings change.
+Esto almacena en caché la carpeta del compilador AL entre ejecuciones. La clave de caché se basa en el
+archivo `AL-Go-Settings.json`, por lo que el caché se invalida cuando cambia la versión del artefacto BC
+u otros ajustes de compilación.
 
-## Single-job build (no matrix)
+## Compilación de un solo job (sin matriz)
 
-`buildModes: ["Default"]` combined with a single `country: "w1"` ensures AL-Go
-generates only one build dimension, not a matrix. A matrix across multiple BC
-versions or countries would multiply runner minutes.
+`buildModes: ["Default"]` combinado con un único `country: "w1"` garantiza que AL-Go
+genere solo una dimensión de compilación, no una matriz. Una matriz de múltiples versiones de BC
+o países multiplicaría los minutos de runner.
