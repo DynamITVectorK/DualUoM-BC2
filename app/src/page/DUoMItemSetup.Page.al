@@ -47,8 +47,8 @@ page 50100 "DUoM Item Setup"
                 field("Fixed Ratio"; Rec."Fixed Ratio")
                 {
                     ApplicationArea = All;
-                    Enabled = Rec."Conversion Mode" = Rec."Conversion Mode"::Fixed;
-                    ToolTip = 'Specifies the fixed conversion ratio (1 base UoM unit = Fixed Ratio second UoM units). Required when Conversion Mode is Fixed.';
+                    Enabled = (Rec."Conversion Mode" = Rec."Conversion Mode"::Fixed) or (Rec."Conversion Mode" = Rec."Conversion Mode"::Variable);
+                    ToolTip = 'Specifies the fixed or default conversion ratio (1 base UoM unit = Fixed Ratio second UoM units). Required when Conversion Mode is Fixed; used as the default in Variable mode.';
                 }
             }
         }

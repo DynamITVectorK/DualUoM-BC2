@@ -65,7 +65,9 @@ table 50100 "DUoM Item Setup"
 
             trigger OnValidate()
             begin
-                if "Conversion Mode" <> "Conversion Mode"::Fixed then
+                // Always Variable has no concept of a default ratio; clear it.
+                // Variable retains Fixed Ratio as an optional default per-line override.
+                if "Conversion Mode" = "Conversion Mode"::AlwaysVariable then
                     "Fixed Ratio" := 0;
             end;
         }

@@ -155,11 +155,11 @@ codeunit 50201 "DUoM Item Setup Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // Validate trigger: switching to Variable clears Fixed Ratio
+    // Validate trigger: switching to Variable retains Fixed Ratio (used as default)
     // -------------------------------------------------------------------------
 
     [Test]
-    procedure Validate_ConversionModeToVariable_ClearsFixedRatio()
+    procedure Validate_ConversionModeToVariable_RetainsFixedRatio()
     var
         DUoMItemSetup: Record "DUoM Item Setup";
         LibraryAssert: Codeunit "Library Assert";
@@ -175,8 +175,8 @@ codeunit 50201 "DUoM Item Setup Tests"
         // [WHEN] Conversion Mode is changed to Variable via Validate
         DUoMItemSetup.Validate("Conversion Mode", DUoMItemSetup."Conversion Mode"::Variable);
 
-        // [THEN] Fixed Ratio is cleared
-        LibraryAssert.AreEqual(0, DUoMItemSetup."Fixed Ratio", 'Fixed Ratio must be cleared when switching to Variable mode');
+        // [THEN] Fixed Ratio is retained — Variable mode uses it as an overridable default
+        LibraryAssert.AreEqual(2.5, DUoMItemSetup."Fixed Ratio", 'Fixed Ratio must be retained when switching to Variable mode (used as default)');
     end;
 
     // -------------------------------------------------------------------------
