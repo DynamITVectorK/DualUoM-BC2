@@ -107,18 +107,40 @@ Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguien
 
 ### Formato de los `trans-unit id`
 
-Los IDs siguen el patrón generado por el compilador AL:
+> ⚠️ **IMPORTANTE — IDs hash-based (runtime 15 / BC 27+)**
+>
+> A partir de runtime 15 el compilador AL genera **IDs basados en hash**, no IDs secuenciales.
+> Los IDs tienen el formato `<Tipo> <hash_objeto> - <segmento> <hash_elemento> - Property <hash_propiedad>`.
+> **Nunca uses IDs secuenciales** como `Table 50100 - Field 1 - Property Caption` — estos no coinciden
+> con lo que el compilador genera y BC no aplicará la traducción.
+>
+> La **única fuente de verdad** para los IDs correctos es el archivo `DualUoM-BC.g.xlf` incluido
+> dentro del artefacto `.app` compilado (extraíble como ZIP). También está disponible en el artefacto
+> de CI `*-Apps-*.zip` → `Translations/DualUoM-BC.g.xlf`.
 
-| Tipo | Formato del ID | Ejemplo |
-|------|---------------|---------|
-| Objeto (caption) | `<Tipo> <ID> - Property Caption` | `Table 50100 - Property Caption` |
-| Campo (caption) | `<Tipo> <ID> - Field <N> - Property Caption` | `Table 50100 - Field 3 - Property Caption` |
-| Campo (tooltip) | `<Tipo> <ID> - Field <N> - Property ToolTip` | `Table 50100 - Field 3 - Property ToolTip` |
-| Enum value | `Enum <ID> - Value <N> - Property Caption` | `Enum 50100 - Value 2 - Property Caption` |
-| `Label` (NamedType) | `<Tipo> <ID> - NamedType <NombreLabel>` | `Table 50100 - NamedType SameUoMErr` |
-| Control de página | `Page <ID> - Control <N> - Property Caption/ToolTip` | `Page 50100 - Control 7 - Property ToolTip` |
+Los IDs siguen el patrón generado por el compilador AL (ejemplos reales de este proyecto):
 
-> **Nota sobre IDs de controles de página:** Los IDs `Control N` son asignados por el compilador. Para obtenerlos con exactitud, compila la extensión con la extensión AL de VS Code y consulta el archivo `.g.xlf` generado en `app/.alpackages/`. **Verificar y corregir estos IDs tras la primera compilación es un paso obligatorio del Definition of Done para cualquier PR que añada o modifique páginas o extensiones de página.** Los IDs de `Table`, `Enum` y `NamedType` son deterministas y no requieren verificación.
+| Tipo | Segmento | Formato del ID | Ejemplo |
+|------|----------|---------------|---------|
+| Objeto (caption) | — | `<Tipo> <hash_obj> - Property <hash_prop>` | `Table 2256867475 - Property 2879900210` |
+| Campo (caption) | Field | `<Tipo> <hash_obj> - Field <hash_campo> - Property <hash_prop>` | `Table 2256867475 - Field 568743302 - Property 2879900210` |
+| Enum value | EnumValue | `Enum <hash_obj> - EnumValue <hash_valor> - Property <hash_prop>` | `Enum 747545484 - EnumValue 744835066 - Property 2879900210` |
+| Label (NamedType) | NamedType | `<Tipo> <hash_obj> - NamedType <hash_label>` | `Table 2256867475 - NamedType 439880220` |
+| Control de página | Control | `Page <hash_obj> - Control <hash_ctrl> - Property <hash_prop>` | `Page 2256867475 - Control 2445482498 - Property 2879900210` |
+| Acción de página | Action | `Page <hash_obj> - Action <hash_accion> - Property <hash_prop>` | `Page 2256867475 - Action 2570329715 - Property 2879900210` |
+| Acción de extensión | Action | `PageExtension <hash_obj> - Action <hash_accion> - Property <hash_prop>` | `PageExtension 3793678013 - Action 3087588456 - Property 2879900210` |
+
+Hashes de propiedades habituales (constantes para todos los objetos):
+
+| Propiedad | Hash |
+|-----------|------|
+| `Caption` | `2879900210` |
+| `ToolTip` | `1295455071` |
+
+> **Proceso obligatorio al añadir o modificar páginas/extensiones de página:**
+> Compila la extensión (CI o VS Code), descarga el artefacto `*-Apps-*.zip`, extráelo como ZIP
+> y abre `Translations/DualUoM-BC.g.xlf`. Copia los `id` exactos al XLF de traducción.
+> **Nunca estimes los IDs manualmente.**
 
 ### Eliminar una cadena
 
@@ -203,7 +225,7 @@ Estos términos no están en uso aún pero deben seguir esta convención cuando 
 
 | Riesgo | Descripción | Acción recomendada |
 |--------|-------------|-------------------|
-| IDs de controles de página | Los IDs `Control N` para grupos, campos y acciones de página son asignados por el compilador. Los IDs en los XLF actuales son estimaciones secuenciales. | **Verificación obligatoria:** compilar con la extensión AL de VS Code, abrir `app/.alpackages/*.g.xlf`, comparar IDs y corregir los XLF si difieren. Este paso forma parte del Definition of Done para cualquier PR que modifique páginas. |
+| IDs de controles de página | ✅ **Resuelto.** Los XLF ahora usan los IDs hash-based correctos obtenidos del `DualUoM-BC.g.xlf` generado por el compilador AL (runtime 15). | Para futuros cambios de páginas: descargar el artefacto `*-Apps-*.zip` del CI, extraerlo y copiar los IDs desde `Translations/DualUoM-BC.g.xlf`. |
 | Phase 2 | Cuando se implementen módulos de Venta, Compra, Almacén o Lotes, habrá nuevas cadenas. | Aplicar esta guía desde el primer día de cada nueva issue. |
 | `codeunit 50100 "DualUoM Pipeline Check"` | Codeunit temporal sin textos visibles. Eliminar cuando se implemente el motor de cálculo (Issue #2). | Sin acción de localización pendiente. |
 
