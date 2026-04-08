@@ -122,5 +122,6 @@ inventory valuation) using report extensions.
 - Issues should be implemented in order; later issues depend on earlier ones.
 - Each issue must include tests before it can be considered done.
 - The `DualUoM Pipeline Check` codeunit (ID 50100) and its test (ID 50200) are
-  temporary and will be deleted when Issue 2 (Calc Engine) is merged and its
-  codeunit takes ID 50101 and its test takes 50201.
+  temporary and will be deleted when Issue 2 (Calc Engine) is merged. The Calc
+  Engine codeunit takes ID 50101 and its test takes 50203 (50201 and 50202 are
+  already used by `DUoM Item Setup Tests` and `DUoM Item Card Opening Tests`).
