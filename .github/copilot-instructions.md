@@ -25,6 +25,9 @@ app/          Main extension (PTE)
     pageextension/    AL pageextension objects
     permissionset/    AL permissionset objects
     report/           AL report objects
+  Translations/
+    DualUoM-BC.en-US.xlf   English reference translation file
+    DualUoM-BC.es-ES.xlf   Spanish translation file
 
 test/         Test extension
   app.json    Test app manifest (depends on app/)
@@ -43,6 +46,7 @@ docs/
   03-technical-architecture.md  Extension design, events, SaaS principles
   05-testing-strategy.md    TDD rules, test types, CI validation
   06-backlog.md             Ordered delivery backlog
+  07-localization.md        XLF workflow, terminology glossary, translation rules
   ci-cost-decisions.md      CI cost-saving choices
 ```
 
@@ -55,6 +59,19 @@ docs/
 - Use `NoImplicitWith` — never rely on implicit `with` scoping
 - Modules in scope: Sales, Purchase, Inventory, Warehouse
 - Modules **out of scope**: Manufacturing, Projects, Service
+
+## Localization rule (mandatory)
+
+Every user-facing text in the extension **must** be translation-ready. The supported languages are **English (en-US)** and **Spanish (es-ES)**.
+
+- Declare all user-visible strings (captions, tooltips, errors, confirmations, notifications, enum values) as `Label` variables or `Caption`/`ToolTip` properties — never as hardcoded string literals.
+- Every `Label` declaration **must** include a `Comment` property that describes placeholders (e.g. `Comment = '%1 = Item No.'`) or states `'Validation error; no placeholders.'` when there are none.
+- The `TranslationFile` feature is enabled in `app.json`. Translation files live in `app/Translations/`:
+  - `DualUoM-BC.en-US.xlf` — English reference
+  - `DualUoM-BC.es-ES.xlf` — Spanish translations
+- **Whenever** a caption, tooltip, label, error, confirmation, notification, or enum value is added or changed, **both** XLF files must be updated in the same PR.
+- A feature is **not considered done** until all new or modified user-visible strings appear (translated) in both XLF files.
+- See `docs/07-localization.md` for the full XLF workflow, terminology glossary, and examples.
 
 ## Permission set rule (mandatory)
 
