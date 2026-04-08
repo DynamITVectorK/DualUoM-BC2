@@ -22,5 +22,5 @@
   ],
   "runtime": "15.0",
   "target": "Cloud",
-  "features": ["TranslationFile"]
+  "features": ["TranslationFile", "NoImplicitWith"]
 }
