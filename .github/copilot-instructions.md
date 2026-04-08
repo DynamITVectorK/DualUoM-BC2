@@ -23,6 +23,7 @@ app/          Main extension (PTE)
     codeunit/         AL codeunit objects
     page/             AL page objects
     pageextension/    AL pageextension objects
+    permissionset/    AL permissionset objects
     report/           AL report objects
 
 test/         Test extension
@@ -54,6 +55,15 @@ docs/
 - Use `NoImplicitWith` — never rely on implicit `with` scoping
 - Modules in scope: Sales, Purchase, Inventory, Warehouse
 - Modules **out of scope**: Manufacturing, Projects, Service
+
+## Permission set rule (mandatory)
+
+Any new table or other securable object that requires permission coverage **must** be accompanied by a corresponding permission set update in the **same issue/PR**. Specifically:
+
+- Every new `table` object must have a matching `tabledata` entry (RIMD or appropriate subset) in a `permissionset` object under `app/src/permissionset/`.
+- The permission set file must follow the naming convention `<Name>.PermissionSet.al` and use the project ID range (50100–50199).
+- The project-wide permission set is `permissionset 50100 "DUoM - All"` (`app/src/permissionset/DUoMAll.PermissionSet.al`). Add new table entries there; create additional permission sets only if different access levels are needed.
+- Failure to include this causes build error `PTE0004` — a zero-tolerance policy applies.
 
 ## Business Central SaaS constraints
 
