@@ -6,13 +6,16 @@ This repository contains the **DualUoM-BC** Business Central SaaS extension.
 The goal is to add dual unit of measure (UoM) support to all BC modules
 **except** Manufacturing, Projects and Service.
 
-Tech stack: AL · AL-Go for GitHub · Business Central SaaS (latest) · TDD
+Business example: purchase 10 KG of lettuce received as 8 pieces. Both quantities must
+be stored, posted and tracked, with support for variable and lot-specific ratios.
+
+Tech stack: AL · AL-Go for GitHub · Business Central SaaS (BC 27 / runtime 15) · TDD
 
 ## Repository layout
 
 ```
 app/          Main extension (PTE)
-  app.json    Extension manifest — platform 25, runtime 13, target Cloud
+  app.json    Extension manifest — platform 27, runtime 15, target Cloud
   src/
     enum/             AL enum objects
     table/            AL table objects
@@ -21,9 +24,6 @@ app/          Main extension (PTE)
     page/             AL page objects
     pageextension/    AL pageextension objects
     report/           AL report objects
-  .vscode/
-    launch.json       Local dev launch config
-    settings.json     AL code-analysis settings
 
 test/         Test extension
   app.json    Test app manifest (depends on app/)
@@ -36,17 +36,49 @@ test/         Test extension
   copilot-instructions.md  (this file)
 
 docs/
-  ci-cost-decisions.md  Explanation of every CI cost-saving choice
+  00-vision.md              Project objective, business need, target modules
+  01-scope-mvp.md           MVP vs later phases vs out of scope
+  02-functional-design.md   Conversion modes, propagation, lot ratios
+  03-technical-architecture.md  Extension design, events, SaaS principles
+  05-testing-strategy.md    TDD rules, test types, CI validation
+  06-backlog.md             Ordered delivery backlog
+  ci-cost-decisions.md      CI cost-saving choices
 ```
 
 ## AL coding conventions
 
-- Object ID range: **50000–50099** (app), **50100–50199** (tests)
+- Object ID range: **50100–50199** (app), **50200–50299** (tests)
 - Follow Microsoft AL coding guidelines and PascalCase naming
 - Every new AL feature must have a corresponding test codeunit in `test/src/codeunit/`
 - Use `PerTenantExtensionCop`, `CodeCop`, and `UICop` analysers — zero warnings policy
+- Use `NoImplicitWith` — never rely on implicit `with` scoping
 - Modules in scope: Sales, Purchase, Inventory, Warehouse
 - Modules **out of scope**: Manufacturing, Projects, Service
+
+## Business Central SaaS constraints
+
+- Extension-only: no base app modifications, no direct SQL, no RPC
+- All standard BC integration must go through published integration events
+- No intrusive patterns: no global state, no `OnBeforeInsert` that blocks posting flows
+- No deprecated APIs — always use current BC 27 patterns
+- SaaS deployments are cloud-only; no OnPrem-specific code
+- Do not assume access to Docker or file system at runtime
+
+## Delivery rules
+
+- Implement only what the current issue explicitly requires — no speculative scope
+- Every issue must include passing automated tests before it is considered done
+- Follow the backlog order in `docs/06-backlog.md` — later issues depend on earlier ones
+- Do not implement warehouse or lot logic until the relevant Phase 2 issues are opened
+- Do not implement costing or value entry logic unless explicitly scoped
+
+## Testing rules
+
+- TDD is mandatory: write a failing test first, then the production code
+- Test codeunits use `Subtype = Test` and `[Test]` attribute per procedure
+- Use the `// [GIVEN] / [WHEN] / [THEN]` comment pattern
+- Use `Library Assert` (Microsoft) for all assertions
+- No test may be skipped or disabled to make CI pass
 
 ## CI/CD — cost-first approach
 

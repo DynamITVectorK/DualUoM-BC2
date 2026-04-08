@@ -1,0 +1,103 @@
+# Technical Architecture — DualUoM-BC
+
+## Extension-Only Approach
+
+The solution is delivered exclusively as a **Per-Tenant Extension (PTE)** running on
+Business Central SaaS. No base application code is modified. All additions use:
+
+- Table extensions (`tableextension`) to add fields to standard tables
+- Page extensions (`pageextension`) to surface new fields on existing pages
+- New custom tables and pages for DUoM-specific setup and configuration
+- Event subscribers to intercept standard posting, validation and calculation flows
+- Codeunits for business logic, entirely independent of the standard code path
+
+This guarantees compatibility with future BC updates and safe uninstallation.
+
+---
+
+## SaaS-Safe Design Principles
+
+| Principle | Rationale |
+|---|---|
+| No direct table access to internal BC tables via `RecordRef` where avoidable | Fragile against schema changes |
+| No `OnBeforeInsert`/`OnBeforeModify` subscribers that throw errors mid-flow | Prefer `OnAfterValidate` and dedicated validation codeunits |
+| No `BLOB` fields unless unavoidable | Performance and upgrade risk |
+| No hardcoded object IDs from the base application | Use `Codeunit.RUN` and `Page.RUN` by name where possible |
+| No deprecated BC APIs | Always use current-release patterns |
+| No UI-blocking logic in table triggers | Move validation to page/codeunit layer |
+
+---
+
+## Standard-First Philosophy
+
+Before adding any new field, table or logic, consider whether a standard BC mechanism
+already covers the need:
+
+- Use existing `Item Unit of Measure` table for fixed ratio base data
+- Use existing `Item Tracking` infrastructure for lot linkage (Phase 2)
+- Use existing `Warehouse Activity Line` structure for warehouse extensions (Phase 2)
+- Only extend or add when standard BC genuinely cannot support the requirement
+
+---
+
+## Object Structure
+
+### Custom Tables
+
+| Object | ID | Purpose |
+|---|---|---|
+| `DUoM Item Setup` | 50100 | Per-item DUoM configuration (enabled, second UoM, mode, ratio) |
+
+### Table Extensions
+
+| Object | ID | Extended Table | Purpose |
+|---|---|---|---|
+| `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Second qty and ratio fields |
+| `DUoM Sales Line Ext` | 50111 | `Sales Line` | Second qty and ratio fields |
+| `DUoM Item Journal Line Ext` | 50112 | `Item Journal Line` | Second qty and ratio fields |
+| `DUoM Item Ledger Entry Ext` | 50113 | `Item Ledger Entry` | Second qty and ratio (posted, immutable) |
+
+_Exact object IDs are assigned at implementation time within the 50100–50199 range._
+
+### Codeunits
+
+| Object | ID | Purpose |
+|---|---|---|
+| `DualUoM Pipeline Check` | 50100 | Build pipeline validation (temporary) |
+| `DUoM Calc Engine` | 50101 | Core second-quantity computation and validation |
+| `DUoM Purchase Subscribers` | 50102 | Event subscribers for purchase flow |
+| `DUoM Sales Subscribers` | 50103 | Event subscribers for sales flow |
+| `DUoM Inventory Subscribers` | 50104 | Event subscribers for item journal / ILE flow |
+
+---
+
+## Event-Based Design
+
+All integration with standard BC flows is done via **published integration events**
+(`[IntegrationEvent(false, false)]`) and **business events** where available.
+
+Subscriber codeunits are kept small and focused. Each module (Purchase, Sales, Inventory,
+Warehouse) has its own subscriber codeunit to limit blast radius of changes.
+
+No subscriber codeunit should contain posting logic. Posting logic lives in dedicated
+codeunits called from subscribers.
+
+---
+
+## Testing-First Expectations
+
+- Every codeunit must have a corresponding test codeunit in `test/src/codeunit/`
+- Tests use the standard AL testability framework (`Subtype = Test`)
+- `Library Assert` (Microsoft) is the only allowed assertion library
+- No production code is merged without at least one passing test covering the new behavior
+- See `docs/05-testing-strategy.md` for full strategy
+
+---
+
+## Upgrade-Friendly Architecture
+
+- No data migrations in MVP (no data exists yet)
+- When data migrations become necessary, use `OnUpgradePerCompany` / `OnInstallAppPerCompany`
+  in a dedicated install/upgrade codeunit
+- Table extensions fields use `ObsoleteState` appropriately when deprecated
+- Never rename or renumber existing published objects — create new ones instead
