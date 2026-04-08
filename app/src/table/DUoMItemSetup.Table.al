@@ -118,6 +118,19 @@ table 50100 "DUoM Item Setup"
     end;
 
     /// <summary>
+    /// Retrieves the DUoM setup record for the given item, or creates a new one if it does not exist.
+    /// After this call the current record variable holds the persisted setup record for ItemNo.
+    /// </summary>
+    procedure GetOrCreate(ItemNo: Code[20])
+    begin
+        if Get(ItemNo) then
+            exit;
+        Init();
+        "Item No." := ItemNo;
+        Insert(true);
+    end;
+
+    /// <summary>
     /// Validates the overall DUoM setup for consistency.
     /// Call this before persisting or using the setup in a document flow.
     /// </summary>
