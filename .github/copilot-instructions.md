@@ -50,6 +50,16 @@ docs/
   ci-cost-decisions.md      CI cost-saving choices
 ```
 
+## Idioma del proyecto
+
+El idioma oficial del proyecto es el **español**. Toda documentación nueva, comentarios en issues/PRs, mensajes de commit y respuestas del agente Copilot deben escribirse en español. La documentación ya existente escrita en otro idioma no requiere ser retrotraducida salvo que se modifique de forma sustancial.
+
+Los identificadores AL (nombres de objetos, campos, procedimientos, variables) y las APIs de Business Central permanecen en inglés, siguiendo las convenciones de la plataforma.
+
+> Esta regla no afecta al contenido de los archivos XLF ni a las cadenas de origen (`<source>`) en los archivos de traducción, que siempre deben mantenerse en inglés como idioma de referencia (en-US).
+
+---
+
 ## AL coding conventions
 
 - Object ID range: **50100–50199** (app), **50200–50299** (tests)

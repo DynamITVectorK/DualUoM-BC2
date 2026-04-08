@@ -68,10 +68,15 @@ Cuando se añade o modifica cualquier caption, tooltip, label, error, confirmaci
 
 ### 4. Definition of Done — localización
 
-Una funcionalidad **no está terminada** hasta que:
-- Todos los textos visibles están declarados como `Label` o propiedad `Caption`/`ToolTip`.
-- Todos los `Label` tienen `Comment`.
-- Ambos XLF contienen las nuevas cadenas traducidas.
+Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguiente:
+
+- [ ] Todos los textos visibles están declarados como `Label` o propiedad `Caption`/`ToolTip`.
+- [ ] Todos los `Label` tienen propiedad `Comment`.
+- [ ] No queda ningún texto hardcodeado visible en la UI.
+- [ ] `DualUoM-BC.en-US.xlf` actualizado: nuevas entradas con `state="final"`.
+- [ ] `DualUoM-BC.es-ES.xlf` actualizado: mismas entradas con `state="translated"` y traducción en español.
+- [ ] Terminología coherente con el glosario de este documento.
+- [ ] No hay entradas `state="needs-translation"` en los XLF del repositorio.
 
 ---
 
@@ -209,3 +214,4 @@ Estos términos no están en uso aún pero deben seguir esta convención cuando 
 - [Microsoft Learn — Developing Multilanguage Extensions](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/developer/devenv-multilanguage-development)
 - [XLIFF 1.2 Specification](https://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html)
 - `.github/copilot-instructions.md` — Regla de localización (resumen ejecutivo)
+- `CONTRIBUTING.md` — Guía de contribución para desarrolladores (incluye DoD y checklist de localización)
