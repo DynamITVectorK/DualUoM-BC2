@@ -76,5 +76,5 @@ page 50100 "DUoM Item Setup"
     }
 
     var
-        SetupValidMsg: Label 'DUoM setup is valid.';
+        SetupValidMsg: Label 'DUoM setup is valid.', Comment = 'Confirmation message; no placeholders.';
 }

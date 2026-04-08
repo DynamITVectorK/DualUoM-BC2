@@ -155,6 +155,6 @@ table 50100 "DUoM Item Setup"
 
     var
         SameUoMErr: Label 'Second UoM Code cannot be the same as the base unit of measure (%1).', Comment = '%1 = UoM Code';
-        SecondUoMRequiredErr: Label 'Second UoM Code must be specified when Dual UoM is enabled.';
-        FixedRatioRequiredErr: Label 'Fixed Ratio must be greater than zero when Conversion Mode is Fixed.';
+        SecondUoMRequiredErr: Label 'Second UoM Code must be specified when Dual UoM is enabled.', Comment = 'Validation error; no placeholders.';
+        FixedRatioRequiredErr: Label 'Fixed Ratio must be greater than zero when Conversion Mode is Fixed.', Comment = 'Validation error; no placeholders.';
 }

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en-US" target-language="es-ES" original="DualUoM-BC">
+    <body>
+      <group id="body">
+
+        <!-- ═══════════════════════════════════════════
+             Enum 50100  DUoM Conversion Mode
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="Enum 50100 - Property Caption" translate="yes" xml:space="preserve">
+          <source>DUoM Conversion Mode</source>
+          <target state="translated">Modo conversión UdM dual</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Enum DUoM Conversion Mode - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Enum 50100 - Value 0 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Fixed</source>
+          <target state="translated">Fijo</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Enum DUoM Conversion Mode - Value Fixed - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Enum 50100 - Value 1 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Variable</source>
+          <target state="translated">Variable</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Enum DUoM Conversion Mode - Value Variable - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Enum 50100 - Value 2 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Always Variable</source>
+          <target state="translated">Siempre variable</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Enum DUoM Conversion Mode - Value AlwaysVariable - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             Table 50100  DUoM Item Setup
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="Table 50100 - Property Caption" translate="yes" xml:space="preserve">
+          <source>DUoM Item Setup</source>
+          <target state="translated">Config. artículo UdM dual</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - Field 1 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Item No.</source>
+          <target state="translated">Nº producto</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - Field Item No. - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - Field 2 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Dual UoM Enabled</source>
+          <target state="translated">UdM dual habilitada</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - Field Dual UoM Enabled - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - Field 3 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Second UoM Code</source>
+          <target state="translated">Cód. 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - Field Second UoM Code - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - Field 4 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Conversion Mode</source>
+          <target state="translated">Modo conversión</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - Field Conversion Mode - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - Field 5 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Fixed Ratio</source>
+          <target state="translated">Ratio fijo</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - Field Fixed Ratio - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - NamedType SameUoMErr" translate="yes" xml:space="preserve">
+          <source>Second UoM Code cannot be the same as the base unit of measure (%1).</source>
+          <target state="translated">El código de la 2ª UdM no puede ser el mismo que la unidad de medida base (%1).</target>
+          <note from="Developer" annotates="general" priority="2">%1 = UoM Code</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - NamedType SameUoMErr</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - NamedType SecondUoMRequiredErr" translate="yes" xml:space="preserve">
+          <source>Second UoM Code must be specified when Dual UoM is enabled.</source>
+          <target state="translated">Debe especificarse el código de la 2ª UdM cuando la UdM Dual está habilitada.</target>
+          <note from="Developer" annotates="general" priority="2">Validation error; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - NamedType SecondUoMRequiredErr</note>
+        </trans-unit>
+        <trans-unit id="Table 50100 - NamedType FixedRatioRequiredErr" translate="yes" xml:space="preserve">
+          <source>Fixed Ratio must be greater than zero when Conversion Mode is Fixed.</source>
+          <target state="translated">El ratio fijo debe ser mayor que cero cuando el modo de conversión es Fijo.</target>
+          <note from="Developer" annotates="general" priority="2">Validation error; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Item Setup - NamedType FixedRatioRequiredErr</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             Page 50100  DUoM Item Setup
+             Page-level caption and NamedType labels have
+             deterministic IDs.  Control IDs for groups,
+             fields and actions are compiler-assigned and
+             must be verified against the .g.xlf generated
+             by the AL compiler (VS Code AL extension).
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="Page 50100 - Property Caption" translate="yes" xml:space="preserve">
+          <source>DUoM Item Setup</source>
+          <target state="translated">Config. artículo UdM dual</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 2 - Property Caption" translate="yes" xml:space="preserve">
+          <source>General</source>
+          <target state="translated">General</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - group(General) - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 3 - Property ToolTip" translate="yes" xml:space="preserve">
+          <source>Specifies the item number this DUoM setup belongs to.</source>
+          <target state="translated">Especifica el número de artículo al que pertenece esta configuración UdM Dual.</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - field(Item No.) - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 4 - Property ToolTip" translate="yes" xml:space="preserve">
+          <source>Specifies whether this item uses Dual Unit of Measure.</source>
+          <target state="translated">Especifica si este artículo utiliza Unidad de Medida Dual.</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - field(Dual UoM Enabled) - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 5 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Configuration</source>
+          <target state="translated">Configuración</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - group(Configuration) - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 6 - Property ToolTip" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary unit of measure for this item (e.g. PCS when the base UoM is KG).</source>
+          <target state="translated">Especifica la unidad de medida secundaria para este artículo (p. ej., UDS cuando la UdM base es KG).</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - field(Second UoM Code) - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 7 - Property ToolTip" translate="yes" xml:space="preserve">
+          <source>Specifies how the conversion ratio is determined. Fixed: constant ratio. Variable: default ratio overridable per line. Always Variable: user enters ratio manually on every line.</source>
+          <target state="translated">Especifica cómo se determina el ratio de conversión. Fijo: ratio constante. Variable: ratio predeterminado modificable por línea. Siempre variable: el usuario introduce el ratio manualmente en cada línea.</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - field(Conversion Mode) - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 8 - Property ToolTip" translate="yes" xml:space="preserve">
+          <source>Specifies the fixed or default conversion ratio (1 base UoM unit = Fixed Ratio second UoM units). Required when Conversion Mode is Fixed; used as the default in Variable mode.</source>
+          <target state="translated">Especifica el ratio de conversión fijo o predeterminado (1 unidad base UdM = ratio fijo unidades de 2ª UdM). Obligatorio cuando el modo de conversión es Fijo; se usa como predeterminado en modo Variable.</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - field(Fixed Ratio) - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 10 - Property Caption" translate="yes" xml:space="preserve">
+          <source>Validate Setup</source>
+          <target state="translated">Validar configuración</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - action(ValidateSetup) - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - Control 10 - Property ToolTip" translate="yes" xml:space="preserve">
+          <source>Checks that the current DUoM configuration is consistent and complete.</source>
+          <target state="translated">Comprueba que la configuración UdM Dual actual sea coherente y completa.</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - action(ValidateSetup) - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 50100 - NamedType SetupValidMsg" translate="yes" xml:space="preserve">
+          <source>DUoM setup is valid.</source>
+          <target state="translated">La configuración UdM Dual es válida.</target>
+          <note from="Developer" annotates="general" priority="2">Confirmation message; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - NamedType SetupValidMsg</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 50100  DUoM Item Card Ext
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 50100 - Control 2 - Property Caption" translate="yes" xml:space="preserve">
+          <source>DUoM Setup</source>
+          <target state="translated">Config. UdM Dual</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Card Ext - action(DUoMSetup) - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 50100 - Control 2 - Property ToolTip" translate="yes" xml:space="preserve">
+          <source>Opens the Dual Unit of Measure setup for this item.</source>
+          <target state="translated">Abre la configuración de Unidad de Medida Dual para este artículo.</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Card Ext - action(DUoMSetup) - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PermissionSet 50100  DUoM - All
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PermissionSet 50100 - Property Caption" translate="yes" xml:space="preserve">
+          <source>DualUoM - All</source>
+          <target state="translated">UdM Dual - Todos</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">PermissionSet DUoM - All - Property Caption</note>
+        </trans-unit>
+
+      </group>
+    </body>
+  </file>
+</xliff>
