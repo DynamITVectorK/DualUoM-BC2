@@ -84,9 +84,19 @@ Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguien
 
 ### Añadir una nueva cadena
 
+> ⚠️ **Los XLF deben actualizarse en el mismo PR que el código AL.** Un PR no está listo
+> para mergear hasta que ambos XLF (`en-US` y `es-ES`) contengan entradas para **todas**
+> las cadenas nuevas o modificadas, con `state="final"` y `state="translated"` respectivamente.
+> Nunca uses `state="needs-translation"`.
+
+El proceso correcto es:
+
 1. Declarar la cadena en AL como `Label` (con `Comment`) o `Caption`/`ToolTip`.
-2. Identificar el `trans-unit id` correcto (ver sección siguiente).
-3. Añadir la entrada en `en-US.xlf`:
+2. Ejecutar CI mediante `workflow_dispatch` (o compilar localmente en VS Code) para obtener
+   el artefacto compilado con los IDs hash correctos.
+3. Descargar el artefacto `*-Apps-*.zip` → extraer como ZIP → abrir `Translations/DualUoM-BC.g.xlf`.
+4. Copiar el `id` exacto del `<trans-unit>` correspondiente. **Nunca estimes el ID manualmente.**
+5. Añadir la entrada en `en-US.xlf`:
    ```xml
    <trans-unit id="..." translate="yes" xml:space="preserve">
      <source>New string in English.</source>
@@ -95,7 +105,7 @@ Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguien
      <note from="Xliff Generator" annotates="general" priority="3">Object - context</note>
    </trans-unit>
    ```
-4. Añadir la misma entrada en `es-ES.xlf` con la traducción:
+6. Añadir la misma entrada en `es-ES.xlf` con la traducción:
    ```xml
    <trans-unit id="..." translate="yes" xml:space="preserve">
      <source>New string in English.</source>
@@ -104,6 +114,7 @@ Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguien
      <note from="Xliff Generator" annotates="general" priority="3">Object - context</note>
    </trans-unit>
    ```
+7. Añadir el commit con los cambios XLF al mismo PR y empujar antes de solicitar revisión.
 
 ### Formato de los `trans-unit id`
 
@@ -136,11 +147,6 @@ Hashes de propiedades habituales (constantes para todos los objetos):
 |-----------|------|
 | `Caption` | `2879900210` |
 | `ToolTip` | `1295455071` |
-
-> **Proceso obligatorio al añadir o modificar páginas/extensiones de página:**
-> Compila la extensión (CI o VS Code), descarga el artefacto `*-Apps-*.zip`, extráelo como ZIP
-> y abre `Translations/DualUoM-BC.g.xlf`. Copia los `id` exactos al XLF de traducción.
-> **Nunca estimes los IDs manualmente.**
 
 ### Eliminar una cadena
 
@@ -219,7 +225,7 @@ Estos términos no están en uso aún pero deben seguir esta convención cuando 
 | `PermissionSet 50100 "DUoM - All"` | PermissionSet | Caption |
 | **Total** | | **27 trans-units por idioma** |
 
-### Estado tras implementación Phase 1 MVP (Issues 2, 4–8)
+### ⚠️ Hueco conocido — Phase 1 MVP (Issues 2, 4–8): XLF incompleto
 
 Los objetos implementados en Phase 1 tienen todas sus cadenas visibles correctamente
 registradas en ambos XLF. Los IDs hash-based se obtuvieron mediante
