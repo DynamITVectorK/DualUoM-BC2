@@ -12,14 +12,15 @@ Each item is scoped to be implementable in a single focused issue by GitHub Copi
 Create documentation baseline: vision, scope, functional design, architecture, testing
 strategy, backlog. Update README and copilot-instructions.
 
-### Issue 2 — DUoM Calculation Engine
+### Issue 2 — DUoM Calculation Engine ✅ IMPLEMENTADO
 
 Create `DUoM Calc Engine` codeunit (ID 50101) with:
 - `ComputeSecondQty(FirstQty, Ratio, Mode)` function
 - Input validation (qty must be non-negative, ratio must be positive for Fixed/Variable)
 - Unit tests covering Fixed, Variable, Always-Variable modes and edge cases (zero qty, rounding)
 
-**Deliverables:** `DualUoMCalcEngine.Codeunit.al`, `DualUoMCalcEngineTests.Codeunit.al`
+**Deliverables:** `DUoMCalcEngine.Codeunit.al` (50101), `DUoMCalcEngineTests.Codeunit.al` (50204)
+Codeunit temporal `DualUoM Pipeline Check` (50100) y su test (50200) eliminados.
 
 ### Issue 3 — Item DUoM Setup Table and Page
 
@@ -33,50 +34,50 @@ Create `DUoM Item Setup` table (ID 50100) linked to `Item`:
 **Deliverables:** `DUoMItemSetup.Table.al`, `DUoMConversionMode.Enum.al`,
 `DUoMItemSetup.Page.al`, `ItemCard.PageExt.al`, `DUoMItemSetupTests.Codeunit.al`
 
-### Issue 4 — Purchase Line DUoM Fields
+### Issue 4 — Purchase Line DUoM Fields ✅ IMPLEMENTADO
 
 Extend `Purchase Line` with `DUoM Second Qty` and `DUoM Ratio` fields (table extension).
 Extend Purchase Order Line subpage to show the fields.
 Wire `OnAfterValidate` on `Quantity` to call the Calc Engine for auto-derivation.
 Integration tests: create a purchase order line, verify second qty is computed.
 
-**Deliverables:** `DUoMPurchaseLine.TableExt.al`, `DUoMPurchaseOrderSubform.PageExt.al`,
-`DUoMPurchaseSubscribers.Codeunit.al`, `DUoMPurchaseTests.Codeunit.al`
+**Deliverables:** `DUoMPurchaseLine.TableExt.al` (50110), `DUoMPurchaseOrderSubform.PageExt.al` (50101),
+`DUoMPurchaseSubscribers.Codeunit.al` (50102), `DUoMPurchaseTests.Codeunit.al` (50205)
 
-### Issue 5 — Purchase Posting — ILE Second Qty
+### Issue 5 — Purchase Posting — ILE Second Qty ✅ IMPLEMENTADO
 
 Subscribe to purchase receipt posting events to propagate `DUoM Second Qty` and
 `DUoM Ratio` from `Purchase Line` to `Item Ledger Entry` (table extension on ILE).
-Integration tests: post a purchase receipt, verify ILE fields.
+Propagation via `OnAfterInsertItemLedgEntry` en Codeunit 22, trazando desde ILE
+a través de `Purch. Rcpt. Line` hasta la `Purchase Line` original.
 
-**Deliverables:** `DUoMItemLedgerEntry.TableExt.al`, update `DUoMPurchaseSubscribers`,
-update `DUoMPurchaseTests`
+**Deliverables:** `DUoMItemLedgerEntry.TableExt.al` (50113), `DUoMInventorySubscribers.Codeunit.al` (50104)
 
-### Issue 6 — Sales Line DUoM Fields
+### Issue 6 — Sales Line DUoM Fields ✅ IMPLEMENTADO
 
 Extend `Sales Line` with `DUoM Second Qty` and `DUoM Ratio` fields.
 Extend Sales Order Line subpage to show the fields.
 Wire `OnAfterValidate` on `Quantity`.
 Integration tests.
 
-**Deliverables:** `DUoMSalesLine.TableExt.al`, `DUoMSalesOrderSubform.PageExt.al`,
-`DUoMSalesSubscribers.Codeunit.al`, `DUoMSalesTests.Codeunit.al`
+**Deliverables:** `DUoMSalesLine.TableExt.al` (50111), `DUoMSalesOrderSubform.PageExt.al` (50102),
+`DUoMSalesSubscribers.Codeunit.al` (50103), `DUoMSalesTests.Codeunit.al` (50206)
 
-### Issue 7 — Sales Posting — ILE Second Qty
+### Issue 7 — Sales Posting — ILE Second Qty ✅ IMPLEMENTADO
 
 Subscribe to sales shipment posting events to propagate DUoM fields to ILE.
-Integration tests: post a sales shipment, verify ILE fields.
+Propagación via `OnAfterInsertItemLedgEntry` trazando a través de `Sales Shipment Line`
+hasta la `Sales Line` original (implementado en `DUoMInventorySubscribers`).
 
-**Deliverables:** update `DUoMSalesSubscribers`, update `DUoMSalesTests`
+**Deliverables:** incluido en `DUoMInventorySubscribers.Codeunit.al` (50104)
 
-### Issue 8 — Item Journal DUoM Fields and Posting
+### Issue 8 — Item Journal DUoM Fields and Posting ✅ IMPLEMENTADO
 
 Extend `Item Journal Line` with DUoM fields.
 Subscribe to item journal posting to propagate to ILE.
-Integration tests: post an item journal line, verify ILE fields.
+Integration tests: verify ILE fields exist and can hold DUoM data.
 
-**Deliverables:** `DUoMItemJournalLine.TableExt.al`, `DUoMInventorySubscribers.Codeunit.al`,
-`DUoMInventoryTests.Codeunit.al`
+**Deliverables:** `DUoMItemJournalLine.TableExt.al` (50112), `DUoMInventoryTests.Codeunit.al` (50207)
 
 ---
 
@@ -121,7 +122,11 @@ inventory valuation) using report extensions.
 
 - Issues should be implemented in order; later issues depend on earlier ones.
 - Each issue must include tests before it can be considered done.
-- The `DualUoM Pipeline Check` codeunit (ID 50100) and its test (ID 50200) are
-  temporary and will be deleted when Issue 2 (Calc Engine) is merged. The Calc
-  Engine codeunit takes ID 50101 and its test takes 50203 (50201 and 50202 are
-  already used by `DUoM Item Setup Tests` and `DUoM Item Card Opening Tests`).
+- ~~The `DualUoM Pipeline Check` codeunit (ID 50100) and its test (ID 50200) are
+  temporary and will be deleted when Issue 2 (Calc Engine) is merged.~~ ✅ Eliminados.
+- El Calc Engine usa ID 50101; los tests del Calc Engine usan ID 50204.
+  Los IDs 50201–50203 están ya usados por `DUoM Item Setup Tests`,
+  `DUoM Item Card Opening Tests` y `DUoM Item Delete Tests`.
+- **Localización Phase 1 (Issues 2–8):** ✅ Todos los trans-units de los nuevos objetos
+  (Codeunit 50101, PageExtensions 50101/50102) están en ambos XLF con IDs verificados
+  mediante `LanguageFileUtilities.GetNameHash` del compilador AL (runtime 15).

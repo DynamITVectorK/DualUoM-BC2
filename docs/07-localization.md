@@ -208,7 +208,7 @@ Estos términos no están en uso aún pero deben seguir esta convención cuando 
 
 ## Cobertura actual de traducciones
 
-### Estado en la versión inicial (MVP)
+### Estado en la versión inicial (MVP — Issues 1–3)
 
 | Objeto | Tipo | Cadenas traducidas |
 |--------|------|--------------------|
@@ -219,15 +219,43 @@ Estos términos no están en uso aún pero deben seguir esta convención cuando 
 | `PermissionSet 50100 "DUoM - All"` | PermissionSet | Caption |
 | **Total** | | **27 trans-units por idioma** |
 
+### Estado tras implementación Phase 1 MVP (Issues 2, 4–8)
+
+Los objetos implementados en Phase 1 tienen todas sus cadenas visibles correctamente
+registradas en ambos XLF. Los IDs hash-based se obtuvieron mediante
+`LanguageFileUtilities.GetNameHash` (dll v17, misma función interna del compilador AL).
+
+| Objeto | Tipo | Cadenas en XLF |
+|--------|------|----------------|
+| `Codeunit 50101 "DUoM Calc Engine"` | Codeunit | 4 mensajes de error ✅ |
+| `TableExtension 50110–50113` | TableExtension | Sin captions de campo (eliminados según regla de tabla) ✅ |
+| `PageExtension 50101 "DUoM Purchase Order Subform"` | PageExtension | 2 tooltips de control ✅ |
+| `PageExtension 50102 "DUoM Sales Order Subform"` | PageExtension | 2 tooltips de control ✅ |
+
+**Nota para futuras implementaciones:** Para nuevos objetos, calcular los IDs con
+`LanguageFileUtilities.GetNameHash` en `Microsoft.Dynamics.Nav.CodeAnalysis.dll` o
+extraer `DualUoM-BC.g.xlf` del artefacto CI `*-Apps-*.zip`.
+
+### Terminología nueva (Issues 4–8)
+
+| Concepto | Inglés (en-US) | Español (es-ES) |
+|----------|---------------|-----------------|
+| Secondary quantity (field) | DUoM Second Qty | Segunda cantidad UdM Dual |
+| Conversion ratio (field) | DUoM Ratio | Ratio UdM Dual |
+| Engine error: negative qty | Quantity cannot be negative. | La cantidad no puede ser negativa. |
+| Engine error: zero ratio fixed | Ratio must be greater than zero when Conversion Mode is Fixed. | El ratio debe ser mayor que cero cuando el modo de conversión es Fijo. |
+| Engine error: negative ratio var | Ratio cannot be negative. | El ratio no puede ser negativo. |
+
 ---
 
 ## Riesgos y huecos detectados
 
 | Riesgo | Descripción | Acción recomendada |
 |--------|-------------|-------------------|
-| IDs de controles de página | ✅ **Resuelto.** Los XLF ahora usan los IDs hash-based correctos obtenidos del `DualUoM-BC.g.xlf` generado por el compilador AL (runtime 15). | Para futuros cambios de páginas: descargar el artefacto `*-Apps-*.zip` del CI, extraerlo y copiar los IDs desde `Translations/DualUoM-BC.g.xlf`. |
+| IDs de controles de página | ✅ **Resuelto.** Los XLF ahora usan los IDs hash-based correctos obtenidos mediante `LanguageFileUtilities.GetNameHash` (misma función que usa el compilador AL runtime 15). | Para futuros cambios: usar `GetNameHash` o extraer `DualUoM-BC.g.xlf` del artefacto `*-Apps-*.zip` del CI. |
 | Phase 2 | Cuando se implementen módulos de Venta, Compra, Almacén o Lotes, habrá nuevas cadenas. | Aplicar esta guía desde el primer día de cada nueva issue. |
-| `codeunit 50100 "DualUoM Pipeline Check"` | Codeunit temporal sin textos visibles. Eliminar cuando se implemente el motor de cálculo (Issue #2). | Sin acción de localización pendiente. |
+| ~~`codeunit 50100 "DualUoM Pipeline Check"`~~ | ~~Codeunit temporal sin textos visibles.~~ | ✅ Eliminado en PR de Issues 2–8. |
+| ~~Issues 2–8 (Phase 1 MVP)~~ | ~~Cadenas sin IDs XLF correctos.~~ | ✅ Resuelto. Todos los trans-units de Phase 1 están en ambos XLF con IDs verificados. |
 
 ---
 
