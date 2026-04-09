@@ -101,19 +101,17 @@ codeunit 50207 "DUoM Inventory Tests"
     var
         Item: Record Item;
         DUoMItemSetup: Record "DUoM Item Setup";
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
         ItemJnlLine: Record "Item Journal Line";
+        LibraryInventory: Codeunit "Library - Inventory";
         LibraryAssert: Codeunit "Library Assert";
-        ItemNo: Code[20];
     begin
         // [GIVEN] An item with DUoM setup: Fixed mode, ratio 2
-        ItemNo := 'INV-DUOM-01';
-        Item.Init();
-        Item."No." := ItemNo;
-        Item."Base Unit of Measure" := 'KG';
-        Item.Insert(false);
+        LibraryInventory.CreateItem(Item);
 
         DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := ItemNo;
+        DUoMItemSetup."Item No." := Item."No.";
         DUoMItemSetup."Dual UoM Enabled" := true;
         DUoMItemSetup."Second UoM Code" := 'PCS';
         DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::Fixed;
@@ -121,12 +119,15 @@ codeunit 50207 "DUoM Inventory Tests"
         DUoMItemSetup.Insert(false);
 
         // [GIVEN] An Item Journal Line for that item
-        ItemJnlLine.Init();
-        ItemJnlLine."Journal Template Name" := '';
-        ItemJnlLine."Journal Batch Name" := '';
-        ItemJnlLine."Line No." := 10000;
-        ItemJnlLine."Item No." := ItemNo;
-        ItemJnlLine.Insert(false);
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine,
+            ItemJnlBatch."Journal Template Name",
+            ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase,
+            Item."No.",
+            0);
 
         // [WHEN] Quantity is validated to 5
         ItemJnlLine.Validate(Quantity, 5);
