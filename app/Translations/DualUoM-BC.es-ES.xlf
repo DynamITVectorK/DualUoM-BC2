@@ -163,6 +163,36 @@
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════
+             Codeunit 538058908  DUoM Calc Engine
+             IDs verificados mediante LanguageFileUtilities.GetNameHash
+             (Microsoft.Dynamics.Nav.CodeAnalysis.dll v17)
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="Codeunit 538058908 - NamedType 505919222" translate="yes" xml:space="preserve">
+          <source>Quantity cannot be negative.</source>
+          <target state="translated">La cantidad no puede ser negativa.</target>
+          <note from="Developer" annotates="general" priority="2">Validation error; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Calc Engine - NamedType NegativeQtyErr</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 538058908 - NamedType 1859093340" translate="yes" xml:space="preserve">
+          <source>Ratio must be greater than zero when Conversion Mode is Fixed.</source>
+          <target state="translated">La relación de conversión debe ser mayor que cero cuando el modo de conversión es Fijo.</target>
+          <note from="Developer" annotates="general" priority="2">Validation error; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Calc Engine - NamedType ZeroRatioFixedErr</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 538058908 - NamedType 2386665299" translate="yes" xml:space="preserve">
+          <source>Ratio cannot be negative.</source>
+          <target state="translated">La relación de conversión no puede ser negativa.</target>
+          <note from="Developer" annotates="general" priority="2">Validation error; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Calc Engine - NamedType NegativeRatioVariableErr</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 538058908 - NamedType 580169493" translate="yes" xml:space="preserve">
+          <source>Conversion Mode %1 is not supported by the DUoM Calc Engine.</source>
+          <target state="translated">El modo de conversión %1 no está soportado por el motor de cálculo DUoM.</target>
+          <note from="Developer" annotates="general" priority="2">%1 = Conversion Mode value</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Calc Engine - NamedType UnsupportedModeErr</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
              PageExtension 3793678013  DUoM Item Card Ext
              ═══════════════════════════════════════════ -->
         <trans-unit id="PageExtension 3793678013 - Action 3087588456 - Property 2879900210" translate="yes" xml:space="preserve">
@@ -176,6 +206,38 @@
           <target state="translated">Abre la configuración de Unidad de Medida Dual para este artículo.</target>
           <note from="Developer" annotates="general" priority="2"></note>
           <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Card Ext - Action DUoMSetup - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 1390132160  DUoM Purchase Order Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 1390132160 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this purchase line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode.</source>
+          <target state="translated">Especifica la cantidad secundaria de esta línea de compra en la segunda unidad de medida. Se calcula automáticamente en los modos Fijo y Variable; introdúzcala manualmente en el modo Siempre Variable.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Purchase Order Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 1390132160 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio for this purchase line. Overrides the item default when the item uses Variable conversion mode.</source>
+          <target state="translated">Especifica la relación de conversión de esta línea de compra. Reemplaza el valor predeterminado del artículo cuando utiliza el modo de conversión Variable.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Purchase Order Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 2666451105  DUoM Sales Order Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 2666451105 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this sales line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode.</source>
+          <target state="translated">Especifica la cantidad secundaria de esta línea de venta en la segunda unidad de medida. Se calcula automáticamente en los modos Fijo y Variable; introdúzcala manualmente en el modo Siempre Variable.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Sales Order Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Sales Order Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2666451105 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio for this sales line. Overrides the item default when the item uses Variable conversion mode.</source>
+          <target state="translated">Especifica la relación de conversión de esta línea de venta. Reemplaza el valor predeterminado del artículo cuando utiliza el modo de conversión Variable.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Sales Order Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Sales Order Subform - Control DUoM Ratio - Property ToolTip</note>
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════

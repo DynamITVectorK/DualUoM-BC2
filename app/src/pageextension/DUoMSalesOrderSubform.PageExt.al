@@ -16,12 +16,12 @@ pageextension 50102 "DUoM Sales Order Subform" extends "Sales Order Subform"
             {
                 ApplicationArea = All;
                 Editable = IsDUoMSecondQtyEditable;
-                ToolTip = DUoMSecondQtySalesToolTipLbl;
+                ToolTip = 'Specifies the secondary quantity for this sales line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode.', Comment = 'ToolTip for DUoM Second Qty field on Sales Order Subform; no placeholders.';
             }
             field("DUoM Ratio"; Rec."DUoM Ratio")
             {
                 ApplicationArea = All;
-                ToolTip = DUoMRatioSalesToolTipLbl;
+                ToolTip = 'Specifies the conversion ratio for this sales line. Overrides the item default when the item uses Variable conversion mode.', Comment = 'ToolTip for DUoM Ratio field on Sales Order Subform; no placeholders.';
             }
         }
     }
@@ -40,6 +40,4 @@ pageextension 50102 "DUoM Sales Order Subform" extends "Sales Order Subform"
 
     var
         IsDUoMSecondQtyEditable: Boolean;
-        DUoMSecondQtySalesToolTipLbl: Label 'Specifies the secondary quantity for this sales line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode.', Comment = 'ToolTip for DUoM Second Qty field on Sales Order Subform; no placeholders.';
-        DUoMRatioSalesToolTipLbl: Label 'Specifies the conversion ratio for this sales line. Overrides the item default when the item uses Variable conversion mode.', Comment = 'ToolTip for DUoM Ratio field on Sales Order Subform; no placeholders.';
 }

@@ -127,6 +127,6 @@ inventory valuation) using report extensions.
 - El Calc Engine usa ID 50101; los tests del Calc Engine usan ID 50204.
   Los IDs 50201–50203 están ya usados por `DUoM Item Setup Tests`,
   `DUoM Item Card Opening Tests` y `DUoM Item Delete Tests`.
-- **Localización pendiente:** Los IDs hash-based para los nuevos objetos (Issues 2–8)
-  deben extraerse del artefacto `DualUoM-BC.g.xlf` generado por el compilador AL tras
-  ejecutar CI, y añadirse a ambos XLF (`en-US` y `es-ES`) en un PR de seguimiento.
+- **Localización Phase 1 (Issues 2–8):** ✅ Todos los trans-units de los nuevos objetos
+  (Codeunit 50101, PageExtensions 50101/50102) están en ambos XLF con IDs verificados
+  mediante `LanguageFileUtilities.GetNameHash` del compilador AL (runtime 15).
