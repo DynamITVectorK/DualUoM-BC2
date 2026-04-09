@@ -15,6 +15,7 @@ pageextension 50101 "DUoM Purchase Order Subform" extends "Purchase Order Subfor
             field("DUoM Second Qty"; Rec."DUoM Second Qty")
             {
                 ApplicationArea = All;
+                Editable = false;
                 Editable = IsDUoMSecondQtyEditable;
                 ToolTip = DUoMSecondQtyPurchToolTipLbl;
             }
