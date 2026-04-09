@@ -10,13 +10,11 @@ tableextension 50113 "DUoM Item Ledger Entry Ext" extends "Item Ledger Entry"
     {
         field(50100; "DUoM Second Qty"; Decimal)
         {
-            Caption = 'DUoM Second Qty';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
         }
         field(50101; "DUoM Ratio"; Decimal)
         {
-            Caption = 'DUoM Ratio';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
         }
