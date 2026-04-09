@@ -55,6 +55,7 @@ codeunit 50205 "DUoM Purchase Tests"
     procedure PurchaseLine_ValidateQty_FixedMode_ComputesSecondQty()
     var
         Item: Record Item;
+        Vendor: Record Vendor;
         DUoMItemSetup: Record "DUoM Item Setup";
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
@@ -76,10 +77,15 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMItemSetup."Fixed Ratio" := 0.8;
         DUoMItemSetup.Insert(false);
 
-        // [GIVEN] A Purchase Header and Line for that item
+        // [GIVEN] A Vendor and a Purchase Header and Line for that item
+        Vendor.Init();
+        Vendor."No." := 'PURCH-VEND-01';
+        Vendor.Insert(false);
+
         PurchHeader.Init();
         PurchHeader."Document Type" := PurchHeader."Document Type"::Order;
         PurchHeader."No." := 'PURCH-TEST-01';
+        PurchHeader."Buy-from Vendor No." := Vendor."No.";
         PurchHeader.Insert(false);
 
         PurchLine.Init();
@@ -100,6 +106,7 @@ codeunit 50205 "DUoM Purchase Tests"
         // Cleanup
         PurchLine.Delete(false);
         PurchHeader.Delete(false);
+        Vendor.Delete(false);
         DUoMItemSetup.Delete(false);
         Item.Delete(false);
     end;
@@ -113,12 +120,18 @@ codeunit 50205 "DUoM Purchase Tests"
     var
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        Vendor: Record Vendor;
         LibraryAssert: Codeunit "Library Assert";
     begin
-        // [GIVEN] A Purchase Line of type G/L Account (not Item)
+        // [GIVEN] A Vendor and a Purchase Line of type G/L Account (not Item)
+        Vendor.Init();
+        Vendor."No." := 'PURCH-VEND-02';
+        Vendor.Insert(false);
+
         PurchHeader.Init();
         PurchHeader."Document Type" := PurchHeader."Document Type"::Order;
         PurchHeader."No." := 'PURCH-TEST-02';
+        PurchHeader."Buy-from Vendor No." := Vendor."No.";
         PurchHeader.Insert(false);
 
         PurchLine.Init();
@@ -138,6 +151,7 @@ codeunit 50205 "DUoM Purchase Tests"
         // Cleanup
         PurchLine.Delete(false);
         PurchHeader.Delete(false);
+        Vendor.Delete(false);
     end;
 
     // -------------------------------------------------------------------------
@@ -148,6 +162,7 @@ codeunit 50205 "DUoM Purchase Tests"
     procedure PurchaseLine_ValidateQty_AlwaysVariableMode_NoDUoMAutoCompute()
     var
         Item: Record Item;
+        Vendor: Record Vendor;
         DUoMItemSetup: Record "DUoM Item Setup";
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
@@ -168,9 +183,15 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::AlwaysVariable;
         DUoMItemSetup.Insert(false);
 
+        // [GIVEN] A Vendor and Purchase Header for that item
+        Vendor.Init();
+        Vendor."No." := 'PURCH-VEND-AV';
+        Vendor.Insert(false);
+
         PurchHeader.Init();
         PurchHeader."Document Type" := PurchHeader."Document Type"::Order;
         PurchHeader."No." := 'PURCH-TEST-AV';
+        PurchHeader."Buy-from Vendor No." := Vendor."No.";
         PurchHeader.Insert(false);
 
         PurchLine.Init();
@@ -190,6 +211,7 @@ codeunit 50205 "DUoM Purchase Tests"
         // Cleanup
         PurchLine.Delete(false);
         PurchHeader.Delete(false);
+        Vendor.Delete(false);
         DUoMItemSetup.Delete(false);
         Item.Delete(false);
     end;
