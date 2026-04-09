@@ -43,6 +43,9 @@ codeunit 50101 "DUoM Calc Engine"
             Mode::AlwaysVariable:
                 // User enters the second quantity manually on each line; engine returns 0.
                 exit(0);
+            else
+                // Guard against future enum values added by other extensions.
+                Error(UnsupportedModeErr, Mode);
         end;
     end;
 
@@ -50,4 +53,5 @@ codeunit 50101 "DUoM Calc Engine"
         NegativeQtyErr: Label 'Quantity cannot be negative.', Comment = 'Validation error; no placeholders.';
         ZeroRatioFixedErr: Label 'Ratio must be greater than zero when Conversion Mode is Fixed.', Comment = 'Validation error; no placeholders.';
         NegativeRatioVariableErr: Label 'Ratio cannot be negative.', Comment = 'Validation error; no placeholders.';
+        UnsupportedModeErr: Label 'Conversion Mode %1 is not supported by the DUoM Calc Engine.', Comment = '%1 = Conversion Mode value';
 }

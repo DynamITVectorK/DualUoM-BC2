@@ -2,7 +2,11 @@
 /// Tests for the DUoM Inventory flow — field extensions on Item Journal Line
 /// and Item Ledger Entry, and the DUoM Inventory Subscribers (Codeunit 50104)
 /// auto-compute logic on Item Journal Lines.
-/// ILE posting propagation is validated by functional CI tests that post documents.
+/// This codeunit validates field presence, direct assignment, default values,
+/// and subscriber-driven calculations on Item Journal Line records.
+/// Full posting propagation to ILE (purchase receipt and sales shipment paths)
+/// requires a BC Docker environment and is covered by integration tests that
+/// exercise the standard posting codeunits end-to-end.
 /// </summary>
 codeunit 50207 "DUoM Inventory Tests"
 {

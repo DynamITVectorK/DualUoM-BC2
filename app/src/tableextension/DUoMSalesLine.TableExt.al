@@ -10,17 +10,13 @@ tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
     {
         field(50100; "DUoM Second Qty"; Decimal)
         {
-            Caption = 'DUoM Second Qty';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
-            ToolTip = 'Specifies the secondary quantity in the second unit of measure for this sales line.';
         }
         field(50101; "DUoM Ratio"; Decimal)
         {
-            Caption = 'DUoM Ratio';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
-            ToolTip = 'Specifies the conversion ratio used on this line (1 base UoM unit = DUoM Ratio second UoM units). Overrides the item default in Variable mode.';
 
             trigger OnValidate()
             var
