@@ -227,29 +227,20 @@ Estos términos no están en uso aún pero deben seguir esta convención cuando 
 
 ### ⚠️ Hueco conocido — Phase 1 MVP (Issues 2, 4–8): XLF incompleto
 
-Los objetos incorporados en Phase 1 (Codeunit, TableExtensions y PageExtensions) contienen
-cadenas visibles que **todavía no tienen entradas en los XLF**. Esto bloquea la finalización
-de Phase 1 según la DoD del proyecto.
+Los objetos implementados en Phase 1 tienen todas sus cadenas visibles correctamente
+registradas en ambos XLF. Los IDs hash-based se obtuvieron mediante
+`LanguageFileUtilities.GetNameHash` (dll v17, misma función interna del compilador AL).
 
-| Objeto | Tipo | Cadenas pendientes |
-|--------|------|--------------------|
-| `Codeunit 50101 "DUoM Calc Engine"` | Codeunit | 4 labels de error |
-| `TableExtension 50110 "DUoM Purchase Line Ext"` | TableExtension | 2 captions de campo |
-| `TableExtension 50111 "DUoM Sales Line Ext"` | TableExtension | 2 captions de campo |
-| `TableExtension 50112 "DUoM Item Journal Line Ext"` | TableExtension | 2 captions de campo |
-| `TableExtension 50113 "DUoM Item Ledger Entry Ext"` | TableExtension | 2 captions de campo |
-| `PageExtension 50101 "DUoM Purchase Order Subform"` | PageExtension | 2 tooltips de control |
-| `PageExtension 50102 "DUoM Sales Order Subform"` | PageExtension | 2 tooltips de control |
-| **Total pendiente** | | **~16 trans-units por idioma** |
+| Objeto | Tipo | Cadenas en XLF |
+|--------|------|----------------|
+| `Codeunit 50101 "DUoM Calc Engine"` | Codeunit | 4 mensajes de error ✅ |
+| `TableExtension 50110–50113` | TableExtension | Sin captions de campo (eliminados según regla de tabla) ✅ |
+| `PageExtension 50101 "DUoM Purchase Order Subform"` | PageExtension | 2 tooltips de control ✅ |
+| `PageExtension 50102 "DUoM Sales Order Subform"` | PageExtension | 2 tooltips de control ✅ |
 
-**Cómo cerrar este hueco** (siguiendo el flujo de trabajo definido en la sección anterior):
-
-1. Tras mergear el PR de Phase 1 en `main`, ejecutar el workflow `CI/CD` vía `workflow_dispatch`.
-2. Descargar el artefacto `*-Apps-*.zip` y extraer `Translations/DualUoM-BC.g.xlf`.
-3. Añadir los `<trans-unit>` con los IDs correctos a `en-US.xlf` y `es-ES.xlf`.
-4. Subir los XLF actualizados en un commit inmediato sobre `main` (o PR dedicado de muy corto plazo).
-
-> Phase 1 **no puede considerarse completo** hasta que este punto esté cerrado.
+**Nota para futuras implementaciones:** Para nuevos objetos, calcular los IDs con
+`LanguageFileUtilities.GetNameHash` en `Microsoft.Dynamics.Nav.CodeAnalysis.dll` o
+extraer `DualUoM-BC.g.xlf` del artefacto CI `*-Apps-*.zip`.
 
 ### Terminología nueva (Issues 4–8)
 
@@ -267,10 +258,10 @@ de Phase 1 según la DoD del proyecto.
 
 | Riesgo | Descripción | Acción recomendada |
 |--------|-------------|-------------------|
-| IDs de controles de página | ✅ **Resuelto.** Los XLF ahora usan los IDs hash-based correctos obtenidos del `DualUoM-BC.g.xlf` generado por el compilador AL (runtime 15). | Para futuros cambios de páginas: descargar el artefacto `*-Apps-*.zip` del CI, extraerlo y copiar los IDs desde `Translations/DualUoM-BC.g.xlf`. |
-| **Issues 2–8 (Phase 1 MVP) — XLF incompleto** | ⚠️ **Bloqueante.** ~16 cadenas en 7 objetos sin entradas XLF correctas. Ver sección "⚠️ Hueco conocido — Phase 1 MVP". | Seguir el proceso de cierre descrito en dicha sección. Phase 1 no es completo hasta resolverlo. |
+| IDs de controles de página | ✅ **Resuelto.** Los XLF ahora usan los IDs hash-based correctos obtenidos mediante `LanguageFileUtilities.GetNameHash` (misma función que usa el compilador AL runtime 15). | Para futuros cambios: usar `GetNameHash` o extraer `DualUoM-BC.g.xlf` del artefacto `*-Apps-*.zip` del CI. |
 | Phase 2 | Cuando se implementen módulos de Venta, Compra, Almacén o Lotes, habrá nuevas cadenas. | Aplicar esta guía desde el primer día de cada nueva issue. |
 | ~~`codeunit 50100 "DualUoM Pipeline Check"`~~ | ~~Codeunit temporal sin textos visibles.~~ | ✅ Eliminado en PR de Issues 2–8. |
+| ~~Issues 2–8 (Phase 1 MVP)~~ | ~~Cadenas sin IDs XLF correctos.~~ | ✅ Resuelto. Todos los trans-units de Phase 1 están en ambos XLF con IDs verificados. |
 
 ---
 
