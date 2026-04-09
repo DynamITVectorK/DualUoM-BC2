@@ -10,11 +10,13 @@ tableextension 50112 "DUoM Item Journal Line Ext" extends "Item Journal Line"
     {
         field(50100; "DUoM Second Qty"; Decimal)
         {
+            Caption = 'DUoM Second Qty';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
         }
         field(50101; "DUoM Ratio"; Decimal)
         {
+            Caption = 'DUoM Ratio';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
 

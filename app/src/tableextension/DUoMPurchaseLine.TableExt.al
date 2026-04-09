@@ -11,11 +11,13 @@ tableextension 50110 "DUoM Purchase Line Ext" extends "Purchase Line"
     {
         field(50100; "DUoM Second Qty"; Decimal)
         {
+            Caption = 'DUoM Second Qty';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
         }
         field(50101; "DUoM Ratio"; Decimal)
         {
+            Caption = 'DUoM Ratio';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
 

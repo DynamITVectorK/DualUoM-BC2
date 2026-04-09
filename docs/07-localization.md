@@ -84,9 +84,19 @@ Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguien
 
 ### Añadir una nueva cadena
 
+> ⚠️ **Los XLF deben actualizarse en el mismo PR que el código AL.** Un PR no está listo
+> para mergear hasta que ambos XLF (`en-US` y `es-ES`) contengan entradas para **todas**
+> las cadenas nuevas o modificadas, con `state="final"` y `state="translated"` respectivamente.
+> Nunca uses `state="needs-translation"`.
+
+El proceso correcto es:
+
 1. Declarar la cadena en AL como `Label` (con `Comment`) o `Caption`/`ToolTip`.
-2. Identificar el `trans-unit id` correcto (ver sección siguiente).
-3. Añadir la entrada en `en-US.xlf`:
+2. Ejecutar CI mediante `workflow_dispatch` (o compilar localmente en VS Code) para obtener
+   el artefacto compilado con los IDs hash correctos.
+3. Descargar el artefacto `*-Apps-*.zip` → extraer como ZIP → abrir `Translations/DualUoM-BC.g.xlf`.
+4. Copiar el `id` exacto del `<trans-unit>` correspondiente. **Nunca estimes el ID manualmente.**
+5. Añadir la entrada en `en-US.xlf`:
    ```xml
    <trans-unit id="..." translate="yes" xml:space="preserve">
      <source>New string in English.</source>
@@ -95,7 +105,7 @@ Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguien
      <note from="Xliff Generator" annotates="general" priority="3">Object - context</note>
    </trans-unit>
    ```
-4. Añadir la misma entrada en `es-ES.xlf` con la traducción:
+6. Añadir la misma entrada en `es-ES.xlf` con la traducción:
    ```xml
    <trans-unit id="..." translate="yes" xml:space="preserve">
      <source>New string in English.</source>
@@ -104,6 +114,7 @@ Una funcionalidad **no está terminada** hasta que se cumple **todo** lo siguien
      <note from="Xliff Generator" annotates="general" priority="3">Object - context</note>
    </trans-unit>
    ```
+7. Añadir el commit con los cambios XLF al mismo PR y empujar antes de solicitar revisión.
 
 ### Formato de los `trans-unit id`
 
@@ -136,11 +147,6 @@ Hashes de propiedades habituales (constantes para todos los objetos):
 |-----------|------|
 | `Caption` | `2879900210` |
 | `ToolTip` | `1295455071` |
-
-> **Proceso obligatorio al añadir o modificar páginas/extensiones de página:**
-> Compila la extensión (CI o VS Code), descarga el artefacto `*-Apps-*.zip`, extráelo como ZIP
-> y abre `Translations/DualUoM-BC.g.xlf`. Copia los `id` exactos al XLF de traducción.
-> **Nunca estimes los IDs manualmente.**
 
 ### Eliminar una cadena
 
@@ -219,26 +225,31 @@ Estos términos no están en uso aún pero deben seguir esta convención cuando 
 | `PermissionSet 50100 "DUoM - All"` | PermissionSet | Caption |
 | **Total** | | **27 trans-units por idioma** |
 
-### Estado tras implementación Phase 1 MVP (Issues 2, 4–8)
+### ⚠️ Hueco conocido — Phase 1 MVP (Issues 2, 4–8): XLF incompleto
 
-Los siguientes objetos añaden cadenas visibles para el usuario que **aún no figuran
-en los XLF** porque sus IDs hash-based solo pueden obtenerse del artefacto
-`DualUoM-BC.g.xlf` generado por el compilador AL.
+Los objetos incorporados en Phase 1 (Codeunit, TableExtensions y PageExtensions) contienen
+cadenas visibles que **todavía no tienen entradas en los XLF**. Esto bloquea la finalización
+de Phase 1 según la DoD del proyecto.
 
-| Objeto | Tipo | Cadenas pendientes de XLF |
-|--------|------|--------------------------|
-| `Codeunit 50101 "DUoM Calc Engine"` | Codeunit | 3 mensajes de error |
+| Objeto | Tipo | Cadenas pendientes |
+|--------|------|--------------------|
+| `Codeunit 50101 "DUoM Calc Engine"` | Codeunit | 4 labels de error |
 | `TableExtension 50110 "DUoM Purchase Line Ext"` | TableExtension | 2 captions de campo |
 | `TableExtension 50111 "DUoM Sales Line Ext"` | TableExtension | 2 captions de campo |
 | `TableExtension 50112 "DUoM Item Journal Line Ext"` | TableExtension | 2 captions de campo |
 | `TableExtension 50113 "DUoM Item Ledger Entry Ext"` | TableExtension | 2 captions de campo |
 | `PageExtension 50101 "DUoM Purchase Order Subform"` | PageExtension | 2 tooltips de control |
 | `PageExtension 50102 "DUoM Sales Order Subform"` | PageExtension | 2 tooltips de control |
-| **Total pendiente** | | **~15 trans-units por idioma** |
+| **Total pendiente** | | **~16 trans-units por idioma** |
 
-**Acción requerida:** Tras ejecutar CI y descargar el artefacto `*-Apps-*.zip`,
-extraer `Translations/DualUoM-BC.g.xlf` y añadir los `<trans-unit>` con los IDs
-correctos a ambos XLF (`en-US` con `state="final"`, `es-ES` con `state="translated"`).
+**Cómo cerrar este hueco** (siguiendo el flujo de trabajo definido en la sección anterior):
+
+1. Tras mergear el PR de Phase 1 en `main`, ejecutar el workflow `CI/CD` vía `workflow_dispatch`.
+2. Descargar el artefacto `*-Apps-*.zip` y extraer `Translations/DualUoM-BC.g.xlf`.
+3. Añadir los `<trans-unit>` con los IDs correctos a `en-US.xlf` y `es-ES.xlf`.
+4. Subir los XLF actualizados en un commit inmediato sobre `main` (o PR dedicado de muy corto plazo).
+
+> Phase 1 **no puede considerarse completo** hasta que este punto esté cerrado.
 
 ### Terminología nueva (Issues 4–8)
 
@@ -257,9 +268,9 @@ correctos a ambos XLF (`en-US` con `state="final"`, `es-ES` con `state="translat
 | Riesgo | Descripción | Acción recomendada |
 |--------|-------------|-------------------|
 | IDs de controles de página | ✅ **Resuelto.** Los XLF ahora usan los IDs hash-based correctos obtenidos del `DualUoM-BC.g.xlf` generado por el compilador AL (runtime 15). | Para futuros cambios de páginas: descargar el artefacto `*-Apps-*.zip` del CI, extraerlo y copiar los IDs desde `Translations/DualUoM-BC.g.xlf`. |
+| **Issues 2–8 (Phase 1 MVP) — XLF incompleto** | ⚠️ **Bloqueante.** ~16 cadenas en 7 objetos sin entradas XLF correctas. Ver sección "⚠️ Hueco conocido — Phase 1 MVP". | Seguir el proceso de cierre descrito en dicha sección. Phase 1 no es completo hasta resolverlo. |
 | Phase 2 | Cuando se implementen módulos de Venta, Compra, Almacén o Lotes, habrá nuevas cadenas. | Aplicar esta guía desde el primer día de cada nueva issue. |
 | ~~`codeunit 50100 "DualUoM Pipeline Check"`~~ | ~~Codeunit temporal sin textos visibles.~~ | ✅ Eliminado en PR de Issues 2–8. |
-| **Issues 2–8 (Phase 1 MVP)** | ~15 cadenas en 7 objetos nuevos aún sin IDs XLF correctos. Las traducciones aparecen en inglés hasta actualizar los XLF. | Tras ejecutar CI, extraer `DualUoM-BC.g.xlf` del artefacto y actualizar `en-US.xlf` y `es-ES.xlf`. Ver sección "Cobertura actual — pendiente". |
 
 ---
 
