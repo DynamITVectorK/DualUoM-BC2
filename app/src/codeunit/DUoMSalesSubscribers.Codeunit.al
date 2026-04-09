@@ -1,0 +1,45 @@
+/// <summary>
+/// Event subscribers for the Sales flow in Dual Unit of Measure.
+/// Reacts to Quantity changes on Sales Lines to auto-compute the secondary
+/// quantity via the DUoM Calc Engine, using the item's DUoM setup as the source
+/// for the default conversion ratio.
+/// </summary>
+codeunit 50103 "DUoM Sales Subscribers"
+{
+    Access = Internal;
+
+    /// <summary>
+    /// When Quantity is validated on a Sales Line for an item with DUoM enabled,
+    /// this subscriber computes and updates DUoM Second Qty using the effective ratio.
+    /// The effective ratio is the line's DUoM Ratio if set, otherwise the item's Fixed Ratio.
+    /// For AlwaysVariable mode, the subscriber exits without computing (user enters manually).
+    /// </summary>
+    [EventSubscriber(ObjectType::Table, Database::"Sales Line", 'OnAfterValidateEvent', 'Quantity', false, false)]
+    local procedure OnAfterValidateSalesLineQty(var Rec: Record "Sales Line"; var xRec: Record "Sales Line")
+    var
+        DUoMCalcEngine: Codeunit "DUoM Calc Engine";
+        DUoMItemSetup: Record "DUoM Item Setup";
+        EffectiveRatio: Decimal;
+    begin
+        if Rec.Type <> Rec.Type::Item then
+            exit;
+        if Rec."No." = '' then
+            exit;
+        if not DUoMItemSetup.Get(Rec."No.") then
+            exit;
+        if not DUoMItemSetup."Dual UoM Enabled" then
+            exit;
+        if DUoMItemSetup."Conversion Mode" = DUoMItemSetup."Conversion Mode"::AlwaysVariable then
+            exit;
+
+        // Use the line's ratio if already set; otherwise default from item setup
+        EffectiveRatio := Rec."DUoM Ratio";
+        if EffectiveRatio = 0 then begin
+            EffectiveRatio := DUoMItemSetup."Fixed Ratio";
+            if EffectiveRatio <> 0 then
+                Rec."DUoM Ratio" := EffectiveRatio;
+        end;
+
+        Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQty(Rec.Quantity, EffectiveRatio, DUoMItemSetup."Conversion Mode");
+    end;
+}
