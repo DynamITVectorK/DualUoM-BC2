@@ -4,7 +4,6 @@
 /// </summary>
 tableextension 50100 "DUoM Item TableExt" extends Item
 {
-    Permissions = tabledata "DUoM Item Setup" = RIMD;
     trigger OnDelete()
     var
         DUoMItemSetup: Record "DUoM Item Setup";
