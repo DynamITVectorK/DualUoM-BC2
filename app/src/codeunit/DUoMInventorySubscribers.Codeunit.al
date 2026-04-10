@@ -3,15 +3,15 @@
 /// in Dual Unit of Measure.
 ///
 /// Propagation strategy for ILE:
-///   1. For Item Journal postings (manual): DUoM fields are read directly from the
-///      Item Journal Line parameter passed to OnAfterInsertItemLedgEntry.
-///   2. For Purchase Receipt postings: the ILE Document Type is "Purchase Receipt";
-///      the Purch. Rcpt. Line is used to trace back to the original Purchase Line,
-///      from which the DUoM fields are copied.
-///   3. For Sales Shipment postings: the ILE Document Type is "Sales Shipment";
-///      the Sales Shipment Line is used to trace back to the original Sales Line.
-///
-/// This approach avoids global state and works within the same posting transaction.
+///   DUoM fields are populated on the Item Journal Line upstream:
+///   - For Purchase posting: OnPostItemJnlLineOnAfterCopyDocumentFields (Purch.-Post)
+///     copies DUoM fields from Purchase Line to Item Journal Line.
+///   - For Sales posting: OnPostItemJnlLineOnAfterCopyDocumentFields (Sales-Post)
+///     copies DUoM fields from Sales Line to Item Journal Line.
+///   - For manual Item Journal postings: OnAfterValidateItemJnlLineQty auto-computes
+///     DUoM fields when Quantity is validated through the UI.
+///   OnAfterInitItemLedgEntry then copies the DUoM fields from the Item Journal Line
+///   to the new ILE before Insert() — no Modify() call is needed.
 /// </summary>
 codeunit 50104 "DUoM Inventory Subscribers"
 {
@@ -48,69 +48,45 @@ codeunit 50104 "DUoM Inventory Subscribers"
     end;
 
     /// <summary>
-    /// After an Item Ledger Entry is inserted, propagates DUoM fields from the source
-    /// document (Purchase Line or Sales Line via posted lines) or from the Item Journal Line.
-    /// Uses Document Type on the ILE to determine the source and performs a safe Get()
-    /// to retrieve the original line — exits gracefully if the lookup fails.
+    /// During Purchase posting, copies DUoM fields from the Purchase Line to the
+    /// Item Journal Line before it is posted, so that OnAfterInitItemLedgEntry
+    /// can transfer them to the ILE without needing a Modify() call.
     /// </summary>
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInsertItemLedgEntry', '', false, false)]
-    local procedure OnAfterInsertItemLedgEntry(var ItemLedgerEntry: Record "Item Ledger Entry"; ItemJournalLine: Record "Item Journal Line")
-    var
-        PurchRcptLine: Record "Purch. Rcpt. Line";
-        SalesShipmentLine: Record "Sales Shipment Line";
-        PurchaseLine: Record "Purchase Line";
-        SalesLine: Record "Sales Line";
-        DUoMSecondQty: Decimal;
-        DUoMRatio: Decimal;
-        HasDUoM: Boolean;
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
+    local procedure OnPurchPostCopyDocFieldsToItemJnlLine(var ItemJnlLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
     begin
-        // Priority 1: Item Journal Line DUoM fields (covers manual item journal postings
-        // where the user validates Quantity through the UI and our subscriber fires).
-        // For internally-built IJ Lines (Purch.-Post, Sales-Post), both DUoM fields
-        // will be 0 because those codeunits do not call Validate() — Priority 2 handles those.
-        // Note: for Fixed mode with qty=0, DUoM Ratio is still non-zero (auto-populated
-        // from the item setup by our subscriber), so this condition correctly detects that case.
-        if (ItemJournalLine."DUoM Second Qty" <> 0) or (ItemJournalLine."DUoM Ratio" <> 0) then begin
-            DUoMSecondQty := ItemJournalLine."DUoM Second Qty";
-            DUoMRatio := ItemJournalLine."DUoM Ratio";
-            HasDUoM := true;
-        end;
+        ItemJnlLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
+        ItemJnlLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+    end;
 
-        // Priority 2: Trace through posted receipt/shipment lines to original order lines.
-        // Only reached when the IJ Line has no DUoM data (i.e., internal posting paths
-        // where Validate() was not called on the IJ Line).
-        if not HasDUoM then
-            case ItemLedgerEntry."Document Type" of
-                ItemLedgerEntry."Document Type"::"Purchase Receipt":
-                    if PurchRcptLine.Get(ItemLedgerEntry."Document No.", ItemLedgerEntry."Document Line No.") then
-                        if PurchaseLine.Get(PurchaseLine."Document Type"::Order,
-                                            PurchRcptLine."Order No.",
-                                            PurchRcptLine."Order Line No.") then begin
-                            DUoMSecondQty := PurchaseLine."DUoM Second Qty";
-                            DUoMRatio := PurchaseLine."DUoM Ratio";
-                            HasDUoM := true;
-                        end;
-                ItemLedgerEntry."Document Type"::"Sales Shipment":
-                    if SalesShipmentLine.Get(ItemLedgerEntry."Document No.", ItemLedgerEntry."Document Line No.") then
-                        if SalesLine.Get(SalesLine."Document Type"::Order,
-                                         SalesShipmentLine."Order No.",
-                                         SalesShipmentLine."Order Line No.") then begin
-                            DUoMSecondQty := SalesLine."DUoM Second Qty";
-                            DUoMRatio := SalesLine."DUoM Ratio";
-                            HasDUoM := true;
-                        end;
-            end;
+    /// <summary>
+    /// During Sales posting, copies DUoM fields from the Sales Line to the
+    /// Item Journal Line before it is posted, so that OnAfterInitItemLedgEntry
+    /// can transfer them to the ILE without needing a Modify() call.
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
+    local procedure OnSalesPostCopyDocFieldsToItemJnlLine(var ItemJnlLine: Record "Item Journal Line"; SalesLine: Record "Sales Line")
+    begin
+        ItemJnlLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
+        ItemJnlLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+    end;
 
-        if not HasDUoM then
+    /// <summary>
+    /// Initialises DUoM fields on the new Item Ledger Entry from the Item Journal Line
+    /// before the ILE is inserted — no Modify() call is needed.
+    /// Covers both Purchase/Sales posting paths (fields propagated via
+    /// OnPostItemJnlLineOnAfterCopyDocumentFields) and manual Item Journal postings
+    /// (fields populated by OnAfterValidateItemJnlLineQty).
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitItemLedgEntry', '', false, false)]
+    local procedure OnAfterInitItemLedgEntry(var NewItemLedgEntry: Record "Item Ledger Entry"; var ItemJournalLine: Record "Item Journal Line"; var ItemLedgEntryNo: Integer)
+    begin
+        // Exit only when BOTH fields are zero — cases where one field is zero
+        // (e.g., AlwaysVariable with no ratio, or Fixed mode with zero posted quantity
+        // but a valid ratio) are correctly propagated.
+        if (ItemJournalLine."DUoM Second Qty" = 0) and (ItemJournalLine."DUoM Ratio" = 0) then
             exit;
-        // Exit only when BOTH fields are zero — this uses `and`, not `or`, so cases
-        // where one field is zero (e.g., AlwaysVariable with no ratio, or Fixed mode
-        // with zero posted quantity but a valid ratio) are correctly propagated.
-        if (DUoMSecondQty = 0) and (DUoMRatio = 0) then
-            exit;
-
-        ItemLedgerEntry."DUoM Second Qty" := DUoMSecondQty;
-        ItemLedgerEntry."DUoM Ratio" := DUoMRatio;
-        ItemLedgerEntry.Modify();
+        NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+        NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
     end;
 }

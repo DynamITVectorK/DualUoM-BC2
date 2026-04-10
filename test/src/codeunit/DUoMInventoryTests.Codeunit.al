@@ -4,7 +4,8 @@
 /// auto-compute logic on Item Journal Lines.
 /// This codeunit validates field presence, direct assignment, default values,
 /// and subscriber-driven calculations on Item Journal Line records.
-/// Full posting propagation to ILE (purchase receipt and sales shipment paths)
+/// Full posting propagation to ILE (via OnPostItemJnlLineOnAfterCopyDocumentFields
+/// for purchase/sales posting paths, and via OnAfterInitItemLedgEntry to the ILE)
 /// requires a BC Docker environment and is covered by integration tests that
 /// exercise the standard posting codeunits end-to-end.
 /// </summary>
