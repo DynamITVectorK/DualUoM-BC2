@@ -76,7 +76,7 @@ codeunit 50205 "DUoM Purchase Tests"
 
         // [GIVEN] A Vendor and a Purchase Header and Line for that item
         LibraryPurchase.CreateVendor(Vendor);
-        LibraryPurchase.CreatePurchaseHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
         LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
 
         // [WHEN] Quantity is validated to 10 (triggers OnAfterValidateEvent subscriber)
@@ -144,7 +144,7 @@ codeunit 50205 "DUoM Purchase Tests"
 
         // [GIVEN] A Vendor and Purchase Header for that item
         LibraryPurchase.CreateVendor(Vendor);
-        LibraryPurchase.CreatePurchaseHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
         LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
 
         // [WHEN] Quantity is validated
