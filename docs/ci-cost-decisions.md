@@ -16,7 +16,7 @@ and the workflow files.
 | `skipUpgrade` | `true` | No upgrade tests — no previous published version exists yet |
 | `excludeEnvironments` | `["*"]` | Never auto-deploy to any environment from CI; all deployments are manual |
 | `buildModes` | `["Default"]` | Skip Clean and Translated build modes — only one build pass per run |
-| `runs-on` | `"windows-latest"` | Windows runner is required for BC Docker container execution (test execution needs a running BC service tier) |
+| `runs-on` | `"windows-2022"` | Windows Server 2022 runner — tiene Docker pre-instalado, necesario para arrancar el contenedor BC y ejecutar los tests |
 
 ### Note on `System Application Test Library` (removed from dependencies)
 
@@ -32,17 +32,16 @@ Both the dependency entry in `test/app.json` and the `installTestApps` entry in
 `.AL-Go/settings.json` have been removed. Any future test that requires types from this
 library should re-add the dependency with the correct resolved version.
 
-### Note on `useCompilerFolder` (removed)
+### Nota sobre el runner y Docker
 
-`useCompilerFolder: true` was previously set as a cost-saving measure to avoid Docker container
-startup overhead. However, this setting **prevents test execution entirely**: AL-Go in
-compiler-folder mode can only compile AL apps — it cannot run tests because there is no
-BC service tier. The root cause of missing `TestResults.xml` artifacts was this setting.
+El runner `windows-latest` apunta a Windows Server 2025 Datacenter, donde el daemon Docker
+**no está disponible**. Intentar arrancar un contenedor BC produce el error:
 
-The setting has been removed so that AL-Go spins up a BC Docker container on the Windows
-runner and executes the test codeunits. The build job now runs on `windows-latest`
-(required for Docker). The trade-off is accepted: automated test execution takes precedence
-over the marginal cost saving from compiler-only mode.
+> `failed to connect to the docker API at npipe:////./pipe/docker_engine`
+
+La solución es usar `runs-on: windows-2022` (Windows Server 2022), que tiene Docker
+pre-instalado con soporte para contenedores Windows. Esto permite a AL-Go arrancar el
+contenedor BC y ejecutar los test codeunits normalmente.
 
 ## Workflow triggers
 

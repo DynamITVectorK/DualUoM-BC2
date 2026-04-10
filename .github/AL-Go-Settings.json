@@ -10,5 +10,5 @@
   "skipUpgrade": true,
   "excludeEnvironments": ["*"],
   "buildModes": ["Default"],
-  "runs-on": "windows-latest"
+  "runs-on": "windows-2022"
 }
