@@ -7,14 +7,6 @@ codeunit 50205 "DUoM Purchase Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
-    [SetUp]
-    procedure SetUp()
-    var
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-    begin
-        DUoMTestHelpers.SetUpTestPermissions();
-    end;
-
     // -------------------------------------------------------------------------
     // DUoM fields exist on Purchase Line and can be set and read
     // -------------------------------------------------------------------------
@@ -65,23 +57,16 @@ codeunit 50205 "DUoM Purchase Tests"
     var
         Item: Record Item;
         Vendor: Record Vendor;
-        DUoMItemSetup: Record "DUoM Item Setup";
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
     begin
         // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 0.8
         LibraryInventory.CreateItem(Item);
-
-        DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := Item."No.";
-        DUoMItemSetup."Dual UoM Enabled" := true;
-        DUoMItemSetup."Second UoM Code" := 'PCS';
-        DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::Fixed;
-        DUoMItemSetup."Fixed Ratio" := 0.8;
-        DUoMItemSetup.Insert(false);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
 
         // [GIVEN] A Vendor and a Purchase Header and Line for that item
         LibraryPurchase.CreateVendor(Vendor);
@@ -99,7 +84,7 @@ codeunit 50205 "DUoM Purchase Tests"
         PurchLine.Delete(false);
         PurchHeader.Delete(false);
         Vendor.Delete(false);
-        DUoMItemSetup.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
 
@@ -144,22 +129,16 @@ codeunit 50205 "DUoM Purchase Tests"
     var
         Item: Record Item;
         Vendor: Record Vendor;
-        DUoMItemSetup: Record "DUoM Item Setup";
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
     begin
         // [GIVEN] An item with DUoM setup: Always Variable conversion mode
         LibraryInventory.CreateItem(Item);
-
-        DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := Item."No.";
-        DUoMItemSetup."Dual UoM Enabled" := true;
-        DUoMItemSetup."Second UoM Code" := 'PCS';
-        DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::AlwaysVariable;
-        DUoMItemSetup.Insert(false);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::AlwaysVariable, 0);
 
         // [GIVEN] A Vendor and Purchase Header for that item
         LibraryPurchase.CreateVendor(Vendor);
@@ -176,7 +155,7 @@ codeunit 50205 "DUoM Purchase Tests"
         PurchLine.Delete(false);
         PurchHeader.Delete(false);
         Vendor.Delete(false);
-        DUoMItemSetup.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
 }

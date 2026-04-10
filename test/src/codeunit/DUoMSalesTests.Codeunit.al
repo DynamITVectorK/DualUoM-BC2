@@ -7,14 +7,6 @@ codeunit 50206 "DUoM Sales Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
-    [SetUp]
-    procedure SetUp()
-    var
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-    begin
-        DUoMTestHelpers.SetUpTestPermissions();
-    end;
-
     // -------------------------------------------------------------------------
     // DUoM fields exist on Sales Line and can be set and read
     // -------------------------------------------------------------------------
@@ -64,23 +56,16 @@ codeunit 50206 "DUoM Sales Tests"
     var
         Item: Record Item;
         Customer: Record Customer;
-        DUoMItemSetup: Record "DUoM Item Setup";
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
         LibraryAssert: Codeunit "Library Assert";
     begin
         // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 1.25
         LibraryInventory.CreateItem(Item);
-
-        DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := Item."No.";
-        DUoMItemSetup."Dual UoM Enabled" := true;
-        DUoMItemSetup."Second UoM Code" := 'KG';
-        DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::Fixed;
-        DUoMItemSetup."Fixed Ratio" := 1.25;
-        DUoMItemSetup.Insert(false);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG', "DUoM Conversion Mode"::Fixed, 1.25);
 
         // [GIVEN] A Customer, a Sales Header and Line for that item
         LibrarySales.CreateCustomer(Customer);
@@ -98,7 +83,7 @@ codeunit 50206 "DUoM Sales Tests"
         SalesLine.Delete(false);
         SalesHeader.Delete(false);
         Customer.Delete(false);
-        DUoMItemSetup.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
 
@@ -111,22 +96,16 @@ codeunit 50206 "DUoM Sales Tests"
     var
         Item: Record Item;
         Customer: Record Customer;
-        DUoMItemSetup: Record "DUoM Item Setup";
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
         LibraryAssert: Codeunit "Library Assert";
     begin
         // [GIVEN] An item with DUoM setup: Always Variable mode
         LibraryInventory.CreateItem(Item);
-
-        DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := Item."No.";
-        DUoMItemSetup."Dual UoM Enabled" := true;
-        DUoMItemSetup."Second UoM Code" := 'KG';
-        DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::AlwaysVariable;
-        DUoMItemSetup.Insert(false);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG', "DUoM Conversion Mode"::AlwaysVariable, 0);
 
         // [GIVEN] A Customer, a Sales Header and Line for that item
         LibrarySales.CreateCustomer(Customer);
@@ -143,7 +122,7 @@ codeunit 50206 "DUoM Sales Tests"
         SalesLine.Delete(false);
         SalesHeader.Delete(false);
         Customer.Delete(false);
-        DUoMItemSetup.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
 }

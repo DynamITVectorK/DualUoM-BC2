@@ -8,14 +8,6 @@ codeunit 50202 "DUoM Item Card Opening Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
-    [SetUp]
-    procedure SetUp()
-    var
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-    begin
-        DUoMTestHelpers.SetUpTestPermissions();
-    end;
-
     // -------------------------------------------------------------------------
     // GetOrCreate — existing setup is returned unchanged
     // -------------------------------------------------------------------------
@@ -23,17 +15,14 @@ codeunit 50202 "DUoM Item Card Opening Tests"
     [Test]
     procedure GetOrCreate_ExistingSetup_ReturnsExistingRecord()
     var
-        DUoMItemSetup: Record "DUoM Item Setup";
         DUoMItemSetup2: Record "DUoM Item Setup";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryAssert: Codeunit "Library Assert";
         ItemNo: Code[20];
     begin
         // [GIVEN] A DUoM setup record already exists for an item
         ItemNo := 'GOCT-001';
-        DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := ItemNo;
-        DUoMItemSetup."Dual UoM Enabled" := true;
-        DUoMItemSetup.Insert(true);
+        DUoMTestHelpers.CreateItemSetup(ItemNo, true, '', "DUoM Conversion Mode"::Fixed, 0);
 
         // [WHEN] GetOrCreate is called for the same item
         DUoMItemSetup2.GetOrCreate(ItemNo);
@@ -41,6 +30,9 @@ codeunit 50202 "DUoM Item Card Opening Tests"
         // [THEN] The existing record is returned with the correct Item No. and values intact
         LibraryAssert.AreEqual(ItemNo, DUoMItemSetup2."Item No.", 'GetOrCreate must return the existing record with the correct Item No.');
         LibraryAssert.IsTrue(DUoMItemSetup2."Dual UoM Enabled", 'GetOrCreate must not overwrite the existing Dual UoM Enabled value.');
+
+        // Cleanup
+        DUoMTestHelpers.DeleteItemSetupIfExists(ItemNo);
     end;
 
     // -------------------------------------------------------------------------
@@ -51,6 +43,7 @@ codeunit 50202 "DUoM Item Card Opening Tests"
     procedure GetOrCreate_NoExistingSetup_CreatesRecordWithCorrectItemNo()
     var
         DUoMItemSetup: Record "DUoM Item Setup";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryAssert: Codeunit "Library Assert";
         ItemNo: Code[20];
     begin
@@ -65,6 +58,9 @@ codeunit 50202 "DUoM Item Card Opening Tests"
 
         // [THEN] The record is persisted in the database
         LibraryAssert.IsTrue(DUoMItemSetup.Get(ItemNo), 'GetOrCreate must persist the new setup record.');
+
+        // Cleanup
+        DUoMTestHelpers.DeleteItemSetupIfExists(ItemNo);
     end;
 
     // -------------------------------------------------------------------------
@@ -75,6 +71,7 @@ codeunit 50202 "DUoM Item Card Opening Tests"
     procedure GetOrCreate_CalledTwice_NoDuplicateRecords()
     var
         DUoMItemSetup: Record "DUoM Item Setup";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryAssert: Codeunit "Library Assert";
         ItemNo: Code[20];
         RecordCount: Integer;
@@ -91,6 +88,9 @@ codeunit 50202 "DUoM Item Card Opening Tests"
         DUoMItemSetup.SetRange("Item No.", ItemNo);
         RecordCount := DUoMItemSetup.Count();
         LibraryAssert.AreEqual(1, RecordCount, 'GetOrCreate must not create duplicate setup records for the same item.');
+
+        // Cleanup
+        DUoMTestHelpers.DeleteItemSetupIfExists(ItemNo);
     end;
 
     // -------------------------------------------------------------------------
@@ -101,6 +101,7 @@ codeunit 50202 "DUoM Item Card Opening Tests"
     procedure GetOrCreate_ItemNoIsNeverBlank()
     var
         DUoMItemSetup: Record "DUoM Item Setup";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryAssert: Codeunit "Library Assert";
         ItemNo: Code[20];
     begin
@@ -112,5 +113,8 @@ codeunit 50202 "DUoM Item Card Opening Tests"
 
         // [THEN] Item No. is populated and never blank
         LibraryAssert.AreNotEqual('', DUoMItemSetup."Item No.", 'Item No. must never be blank after GetOrCreate.');
+
+        // Cleanup
+        DUoMTestHelpers.DeleteItemSetupIfExists(ItemNo);
     end;
 }
