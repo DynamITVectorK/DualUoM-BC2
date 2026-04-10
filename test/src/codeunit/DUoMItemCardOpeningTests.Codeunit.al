@@ -6,6 +6,7 @@
 codeunit 50202 "DUoM Item Card Opening Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
     // GetOrCreate — existing setup is returned unchanged

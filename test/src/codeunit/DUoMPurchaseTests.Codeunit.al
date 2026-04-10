@@ -5,6 +5,7 @@
 codeunit 50205 "DUoM Purchase Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
     // DUoM fields exist on Purchase Line and can be set and read

@@ -5,6 +5,7 @@
 codeunit 50204 "DUoM Calc Engine Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
     // Fixed mode — valid input → product

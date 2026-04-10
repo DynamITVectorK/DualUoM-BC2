@@ -11,6 +11,7 @@
 codeunit 50207 "DUoM Inventory Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
     // Item Journal Line: DUoM fields exist and can be set
