@@ -5,6 +5,7 @@
 /// </summary>
 pageextension 50100 "DUoM Item Card Ext" extends "Item Card"
 {
+    Permissions = tabledata "DUoM Item Setup" = RIMD;
     actions
     {
         addlast(Navigation)

@@ -5,6 +5,7 @@
 codeunit 50205 "DUoM Purchase Tests"
 {
     Subtype = Test;
+    Permissions = tabledata "DUoM Item Setup" = RIMD;
 
     // -------------------------------------------------------------------------
     // DUoM fields exist on Purchase Line and can be set and read
@@ -101,12 +102,22 @@ codeunit 50205 "DUoM Purchase Tests"
     [Test]
     procedure PurchaseLine_ValidateQty_NonItemType_NoDUoMCompute()
     var
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
     begin
-        // [GIVEN] A Purchase Line of type G/L Account (not Item) — in-memory only
+        // [GIVEN] A Purchase Header providing valid document context
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+
+        // [GIVEN] A Purchase Line of type blank (not Item) with valid document linkage
         PurchLine.Init();
-        PurchLine.Type := PurchLine.Type::"G/L Account";
+        PurchLine."Document Type" := PurchHeader."Document Type";
+        PurchLine."Document No." := PurchHeader."No.";
+        PurchLine."Line No." := 10000;
+        PurchLine.Type := PurchLine.Type::" ";
 
         // [WHEN] Quantity is validated
         PurchLine.Validate(Quantity, 5);
