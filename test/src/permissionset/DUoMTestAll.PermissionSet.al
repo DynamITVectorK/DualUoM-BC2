@@ -5,10 +5,10 @@
 /// production codeunits (e.g. GetOrCreate), without relying on the deprecated
 /// Permissions property on codeunit objects (AL0246).
 /// </summary>
-permissionset 50200 "DUoM - Test"
+permissionset 50200 "DUoM - Test All"
 {
     Assignable = true;
-    Caption = 'DualUoM - Test';
+    Caption = 'DualUoM - Test All';
 
     Permissions =
         tabledata "DUoM Item Setup" = RIMD;
