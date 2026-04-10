@@ -18,5 +18,6 @@
     "Microsoft_Library Assert_27.0.0.0.app",
     "Microsoft_Any_27.0.0.0.app",
     "Microsoft_Tests-TestLibraries_27.0.0.0.app"
-  ]
+  ],
+  "testRunnerPermissionSets": "DUoM - Test All"
 }

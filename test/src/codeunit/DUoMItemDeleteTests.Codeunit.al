@@ -7,14 +7,6 @@ codeunit 50203 "DUoM Item Delete Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
-    [SetUp]
-    procedure SetUp()
-    var
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-    begin
-        DUoMTestHelpers.SetUpTestPermissions();
-    end;
-
     // -------------------------------------------------------------------------
     // OnDelete trigger — setup record is removed when item is deleted
     // -------------------------------------------------------------------------
@@ -24,6 +16,7 @@ codeunit 50203 "DUoM Item Delete Tests"
     var
         Item: Record Item;
         DUoMItemSetup: Record "DUoM Item Setup";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryAssert: Codeunit "Library Assert";
     begin
@@ -31,9 +24,7 @@ codeunit 50203 "DUoM Item Delete Tests"
         LibraryInventory.CreateItem(Item);
 
         // [GIVEN] A DUoM Item Setup record exists for that item
-        DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := Item."No.";
-        DUoMItemSetup.Insert(false);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", false, '', "DUoM Conversion Mode"::Fixed, 0);
 
         // [WHEN] The item is deleted
         Item.Delete(true);

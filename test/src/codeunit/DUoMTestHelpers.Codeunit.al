@@ -1,42 +1,42 @@
 /// <summary>
 /// Procedimientos auxiliares compartidos para los codeunits de test DUoM.
-/// Proporciona configuración de permisos para tests que insertan en la tabla DUoM Item Setup (50100).
-/// En BC 27.5+, TestPermissions = Disabled no desactiva los checks de permisos para tablas
-/// de extensiones PTE, por lo que es necesario asignar el permission set explícitamente.
+/// Proporciona factorías de datos para crear y limpiar registros DUoM Item Setup (50100)
+/// durante los tests, sin dependencia de tablas del sistema como Access Control.
 /// </summary>
 codeunit 50208 "DUoM Test Helpers"
 {
     /// <summary>
-    /// Asigna el permission set 'DUoM - Test All' al usuario de test actual
-    /// para garantizar que las operaciones Insert/Modify/Delete sobre la tabla
-    /// DUoM Item Setup (50100) puedan ejecutarse durante los tests.
-    /// Llamar desde el procedimiento [SetUp] de cada codeunit de test que inserte
-    /// en DUoM Item Setup.
+    /// Crea e inserta un registro DUoM Item Setup con los valores indicados.
+    /// Devuelve el registro insertado para su uso inmediato en el test.
     /// </summary>
-    procedure SetUpTestPermissions()
+    procedure CreateItemSetup(
+        ItemNo: Code[20];
+        Enabled: Boolean;
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal): Record "DUoM Item Setup"
     var
-        AccessControl: Record "Access Control";
-        ModuleInfo: ModuleInfo;
-        CompanyNameText: Text[30];
+        DUoMItemSetup: Record "DUoM Item Setup";
     begin
-        NavApp.GetCurrentModuleInfo(ModuleInfo);
-        CompanyNameText := CopyStr(CompanyName(), 1, MaxStrLen(AccessControl."Company Name"));
+        DUoMItemSetup.Init();
+        DUoMItemSetup."Item No." := ItemNo;
+        DUoMItemSetup."Dual UoM Enabled" := Enabled;
+        DUoMItemSetup."Second UoM Code" := SecondUoMCode;
+        DUoMItemSetup."Conversion Mode" := ConversionMode;
+        DUoMItemSetup."Fixed Ratio" := FixedRatio;
+        DUoMItemSetup.Insert(false);
+        exit(DUoMItemSetup);
+    end;
 
-        if AccessControl.Get(
-            UserSecurityId(),
-            'DUoM - Test All',
-            CompanyNameText,
-            AccessControl."Scope"::Tenant,
-            ModuleInfo.Id)
-        then
-            exit;
-
-        AccessControl.Init();
-        AccessControl."User Security ID" := UserSecurityId();
-        AccessControl."Role ID" := 'DUoM - Test All';
-        AccessControl."Company Name" := CompanyNameText;
-        AccessControl."Scope" := AccessControl."Scope"::Tenant;
-        AccessControl."App ID" := ModuleInfo.Id;
-        AccessControl.Insert();
+    /// <summary>
+    /// Elimina el registro DUoM Item Setup del ítem indicado si existe.
+    /// No produce error si el registro no existe.
+    /// </summary>
+    procedure DeleteItemSetupIfExists(ItemNo: Code[20])
+    var
+        DUoMItemSetup: Record "DUoM Item Setup";
+    begin
+        if DUoMItemSetup.Get(ItemNo) then
+            DUoMItemSetup.Delete(false);
     end;
 }

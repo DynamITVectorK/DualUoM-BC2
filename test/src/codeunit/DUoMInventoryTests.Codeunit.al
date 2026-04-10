@@ -13,14 +13,6 @@ codeunit 50207 "DUoM Inventory Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
-    [SetUp]
-    procedure SetUp()
-    var
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-    begin
-        DUoMTestHelpers.SetUpTestPermissions();
-    end;
-
     // -------------------------------------------------------------------------
     // Item Journal Line: DUoM fields exist and can be set
     // -------------------------------------------------------------------------
@@ -109,23 +101,16 @@ codeunit 50207 "DUoM Inventory Tests"
     procedure ItemJournalLine_ValidateQty_FixedMode_ComputesSecondQty()
     var
         Item: Record Item;
-        DUoMItemSetup: Record "DUoM Item Setup";
         ItemJnlTemplate: Record "Item Journal Template";
         ItemJnlBatch: Record "Item Journal Batch";
         ItemJnlLine: Record "Item Journal Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryAssert: Codeunit "Library Assert";
     begin
         // [GIVEN] An item with DUoM setup: Fixed mode, ratio 2
         LibraryInventory.CreateItem(Item);
-
-        DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := Item."No.";
-        DUoMItemSetup."Dual UoM Enabled" := true;
-        DUoMItemSetup."Second UoM Code" := 'PCS';
-        DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::Fixed;
-        DUoMItemSetup."Fixed Ratio" := 2;
-        DUoMItemSetup.Insert(false);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 2);
 
         // [GIVEN] An Item Journal Line for that item
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
@@ -147,7 +132,7 @@ codeunit 50207 "DUoM Inventory Tests"
 
         // Cleanup
         ItemJnlLine.Delete(false);
-        DUoMItemSetup.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
 }
