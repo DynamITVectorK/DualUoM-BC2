@@ -16,7 +16,8 @@ and the workflow files.
 | `skipUpgrade` | `true` | No upgrade tests — no previous published version exists yet |
 | `excludeEnvironments` | `["*"]` | Never auto-deploy to any environment from CI; all deployments are manual |
 | `buildModes` | `["Default"]` | Skip Clean and Translated build modes — only one build pass per run |
-| `runs-on` | `"windows-latest"` | Windows runner is required for BC Docker container execution (test execution needs a running BC service tier) |
+| `useCompilerFolder` | `true` | No BC container — compile with `alc.exe` only; prevents test execution (see note below) |
+| `runs-on` | `"windows-latest"` | Runner estándar de GitHub Actions; Docker daemon not available on Windows Server 2025, requires `useCompilerFolder` mode |
 
 ### Note on `System Application Test Library` (removed from dependencies)
 
@@ -32,17 +33,22 @@ Both the dependency entry in `test/app.json` and the `installTestApps` entry in
 `.AL-Go/settings.json` have been removed. Any future test that requires types from this
 library should re-add the dependency with the correct resolved version.
 
-### Note on `useCompilerFolder` (removed)
+### Nota sobre `useCompilerFolder` (reactivado)
 
-`useCompilerFolder: true` was previously set as a cost-saving measure to avoid Docker container
-startup overhead. However, this setting **prevents test execution entirely**: AL-Go in
-compiler-folder mode can only compile AL apps — it cannot run tests because there is no
-BC service tier. The root cause of missing `TestResults.xml` artifacts was this setting.
+`useCompilerFolder: true` indica a AL-Go que compile los proyectos AL usando `alc.exe`
+directamente, sin arrancar ningún contenedor Docker de Business Central.
 
-The setting has been removed so that AL-Go spins up a BC Docker container on the Windows
-runner and executes the test codeunits. The build job now runs on `windows-latest`
-(required for Docker). The trade-off is accepted: automated test execution takes precedence
-over the marginal cost saving from compiler-only mode.
+**Por qué se reactivó:** El runner `windows-latest` (Windows Server 2025 Datacenter) no
+tiene el daemon Docker disponible. Intentar arrancar un contenedor BC produce el error:
+
+> `failed to connect to the docker API at npipe:////./pipe/docker_engine`
+
+Con `useCompilerFolder: true` el paso de compilación (`alc.exe`) funciona sin necesidad de
+Docker. La contrapartida conocida es que los test codeunits **no se ejecutan** en CI porque
+no existe una capa de servicio BC activa. Las pruebas deben ejecutarse en un entorno local
+o en un runner self-hosted con Docker disponible (ver `docs/05-testing-strategy.md`).
+
+Este estado es preferible a un pipeline completamente roto.
 
 ## Workflow triggers
 

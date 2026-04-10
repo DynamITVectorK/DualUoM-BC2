@@ -8,6 +8,7 @@
   "bcptTestFolders": [],
   "environments": ["Sandbox"],
   "excludeEnvironments": [],
+  "useCompilerFolder": true,
   "compileModifiedOnly": true,
   "cacheImageName": "",
   "doNotPublishApps": false,
