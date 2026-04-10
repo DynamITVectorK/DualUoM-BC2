@@ -59,18 +59,15 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMItemSetup: Record "DUoM Item Setup";
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
-        ItemNo: Code[20];
     begin
         // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 0.8
-        ItemNo := 'PURCH-DUOM-01';
-        Item.Init();
-        Item."No." := ItemNo;
-        Item."Base Unit of Measure" := 'KG';
-        Item.Insert(false);
+        LibraryInventory.CreateItem(Item);
 
         DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := ItemNo;
+        DUoMItemSetup."Item No." := Item."No.";
         DUoMItemSetup."Dual UoM Enabled" := true;
         DUoMItemSetup."Second UoM Code" := 'PCS';
         DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::Fixed;
@@ -78,23 +75,9 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMItemSetup.Insert(false);
 
         // [GIVEN] A Vendor and a Purchase Header and Line for that item
-        Vendor.Init();
-        Vendor."No." := 'PURCH-VEND-01';
-        Vendor.Insert(false);
-
-        PurchHeader.Init();
-        PurchHeader."Document Type" := PurchHeader."Document Type"::Order;
-        PurchHeader."No." := 'PURCH-TEST-01';
-        PurchHeader."Buy-from Vendor No." := Vendor."No.";
-        PurchHeader.Insert(false);
-
-        PurchLine.Init();
-        PurchLine."Document Type" := PurchHeader."Document Type";
-        PurchLine."Document No." := PurchHeader."No.";
-        PurchLine."Line No." := 10000;
-        PurchLine.Type := PurchLine.Type::Item;
-        PurchLine."No." := ItemNo;
-        PurchLine.Insert(false);
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchaseHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
 
         // [WHEN] Quantity is validated to 10 (triggers OnAfterValidateEvent subscriber)
         PurchLine.Validate(Quantity, 10);
@@ -118,28 +101,12 @@ codeunit 50205 "DUoM Purchase Tests"
     [Test]
     procedure PurchaseLine_ValidateQty_NonItemType_NoDUoMCompute()
     var
-        PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
-        Vendor: Record Vendor;
         LibraryAssert: Codeunit "Library Assert";
     begin
-        // [GIVEN] A Vendor and a Purchase Line of type G/L Account (not Item)
-        Vendor.Init();
-        Vendor."No." := 'PURCH-VEND-02';
-        Vendor.Insert(false);
-
-        PurchHeader.Init();
-        PurchHeader."Document Type" := PurchHeader."Document Type"::Order;
-        PurchHeader."No." := 'PURCH-TEST-02';
-        PurchHeader."Buy-from Vendor No." := Vendor."No.";
-        PurchHeader.Insert(false);
-
+        // [GIVEN] A Purchase Line of type G/L Account (not Item) — in-memory only
         PurchLine.Init();
-        PurchLine."Document Type" := PurchHeader."Document Type";
-        PurchLine."Document No." := PurchHeader."No.";
-        PurchLine."Line No." := 10000;
         PurchLine.Type := PurchLine.Type::"G/L Account";
-        PurchLine.Insert(false);
 
         // [WHEN] Quantity is validated
         PurchLine.Validate(Quantity, 5);
@@ -147,11 +114,6 @@ codeunit 50205 "DUoM Purchase Tests"
         // [THEN] DUoM fields remain zero — no DUoM computation for non-item lines
         LibraryAssert.AreEqual(0, PurchLine."DUoM Second Qty", 'Non-item line must not compute DUoM Second Qty');
         LibraryAssert.AreEqual(0, PurchLine."DUoM Ratio", 'Non-item line must not set DUoM Ratio');
-
-        // Cleanup
-        PurchLine.Delete(false);
-        PurchHeader.Delete(false);
-        Vendor.Delete(false);
     end;
 
     // -------------------------------------------------------------------------
@@ -166,41 +128,24 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMItemSetup: Record "DUoM Item Setup";
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
-        ItemNo: Code[20];
     begin
         // [GIVEN] An item with DUoM setup: Always Variable conversion mode
-        ItemNo := 'PURCH-DUOM-AV';
-        Item.Init();
-        Item."No." := ItemNo;
-        Item."Base Unit of Measure" := 'KG';
-        Item.Insert(false);
+        LibraryInventory.CreateItem(Item);
 
         DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := ItemNo;
+        DUoMItemSetup."Item No." := Item."No.";
         DUoMItemSetup."Dual UoM Enabled" := true;
         DUoMItemSetup."Second UoM Code" := 'PCS';
         DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::AlwaysVariable;
         DUoMItemSetup.Insert(false);
 
         // [GIVEN] A Vendor and Purchase Header for that item
-        Vendor.Init();
-        Vendor."No." := 'PURCH-VEND-AV';
-        Vendor.Insert(false);
-
-        PurchHeader.Init();
-        PurchHeader."Document Type" := PurchHeader."Document Type"::Order;
-        PurchHeader."No." := 'PURCH-TEST-AV';
-        PurchHeader."Buy-from Vendor No." := Vendor."No.";
-        PurchHeader.Insert(false);
-
-        PurchLine.Init();
-        PurchLine."Document Type" := PurchHeader."Document Type";
-        PurchLine."Document No." := PurchHeader."No.";
-        PurchLine."Line No." := 10000;
-        PurchLine.Type := PurchLine.Type::Item;
-        PurchLine."No." := ItemNo;
-        PurchLine.Insert(false);
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchaseHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
 
         // [WHEN] Quantity is validated
         PurchLine.Validate(Quantity, 10);

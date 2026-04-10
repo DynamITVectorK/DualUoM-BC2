@@ -15,25 +15,22 @@ codeunit 50203 "DUoM Item Delete Tests"
     var
         Item: Record Item;
         DUoMItemSetup: Record "DUoM Item Setup";
+        LibraryInventory: Codeunit "Library - Inventory";
         LibraryAssert: Codeunit "Library Assert";
-        ItemNo: Code[20];
     begin
         // [GIVEN] An item exists in the database
-        ItemNo := 'DEL-TEST-001';
-        Item.Init();
-        Item."No." := ItemNo;
-        Item.Insert(false);
+        LibraryInventory.CreateItem(Item);
 
         // [GIVEN] A DUoM Item Setup record exists for that item
         DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := ItemNo;
+        DUoMItemSetup."Item No." := Item."No.";
         DUoMItemSetup.Insert(false);
 
         // [WHEN] The item is deleted
         Item.Delete(true);
 
         // [THEN] The DUoM Item Setup record is also deleted (no orphan)
-        LibraryAssert.IsFalse(DUoMItemSetup.Get(ItemNo), 'DUoM Item Setup must be deleted when the Item is deleted.');
+        LibraryAssert.IsFalse(DUoMItemSetup.Get(Item."No."), 'DUoM Item Setup must be deleted when the Item is deleted.');
     end;
 
     // -------------------------------------------------------------------------
@@ -44,19 +41,16 @@ codeunit 50203 "DUoM Item Delete Tests"
     procedure DeleteItem_WithoutDUoMSetup_NoError()
     var
         Item: Record Item;
+        LibraryInventory: Codeunit "Library - Inventory";
         LibraryAssert: Codeunit "Library Assert";
-        ItemNo: Code[20];
     begin
         // [GIVEN] An item exists with no corresponding DUoM setup record
-        ItemNo := 'DEL-TEST-002';
-        Item.Init();
-        Item."No." := ItemNo;
-        Item.Insert(false);
+        LibraryInventory.CreateItem(Item);
 
         // [WHEN] The item is deleted
         Item.Delete(true);
 
         // [THEN] The item no longer exists — deletion succeeded without error
-        LibraryAssert.IsFalse(Item.Get(ItemNo), 'Item must no longer exist after deletion.');
+        LibraryAssert.IsFalse(Item.Get(Item."No."), 'Item must no longer exist after deletion.');
     end;
 }

@@ -16,6 +16,7 @@
   "runs-on": "windows-latest",
   "installTestApps": [
     "Microsoft_Library Assert_27.0.0.0.app",
-    "Microsoft_Any_27.0.0.0.app"
+    "Microsoft_Any_27.0.0.0.app",
+    "Microsoft_Tests-Libraries_27.0.0.0.app"
   ]
 }

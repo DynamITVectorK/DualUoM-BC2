@@ -117,6 +117,33 @@ Any new table or other securable object that requires permission coverage **must
 - Use `Library Assert` (Microsoft) for all assertions
 - No test may be skipped or disabled to make CI pass
 
+## AL Test Data Creation — Mandatory Standard
+
+Never use manual `Init()` + `Insert(false)` to create test records.
+Always use Microsoft's standard AL test libraries:
+
+| Entity            | Library call                                      |
+|-------------------|---------------------------------------------------|
+| Item              | `LibraryInventory.CreateItem(Item)`               |
+| Vendor            | `LibraryPurchase.CreateVendor(Vendor)`            |
+| Customer          | `LibrarySales.CreateCustomer(Customer)`           |
+| Purchase Header   | `LibraryPurchase.CreatePurchaseHeader(...)`       |
+| Purchase Line     | `LibraryPurchase.CreatePurchaseLine(...)`         |
+| Sales Header      | `LibrarySales.CreateSalesHeader(...)`             |
+| Sales Line        | `LibrarySales.CreateSalesLine(...)`               |
+| Item Journal Line | `LibraryInventory.CreateItemJournalLine(...)`     |
+
+Declare the library codeunit variables as:
+```al
+LibraryInventory: Codeunit "Library - Inventory";
+LibraryPurchase:  Codeunit "Library - Purchase";
+LibrarySales:     Codeunit "Library - Sales";
+```
+
+`Init()` without `Insert()` remains valid for purely in-memory records that are never persisted to the database (e.g. testing field validation logic in isolation).
+
+This rule applies to ALL test codeunits in the project without exception.
+
 ## CI/CD — cost-first approach
 
 Every workflow file uses **only** `workflow_dispatch:` trigger.

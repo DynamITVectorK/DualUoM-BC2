@@ -54,40 +54,29 @@ codeunit 50206 "DUoM Sales Tests"
     procedure SalesLine_ValidateQty_FixedMode_ComputesSecondQty()
     var
         Item: Record Item;
+        Customer: Record Customer;
         DUoMItemSetup: Record "DUoM Item Setup";
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
         LibraryAssert: Codeunit "Library Assert";
-        ItemNo: Code[20];
     begin
         // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 1.25
-        ItemNo := 'SALES-DUOM-01';
-        Item.Init();
-        Item."No." := ItemNo;
-        Item."Base Unit of Measure" := 'PCS';
-        Item.Insert(false);
+        LibraryInventory.CreateItem(Item);
 
         DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := ItemNo;
+        DUoMItemSetup."Item No." := Item."No.";
         DUoMItemSetup."Dual UoM Enabled" := true;
         DUoMItemSetup."Second UoM Code" := 'KG';
         DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::Fixed;
         DUoMItemSetup."Fixed Ratio" := 1.25;
         DUoMItemSetup.Insert(false);
 
-        // [GIVEN] A Sales Header and Line for that item
-        SalesHeader.Init();
-        SalesHeader."Document Type" := SalesHeader."Document Type"::Order;
-        SalesHeader."No." := 'SALES-TEST-01';
-        SalesHeader.Insert(false);
-
-        SalesLine.Init();
-        SalesLine."Document Type" := SalesHeader."Document Type";
-        SalesLine."Document No." := SalesHeader."No.";
-        SalesLine."Line No." := 10000;
-        SalesLine.Type := SalesLine.Type::Item;
-        SalesLine."No." := ItemNo;
-        SalesLine.Insert(false);
+        // [GIVEN] A Customer, a Sales Header and Line for that item
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
 
         // [WHEN] Quantity is validated to 8
         SalesLine.Validate(Quantity, 8);
@@ -99,6 +88,7 @@ codeunit 50206 "DUoM Sales Tests"
         // Cleanup
         SalesLine.Delete(false);
         SalesHeader.Delete(false);
+        Customer.Delete(false);
         DUoMItemSetup.Delete(false);
         Item.Delete(false);
     end;
@@ -111,38 +101,28 @@ codeunit 50206 "DUoM Sales Tests"
     procedure SalesLine_ValidateQty_AlwaysVariableMode_NoDUoMAutoCompute()
     var
         Item: Record Item;
+        Customer: Record Customer;
         DUoMItemSetup: Record "DUoM Item Setup";
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
         LibraryAssert: Codeunit "Library Assert";
-        ItemNo: Code[20];
     begin
         // [GIVEN] An item with DUoM setup: Always Variable mode
-        ItemNo := 'SALES-DUOM-AV';
-        Item.Init();
-        Item."No." := ItemNo;
-        Item."Base Unit of Measure" := 'PCS';
-        Item.Insert(false);
+        LibraryInventory.CreateItem(Item);
 
         DUoMItemSetup.Init();
-        DUoMItemSetup."Item No." := ItemNo;
+        DUoMItemSetup."Item No." := Item."No.";
         DUoMItemSetup."Dual UoM Enabled" := true;
         DUoMItemSetup."Second UoM Code" := 'KG';
         DUoMItemSetup."Conversion Mode" := DUoMItemSetup."Conversion Mode"::AlwaysVariable;
         DUoMItemSetup.Insert(false);
 
-        SalesHeader.Init();
-        SalesHeader."Document Type" := SalesHeader."Document Type"::Order;
-        SalesHeader."No." := 'SALES-TEST-AV';
-        SalesHeader.Insert(false);
-
-        SalesLine.Init();
-        SalesLine."Document Type" := SalesHeader."Document Type";
-        SalesLine."Document No." := SalesHeader."No.";
-        SalesLine."Line No." := 10000;
-        SalesLine.Type := SalesLine.Type::Item;
-        SalesLine."No." := ItemNo;
-        SalesLine.Insert(false);
+        // [GIVEN] A Customer, a Sales Header and Line for that item
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
 
         // [WHEN] Quantity is validated
         SalesLine.Validate(Quantity, 5);
@@ -153,6 +133,7 @@ codeunit 50206 "DUoM Sales Tests"
         // Cleanup
         SalesLine.Delete(false);
         SalesHeader.Delete(false);
+        Customer.Delete(false);
         DUoMItemSetup.Delete(false);
         Item.Delete(false);
     end;
