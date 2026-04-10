@@ -5,7 +5,6 @@
 codeunit 50205 "DUoM Purchase Tests"
 {
     Subtype = Test;
-    Permissions = tabledata "DUoM Item Setup" = RIMD;
 
     // -------------------------------------------------------------------------
     // DUoM fields exist on Purchase Line and can be set and read

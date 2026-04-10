@@ -71,6 +71,63 @@ codeunit 50201 "DUoM Calc Engine Tests"
 
 ---
 
+## Permisos en el app de test (obligatorio)
+
+El app de test corre bajo su propio contexto de aplicación. Cualquier codeunit de test que acceda a una tabla de extensión — ya sea insertando directamente o llamando a una codeunit de producción que inserta — necesita que el **app de test** tenga el permiso correspondiente declarado en su propio permission set.
+
+### Regla
+
+**Nunca uses** la propiedad `Permissions` en objetos codeunit. Está deprecada (diagnóstico AL0246) y además **no cubre los accesos indirectos** (`IndirectInsert`, `IndirectModify`, etc.): cuando un test llama a una codeunit de producción que escribe en una tabla, BC evalúa los permisos del caller (el app de test), no los del callee.
+
+**Siempre usa** el permission set centralizado del app de test: `test/src/permissionset/DUoMTestAll.PermissionSet.al`.
+
+### Proceso al añadir una nueva tabla de extensión
+
+Cuando se crea una nueva tabla en `app/src/table/`, el mismo PR **debe**:
+
+1. Añadir `tabledata "<NombreTabla>" = RIMD;` en `app/src/permissionset/DUoMAll.PermissionSet.al`.
+2. Añadir `tabledata "<NombreTabla>" = RIMD;` en `test/src/permissionset/DUoMTestAll.PermissionSet.al`.
+
+Si se omite el paso 2, los tests que toquen esa tabla fallarán en CI con el error:
+```
+Sorry, the current permissions prevented the action.
+(TableData <ID> <NombreTabla> IndirectInsert: DualUoM-BC.Test)
+```
+
+### Ejemplo correcto
+
+```al
+// ✅ app/src/permissionset/DUoMAll.PermissionSet.al
+permissionset 50100 "DUoM - All"
+{
+    Assignable = true;
+    Caption = 'DualUoM - All';
+    Permissions =
+        tabledata "DUoM Item Setup" = RIMD;
+        // + nuevas tablas aquí
+}
+
+// ✅ test/src/permissionset/DUoMTestAll.PermissionSet.al
+permissionset 50200 "DUoM - Test All"
+{
+    Assignable = true;
+    Caption = 'DualUoM - Test All';
+    Permissions =
+        tabledata "DUoM Item Setup" = RIMD;
+        // + las mismas tablas que en DUoM - All
+}
+
+// ❌ PROHIBIDO — deprecated AL0246, no cubre IndirectInsert
+codeunit 50202 "DUoM Item Card Opening Tests"
+{
+    Subtype = Test;
+    Permissions = tabledata "DUoM Item Setup" = RIMD;  // NUNCA USAR
+    ...
+}
+```
+
+---
+
 ## Core Business Scenarios (Must Be Covered Before Broadening Scope)
 
 The following scenarios must have passing tests before any Phase 2 work starts:

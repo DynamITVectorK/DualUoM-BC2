@@ -85,7 +85,14 @@ Consultar `docs/07-localization.md` para la terminología canónica de Dual UoM 
 
 ## Regla de permisos (obligatoria)
 
-Toda nueva tabla debe tener una entrada `tabledata` en `app/src/permissionset/DUoMAll.PermissionSet.al`. La omisión provoca el error de build `PTE0004`. Ver detalles en `.github/copilot-instructions.md`.
+Toda nueva tabla debe tener una entrada `tabledata` **en dos sitios** en el mismo PR:
+
+1. **`app/src/permissionset/DUoMAll.PermissionSet.al`** — para que la extensión de producción funcione. La omisión provoca el error de build `PTE0004`.
+2. **`test/src/permissionset/DUoMTestAll.PermissionSet.al`** — para que el app de test pueda insertar en esa tabla tanto directamente como de forma indirecta (llamando a codeunits de producción).
+
+Ver detalles en `.github/copilot-instructions.md` (sección "Permission set rule").
+
+> **Nunca uses** la propiedad `Permissions` en un objeto codeunit. Es una API deprecada (AL0246) que además **no cubre los IndirectInserts** (cuando el test llama a una codeunit de producción que escribe en la tabla). Usa siempre un objeto `permissionset` independiente.
 
 ---
 
@@ -110,7 +117,7 @@ Un issue/PR se considera **terminado** solo cuando se cumple **todo** lo siguien
 - [ ] `DualUoM-BC.en-US.xlf` actualizado con `state="final"`.
 - [ ] `DualUoM-BC.es-ES.xlf` actualizado con `state="translated"`.
 - [ ] Terminología consistente con el glosario de `docs/07-localization.md`.
-- [ ] Permission set actualizado si hay nuevas tablas.
+- [ ] Permission sets actualizados si hay nuevas tablas: **tanto `DUoMAll.PermissionSet.al` (producción) como `DUoMTestAll.PermissionSet.al` (test)**.
 - [ ] Documentación técnica actualizada si procede.
 
 ---

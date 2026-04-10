@@ -32,7 +32,8 @@ app/          Main extension (PTE)
 test/         Test extension
   app.json    Test app manifest (depends on app/)
   src/
-    codeunit/ AL test codeunits (testability framework)
+    codeunit/     AL test codeunits (testability framework)
+    permissionset/ AL test permission sets (mandatory — see "Permission set rule")
 
 .github/
   AL-Go-Settings.json   Repository-level AL-Go configuration
@@ -91,6 +92,40 @@ Any new table or other securable object that requires permission coverage **must
 - The permission set file must follow the naming convention `<Name>.PermissionSet.al` and use the project ID range (50100–50199).
 - The project-wide permission set is `permissionset 50100 "DUoM - All"` (`app/src/permissionset/DUoMAll.PermissionSet.al`). Add new table entries there; create additional permission sets only if different access levels are needed.
 - Failure to include this causes build error `PTE0004` — a zero-tolerance policy applies.
+
+### Test app permission set (mandatory)
+
+The test app **must** maintain its own permission set file at `test/src/permissionset/DUoMTestAll.PermissionSet.al` (`permissionset 50200 "DUoM - Test All"`).
+
+**Every time** a new extension table is added to the production app:
+
+1. Add a `tabledata ... = RIMD` entry to `app/src/permissionset/DUoMAll.PermissionSet.al` (production app).
+2. **Also** add the same `tabledata ... = RIMD` entry to `test/src/permissionset/DUoMTestAll.PermissionSet.al` (test app).
+
+**Why both?** The test app runs under its own app context. When test code inserts directly into an extension table *or* calls a production codeunit that inserts (indirect insert), both operations require the test app's own permission set to declare the corresponding table permission.
+
+**Never use** the `Permissions` property on codeunit objects. This is deprecated (AL0246) and does **not** cover indirect inserts (when a test codeunit calls a production codeunit that writes to the table). Always use a `permissionset` object instead.
+
+```al
+// ✅ CORRECTO — test/src/permissionset/DUoMTestAll.PermissionSet.al
+permissionset 50200 "DUoM - Test All"
+{
+    Assignable = true;
+    Caption = 'DualUoM - Test All';
+
+    Permissions =
+        tabledata "DUoM Item Setup" = RIMD;
+        // Añadir aquí cada nueva tabla de extensión
+}
+
+// ❌ PROHIBIDO — Permissions property en codeunit (AL0246, no cubre IndirectInsert)
+codeunit 50202 "DUoM Item Card Opening Tests"
+{
+    Subtype = Test;
+    Permissions = tabledata "DUoM Item Setup" = RIMD;  // <- NUNCA HACER ESTO
+    ...
+}
+```
 
 ## Business Central SaaS constraints
 
