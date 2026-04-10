@@ -5,7 +5,6 @@
 codeunit 50206 "DUoM Sales Tests"
 {
     Subtype = Test;
-    Permissions = tabledata "DUoM Item Setup" = RIMD;
 
     // -------------------------------------------------------------------------
     // DUoM fields exist on Sales Line and can be set and read

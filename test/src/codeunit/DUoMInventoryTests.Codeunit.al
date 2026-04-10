@@ -11,7 +11,6 @@
 codeunit 50207 "DUoM Inventory Tests"
 {
     Subtype = Test;
-    Permissions = tabledata "DUoM Item Setup" = RIMD;
 
     // -------------------------------------------------------------------------
     // Item Journal Line: DUoM fields exist and can be set
