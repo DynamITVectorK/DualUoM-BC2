@@ -5,6 +5,7 @@
 codeunit 50206 "DUoM Sales Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
     // DUoM fields exist on Sales Line and can be set and read

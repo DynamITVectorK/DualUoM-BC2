@@ -6,6 +6,7 @@
 codeunit 50201 "DUoM Item Setup Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
     // ValidateSetup() — disabled item

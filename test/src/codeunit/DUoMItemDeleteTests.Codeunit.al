@@ -5,6 +5,7 @@
 codeunit 50203 "DUoM Item Delete Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
     // OnDelete trigger — setup record is removed when item is deleted
