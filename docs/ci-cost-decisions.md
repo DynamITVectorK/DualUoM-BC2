@@ -16,8 +16,7 @@ and the workflow files.
 | `skipUpgrade` | `true` | No upgrade tests — no previous published version exists yet |
 | `excludeEnvironments` | `["*"]` | Never auto-deploy to any environment from CI; all deployments are manual |
 | `buildModes` | `["Default"]` | Skip Clean and Translated build modes — only one build pass per run |
-| `useCompilerFolder` | `true` | No BC container — compile with `alc.exe` only; prevents test execution (see note below) |
-| `runs-on` | `"windows-latest"` | Runner estándar de GitHub Actions; Docker daemon not available on Windows Server 2025, requires `useCompilerFolder` mode |
+| `runs-on` | `"windows-2022"` | Windows Server 2022 runner — tiene Docker pre-instalado, necesario para arrancar el contenedor BC y ejecutar los tests |
 
 ### Note on `System Application Test Library` (removed from dependencies)
 
@@ -33,22 +32,16 @@ Both the dependency entry in `test/app.json` and the `installTestApps` entry in
 `.AL-Go/settings.json` have been removed. Any future test that requires types from this
 library should re-add the dependency with the correct resolved version.
 
-### Nota sobre `useCompilerFolder` (reactivado)
+### Nota sobre el runner y Docker
 
-`useCompilerFolder: true` indica a AL-Go que compile los proyectos AL usando `alc.exe`
-directamente, sin arrancar ningún contenedor Docker de Business Central.
-
-**Por qué se reactivó:** El runner `windows-latest` (Windows Server 2025 Datacenter) no
-tiene el daemon Docker disponible. Intentar arrancar un contenedor BC produce el error:
+El runner `windows-latest` apunta a Windows Server 2025 Datacenter, donde el daemon Docker
+**no está disponible**. Intentar arrancar un contenedor BC produce el error:
 
 > `failed to connect to the docker API at npipe:////./pipe/docker_engine`
 
-Con `useCompilerFolder: true` el paso de compilación (`alc.exe`) funciona sin necesidad de
-Docker. La contrapartida conocida es que los test codeunits **no se ejecutan** en CI porque
-no existe una capa de servicio BC activa. Las pruebas deben ejecutarse en un entorno local
-o en un runner self-hosted con Docker disponible (ver `docs/05-testing-strategy.md`).
-
-Este estado es preferible a un pipeline completamente roto.
+La solución es usar `runs-on: windows-2022` (Windows Server 2022), que tiene Docker
+pre-instalado con soporte para contenedores Windows. Esto permite a AL-Go arrancar el
+contenedor BC y ejecutar los test codeunits normalmente.
 
 ## Workflow triggers
 
