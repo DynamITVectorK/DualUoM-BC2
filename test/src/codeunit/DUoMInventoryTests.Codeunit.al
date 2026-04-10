@@ -13,6 +13,14 @@ codeunit 50207 "DUoM Inventory Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
+    [SetUp]
+    procedure SetUp()
+    var
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+    begin
+        DUoMTestHelpers.SetUpTestPermissions();
+    end;
+
     // -------------------------------------------------------------------------
     // Item Journal Line: DUoM fields exist and can be set
     // -------------------------------------------------------------------------

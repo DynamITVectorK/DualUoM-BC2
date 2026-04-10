@@ -7,6 +7,14 @@ codeunit 50203 "DUoM Item Delete Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
+    [SetUp]
+    procedure SetUp()
+    var
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+    begin
+        DUoMTestHelpers.SetUpTestPermissions();
+    end;
+
     // -------------------------------------------------------------------------
     // OnDelete trigger — setup record is removed when item is deleted
     // -------------------------------------------------------------------------

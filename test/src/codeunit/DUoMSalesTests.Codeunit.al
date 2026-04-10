@@ -7,6 +7,14 @@ codeunit 50206 "DUoM Sales Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
+    [SetUp]
+    procedure SetUp()
+    var
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+    begin
+        DUoMTestHelpers.SetUpTestPermissions();
+    end;
+
     // -------------------------------------------------------------------------
     // DUoM fields exist on Sales Line and can be set and read
     // -------------------------------------------------------------------------
