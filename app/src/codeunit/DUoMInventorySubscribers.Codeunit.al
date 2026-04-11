@@ -5,14 +5,24 @@
 /// Propagation strategy for posted document lines (BC 27 / runtime 15):
 ///   - Purchase Line → Purch. Rcpt. Line:
 ///     Subscriber to OnAfterInitFromPurchLine on Table "Purch. Rcpt. Line".
-///     This is the standard initialization event called by Purch.-Post when building
-///     the posted receipt line from the source purchase line. Signature verified against
-///     microsoft/bc-w1 PurchRcptLine.Table.al.
+///     Signature verified against microsoft/bc-w1 PurchRcptLine.Table.al.
+///   - Purchase Line → Purch. Inv. Line:
+///     Subscriber to OnAfterInitFromPurchLine on Table "Purch. Inv. Line".
+///     Signature verified against microsoft/bc-w1 PurchInvLine.Table.al.
+///   - Purchase Line → Purch. Cr. Memo Line:
+///     Subscriber to OnAfterInitFromPurchLine on Table "Purch. Cr. Memo Line".
+///     Signature verified against microsoft/bc-w1 PurchCrMemoLine.Table.al.
 ///   - Sales Line → Sales Shipment Line:
 ///     Subscriber to OnAfterInitFromSalesLine on Table "Sales Shipment Line".
-///     This is the standard initialization event called by Sales-Post when building
-///     the posted shipment line from the source sales line. Signature verified against
-///     microsoft/bc-w1 SalesShipmentLine.Table.al.
+///     Signature verified against microsoft/bc-w1 SalesShipmentLine.Table.al.
+///   - Sales Line → Sales Invoice Line:
+///     Subscriber to OnAfterInitFromSalesLine on Table "Sales Invoice Line".
+///     Signature verified against microsoft/bc-w1 SalesInvoiceLine.Table.al.
+///     NOTE: var SalesInvLine is the FIRST parameter (unlike Purchase pattern).
+///   - Sales Line → Sales Cr.Memo Line:
+///     Subscriber to OnAfterInitFromSalesLine on Table "Sales Cr.Memo Line".
+///     Signature verified against microsoft/bc-w1 SalesCrMemoLine.Table.al.
+///     NOTE: var SalesCrMemoLine is the FIRST parameter (unlike Purchase pattern).
 ///   The actual field-copy logic is centralized in DUoM Doc Transfer Helper (50105).
 ///
 /// Propagation strategy for ILE:
@@ -112,6 +122,80 @@ codeunit 50104 "DUoM Inventory Subscribers"
         DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
     begin
         DUoMDocTransferHelper.CopyFromSalesLineToShipLine(SalesLine, SalesShptLine);
+    end;
+
+    /// <summary>
+    /// Durante la contabilización de compra como factura, copia los campos DUoM desde la
+    /// Purchase Line a la Purch. Inv. Line en el momento de la inicialización del registro.
+    /// Evento: OnAfterInitFromPurchLine en la tabla "Purch. Inv. Line" (BC 27 / runtime 15).
+    /// Publisher: Table "Purch. Inv. Line", evento elegido porque es la inicialización
+    /// estándar de la línea de factura registrada desde la línea de compra origen.
+    /// Firma verificada en FBakkensen/bc-w1: PurchInvLine.Table.al, procedure InitFromPurchLine
+    /// → OnAfterInitFromPurchLine(PurchInvHeader, PurchLine, Rec).
+    /// La lógica de copia está centralizada en DUoM Doc Transfer Helper (50105).
+    /// </summary>
+    [EventSubscriber(ObjectType::Table, Database::"Purch. Inv. Line", 'OnAfterInitFromPurchLine', '', false, false)]
+    local procedure OnAfterInitFromPurchInvLine(PurchInvHeader: Record "Purch. Inv. Header"; PurchLine: Record "Purchase Line"; var PurchInvLine: Record "Purch. Inv. Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
+    begin
+        DUoMDocTransferHelper.CopyFromPurchLineToPurchInvLine(PurchLine, PurchInvLine);
+    end;
+
+    /// <summary>
+    /// Durante la contabilización de un abono de compra, copia los campos DUoM desde la
+    /// Purchase Line a la Purch. Cr. Memo Line en el momento de la inicialización del registro.
+    /// Evento: OnAfterInitFromPurchLine en la tabla "Purch. Cr. Memo Line" (BC 27 / runtime 15).
+    /// Publisher: Table "Purch. Cr. Memo Line", evento elegido porque es la inicialización
+    /// estándar de la línea de abono registrado desde la línea de compra origen.
+    /// Firma verificada en FBakkensen/bc-w1: PurchCrMemoLine.Table.al, procedure InitFromPurchLine
+    /// → OnAfterInitFromPurchLine(PurchCrMemoHdr, PurchLine, Rec).
+    /// La lógica de copia está centralizada en DUoM Doc Transfer Helper (50105).
+    /// </summary>
+    [EventSubscriber(ObjectType::Table, Database::"Purch. Cr. Memo Line", 'OnAfterInitFromPurchLine', '', false, false)]
+    local procedure OnAfterInitFromPurchCrMemoLine(PurchCrMemoHdr: Record "Purch. Cr. Memo Hdr."; PurchLine: Record "Purchase Line"; var PurchCrMemoLine: Record "Purch. Cr. Memo Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
+    begin
+        DUoMDocTransferHelper.CopyFromPurchLineToPurchCrMemoLine(PurchLine, PurchCrMemoLine);
+    end;
+
+    /// <summary>
+    /// Durante la contabilización de venta como factura, copia los campos DUoM desde la
+    /// Sales Line a la Sales Invoice Line en el momento de la inicialización del registro.
+    /// Evento: OnAfterInitFromSalesLine en la tabla "Sales Invoice Line" (BC 27 / runtime 15).
+    /// Publisher: Table "Sales Invoice Line", evento elegido porque es la inicialización
+    /// estándar de la línea de factura registrada desde la línea de venta origen.
+    /// Firma verificada en FBakkensen/bc-w1: SalesInvoiceLine.Table.al, procedure InitFromSalesLine
+    /// → OnAfterInitFromSalesLine(var SalesInvLine, SalesInvHeader, SalesLine).
+    /// IMPORTANTE: el parámetro var es el PRIMERO en Sales (distinto del patrón Purchase).
+    /// La lógica de copia está centralizada en DUoM Doc Transfer Helper (50105).
+    /// </summary>
+    [EventSubscriber(ObjectType::Table, Database::"Sales Invoice Line", 'OnAfterInitFromSalesLine', '', false, false)]
+    local procedure OnAfterInitFromSalesInvLine(var SalesInvLine: Record "Sales Invoice Line"; SalesInvHeader: Record "Sales Invoice Header"; SalesLine: Record "Sales Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
+    begin
+        DUoMDocTransferHelper.CopyFromSalesLineToSalesInvLine(SalesLine, SalesInvLine);
+    end;
+
+    /// <summary>
+    /// Durante la contabilización de un abono de venta, copia los campos DUoM desde la
+    /// Sales Line a la Sales Cr.Memo Line en el momento de la inicialización del registro.
+    /// Evento: OnAfterInitFromSalesLine en la tabla "Sales Cr.Memo Line" (BC 27 / runtime 15).
+    /// Publisher: Table "Sales Cr.Memo Line", evento elegido porque es la inicialización
+    /// estándar de la línea de abono registrado desde la línea de venta origen.
+    /// Firma verificada en FBakkensen/bc-w1: SalesCrMemoLine.Table.al, procedure InitFromSalesLine
+    /// → OnAfterInitFromSalesLine(var SalesCrMemoLine, SalesCrMemoHeader, SalesLine).
+    /// IMPORTANTE: el parámetro var es el PRIMERO en Sales (distinto del patrón Purchase).
+    /// La lógica de copia está centralizada en DUoM Doc Transfer Helper (50105).
+    /// </summary>
+    [EventSubscriber(ObjectType::Table, Database::"Sales Cr.Memo Line", 'OnAfterInitFromSalesLine', '', false, false)]
+    local procedure OnAfterInitFromSalesCrMemoLine(var SalesCrMemoLine: Record "Sales Cr.Memo Line"; SalesCrMemoHeader: Record "Sales Cr.Memo Header"; SalesLine: Record "Sales Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
+    begin
+        DUoMDocTransferHelper.CopyFromSalesLineToSalesCrMemoLine(SalesLine, SalesCrMemoLine);
     end;
 
     /// <summary>

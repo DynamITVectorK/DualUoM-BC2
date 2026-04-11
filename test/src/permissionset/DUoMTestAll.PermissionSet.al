@@ -6,9 +6,10 @@
 /// Permissions property on codeunit objects (AL0246).
 ///
 /// Incluye también RIMD sobre las tablas base escritas por los subscribers DUoM
-/// durante la contabilización (Purch. Rcpt. Line, Sales Shipment Line), necesario
-/// para que los tests E2E con TestPermissions = Restrictive no fallen por falta
-/// de permiso Modify en las tablas 121 / 111.
+/// durante la contabilización (Purch. Rcpt. Line, Sales Shipment Line,
+/// Purch. Inv. Line, Purch. Cr. Memo Line, Sales Invoice Line, Sales Cr.Memo Line),
+/// necesario para que los tests E2E con TestPermissions = Restrictive no fallen
+/// por falta de permiso Modify en las tablas base de BC.
 /// </summary>
 permissionset 50200 "DUoM - Test All"
 {
@@ -18,5 +19,9 @@ permissionset 50200 "DUoM - Test All"
     Permissions =
         tabledata "DUoM Item Setup" = RIMD,
         tabledata "Purch. Rcpt. Line" = RIMD,
-        tabledata "Sales Shipment Line" = RIMD;
+        tabledata "Sales Shipment Line" = RIMD,
+        tabledata "Purch. Inv. Line" = RIMD,
+        tabledata "Purch. Cr. Memo Line" = RIMD,
+        tabledata "Sales Invoice Line" = RIMD,
+        tabledata "Sales Cr.Memo Line" = RIMD;
 }

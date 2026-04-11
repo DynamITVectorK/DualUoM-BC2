@@ -415,6 +415,158 @@
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════
+             TableExtension 3840538363  DUoM Purch. Inv. Line Ext
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 3840538363 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Inv. Line Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 3840538363 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="final">DUoM Ratio</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Inv. Line Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             TableExtension 1442553621  DUoM Purch. Cr. Memo Line Ext
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 1442553621 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Cr. Memo Line Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 1442553621 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="final">DUoM Ratio</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Cr. Memo Line Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             TableExtension 1720742181  DUoM Sales Inv. Line Ext
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 1720742181 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Inv. Line Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 1720742181 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="final">DUoM Ratio</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Inv. Line Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             TableExtension 2025579891  DUoM Sales Cr.Memo Line Ext
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 2025579891 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Cr.Memo Line Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 2025579891 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="final">DUoM Ratio</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Cr.Memo Line Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 2198064801  DUoM Pstd Purch Inv Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 2198064801 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this posted purchase invoice line in the second unit of measure.</source>
+          <target state="final">Specifies the secondary quantity for this posted purchase invoice line in the second unit of measure.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Posted Purchase Invoice Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch Inv Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2198064801 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio used for this posted purchase invoice line.</source>
+          <target state="final">Specifies the conversion ratio used for this posted purchase invoice line.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Posted Purchase Invoice Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch Inv Subform - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2198064801 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch Inv Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 887098518  DUoM Pstd Purch CrM Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 887098518 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this posted purchase credit memo line in the second unit of measure.</source>
+          <target state="final">Specifies the secondary quantity for this posted purchase credit memo line in the second unit of measure.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Posted Purchase Credit Memo Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch CrM Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 887098518 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio used for this posted purchase credit memo line.</source>
+          <target state="final">Specifies the conversion ratio used for this posted purchase credit memo line.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Posted Purchase Credit Memo Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch CrM Subform - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 887098518 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch CrM Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 2569275541  DUoM Pstd Sales Inv Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 2569275541 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this posted sales invoice line in the second unit of measure.</source>
+          <target state="final">Specifies the secondary quantity for this posted sales invoice line in the second unit of measure.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Posted Sales Invoice Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales Inv Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2569275541 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio used for this posted sales invoice line.</source>
+          <target state="final">Specifies the conversion ratio used for this posted sales invoice line.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Posted Sales Invoice Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales Inv Subform - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2569275541 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales Inv Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 3166159682  DUoM Pstd Sales CrM Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 3166159682 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this posted sales credit memo line in the second unit of measure.</source>
+          <target state="final">Specifies the secondary quantity for this posted sales credit memo line in the second unit of measure.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Posted Sales Credit Memo Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales CrM Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 3166159682 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio used for this posted sales credit memo line.</source>
+          <target state="final">Specifies the conversion ratio used for this posted sales credit memo line.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Posted Sales Credit Memo Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales CrM Subform - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 3166159682 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales CrM Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
              PermissionSet 2890406569  DUoM - All
              ═══════════════════════════════════════════ -->
         <trans-unit id="PermissionSet 2890406569 - Property 2879900210" translate="yes" xml:space="preserve">

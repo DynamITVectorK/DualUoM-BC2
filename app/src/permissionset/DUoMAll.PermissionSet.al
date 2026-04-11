@@ -4,8 +4,9 @@
 /// or use Dual Unit of Measure functionality.
 ///
 /// Incluye acceso RIMD a las tablas base de BC que el subscriber DUoM escribe
-/// durante la contabilización (Purch. Rcpt. Line, Sales Shipment Line), evitando
-/// el error "Su licencia no le concede Modify en TableData 121/111".
+/// durante la contabilización (Purch. Rcpt. Line, Sales Shipment Line,
+/// Purch. Inv. Line, Purch. Cr. Memo Line, Sales Invoice Line, Sales Cr.Memo Line),
+/// evitando el error "Su licencia no le concede Modify en TableData NNN".
 /// </summary>
 permissionset 50100 "DUoM - All"
 {
@@ -15,5 +16,9 @@ permissionset 50100 "DUoM - All"
     Permissions =
         tabledata "DUoM Item Setup" = RIMD,
         tabledata "Purch. Rcpt. Line" = RIMD,
-        tabledata "Sales Shipment Line" = RIMD;
+        tabledata "Sales Shipment Line" = RIMD,
+        tabledata "Purch. Inv. Line" = RIMD,
+        tabledata "Purch. Cr. Memo Line" = RIMD,
+        tabledata "Sales Invoice Line" = RIMD,
+        tabledata "Sales Cr.Memo Line" = RIMD;
 }

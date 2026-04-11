@@ -10,6 +10,10 @@
 /// Flujos cubiertos:
 ///   - Sales Line → Sales Shipment Line   (InitFromSalesLine)
 ///   - Purchase Line → Purch. Rcpt. Line  (InitFromPurchLine)
+///   - Purchase Line → Purch. Inv. Line   (InitFromPurchLine)
+///   - Purchase Line → Purch. Cr. Memo Line (InitFromPurchLine)
+///   - Sales Line → Sales Invoice Line    (InitFromSalesLine)
+///   - Sales Line → Sales Cr.Memo Line    (InitFromSalesLine)
 /// </summary>
 codeunit 50105 "DUoM Doc Transfer Helper"
 {
@@ -41,5 +45,57 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit;
         PurchRcptLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
         PurchRcptLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+    end;
+
+    /// <summary>
+    /// Copia los campos DUoM desde una Purchase Line hacia una Purch. Inv. Line.
+    /// Se invoca desde el suscriptor de OnAfterInitFromPurchLine en la tabla
+    /// "Purch. Inv. Line" (BC 27 / runtime 15).
+    /// </summary>
+    procedure CopyFromPurchLineToPurchInvLine(PurchaseLine: Record "Purchase Line"; var PurchInvLine: Record "Purch. Inv. Line")
+    begin
+        if (PurchaseLine."DUoM Second Qty" = 0) and (PurchaseLine."DUoM Ratio" = 0) then
+            exit;
+        PurchInvLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
+        PurchInvLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+    end;
+
+    /// <summary>
+    /// Copia los campos DUoM desde una Purchase Line hacia una Purch. Cr. Memo Line.
+    /// Se invoca desde el suscriptor de OnAfterInitFromPurchLine en la tabla
+    /// "Purch. Cr. Memo Line" (BC 27 / runtime 15).
+    /// </summary>
+    procedure CopyFromPurchLineToPurchCrMemoLine(PurchaseLine: Record "Purchase Line"; var PurchCrMemoLine: Record "Purch. Cr. Memo Line")
+    begin
+        if (PurchaseLine."DUoM Second Qty" = 0) and (PurchaseLine."DUoM Ratio" = 0) then
+            exit;
+        PurchCrMemoLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
+        PurchCrMemoLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+    end;
+
+    /// <summary>
+    /// Copia los campos DUoM desde una Sales Line hacia una Sales Invoice Line.
+    /// Se invoca desde el suscriptor de OnAfterInitFromSalesLine en la tabla
+    /// "Sales Invoice Line" (BC 27 / runtime 15).
+    /// </summary>
+    procedure CopyFromSalesLineToSalesInvLine(SalesLine: Record "Sales Line"; var SalesInvLine: Record "Sales Invoice Line")
+    begin
+        if (SalesLine."DUoM Second Qty" = 0) and (SalesLine."DUoM Ratio" = 0) then
+            exit;
+        SalesInvLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
+        SalesInvLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+    end;
+
+    /// <summary>
+    /// Copia los campos DUoM desde una Sales Line hacia una Sales Cr.Memo Line.
+    /// Se invoca desde el suscriptor de OnAfterInitFromSalesLine en la tabla
+    /// "Sales Cr.Memo Line" (BC 27 / runtime 15).
+    /// </summary>
+    procedure CopyFromSalesLineToSalesCrMemoLine(SalesLine: Record "Sales Line"; var SalesCrMemoLine: Record "Sales Cr.Memo Line")
+    begin
+        if (SalesLine."DUoM Second Qty" = 0) and (SalesLine."DUoM Ratio" = 0) then
+            exit;
+        SalesCrMemoLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
+        SalesCrMemoLine."DUoM Ratio" := SalesLine."DUoM Ratio";
     end;
 }

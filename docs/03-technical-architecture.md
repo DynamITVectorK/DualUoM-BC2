@@ -59,6 +59,10 @@ already covers the need:
 | `DUoM Item Ledger Entry Ext` | 50113 | `Item Ledger Entry` | Second Qty y Ratio (contabilizados, inmutables) |
 | `DUoM Purch. Rcpt. Line Ext` | 50114 | `Purch. Rcpt. Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar |
 | `DUoM Sales Shipment Line Ext` | 50115 | `Sales Shipment Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar |
+| `DUoM Purch. Inv. Line Ext` | 50116 | `Purch. Inv. Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar factura |
+| `DUoM Purch. Cr. Memo Line Ext` | 50117 | `Purch. Cr. Memo Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar abono |
+| `DUoM Sales Inv. Line Ext` | 50118 | `Sales Invoice Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar factura |
+| `DUoM Sales Cr.Memo Line Ext` | 50119 | `Sales Cr.Memo Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar abono |
 
 ### Page Extensions
 
@@ -68,6 +72,10 @@ already covers the need:
 | `DUoM Sales Order Subform` | 50102 | `Sales Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de venta |
 | `DUoM Posted Rcpt. Subform` | 50104 | `Posted Purchase Rcpt. Subform` | Muestra Second Qty y Ratio en líneas de recepción registrada (solo lectura) |
 | `DUoM Posted Ship. Subform` | 50105 | `Posted Sales Shpt. Subform` | Muestra Second Qty y Ratio en líneas de envío registrado (solo lectura) |
+| `DUoM Pstd Purch Inv Subform` | 50106 | `Posted Purch. Invoice Subform` | Muestra Second Qty y Ratio en líneas de factura de compra registrada (solo lectura) |
+| `DUoM Pstd Purch CrM Subform` | 50107 | `Posted Purch. Cr. Memo Subform` | Muestra Second Qty y Ratio en líneas de abono de compra registrado (solo lectura) |
+| `DUoM Pstd Sales Inv Subform` | 50108 | `Posted Sales Invoice Subform` | Muestra Second Qty y Ratio en líneas de factura de venta registrada (solo lectura) |
+| `DUoM Pstd Sales CrM Subform` | 50109 | `Posted Sales Cr. Memo Subform` | Muestra Second Qty y Ratio en líneas de abono de venta registrado (solo lectura) |
 
 ### Codeunits
 
@@ -77,6 +85,7 @@ already covers the need:
 | `DUoM Purchase Subscribers` | 50102 | Subscribers de eventos del flujo de compras |
 | `DUoM Sales Subscribers` | 50103 | Subscribers de eventos del flujo de ventas |
 | `DUoM Inventory Subscribers` | 50104 | Subscribers para diario de productos / ILE / líneas de documentos registrados |
+| `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
 
 ---
 
@@ -90,6 +99,29 @@ Warehouse) has its own subscriber codeunit to limit blast radius of changes.
 
 No subscriber codeunit should contain posting logic. Posting logic lives in dedicated
 codeunits called from subscribers.
+
+### Propagación de DUoM a históricos de documentos registrados
+
+Los campos DUoM se propagan a todos los históricos usando **eventos de inicialización de tabla**
+de BC 27 (patrón `OnAfterInitFrom*`). Estos eventos se publican en las tablas de destino
+y dan acceso al var record ANTES del Insert(), evitando la necesidad de llamar a Modify().
+
+| Flujo | Evento | Publisher | Tabla destino |
+|---|---|---|---|
+| `Purchase Line` → `Purch. Rcpt. Line` | `OnAfterInitFromPurchLine` | `Table "Purch. Rcpt. Line"` | Recepción registrada |
+| `Purchase Line` → `Purch. Inv. Line` | `OnAfterInitFromPurchLine` | `Table "Purch. Inv. Line"` | Factura compra registrada |
+| `Purchase Line` → `Purch. Cr. Memo Line` | `OnAfterInitFromPurchLine` | `Table "Purch. Cr. Memo Line"` | Abono compra registrado |
+| `Sales Line` → `Sales Shipment Line` | `OnAfterInitFromSalesLine` | `Table "Sales Shipment Line"` | Envío registrado |
+| `Sales Line` → `Sales Invoice Line` | `OnAfterInitFromSalesLine` | `Table "Sales Invoice Line"` | Factura venta registrada |
+| `Sales Line` → `Sales Cr.Memo Line` | `OnAfterInitFromSalesLine` | `Table "Sales Cr.Memo Line"` | Abono venta registrado |
+
+> **IMPORTANTE:** En los eventos de Sales (`Sales Invoice Line` y `Sales Cr.Memo Line`),
+> el parámetro `var` de destino es el **PRIMER** parámetro de la firma, a diferencia de
+> los eventos de Purchase donde es el **ÚLTIMO**. Verificar siempre la firma exacta en
+> el código fuente BC 27.
+
+Toda la lógica de copia está centralizada en `DUoM Doc Transfer Helper` (50105).
+Los subscribers en `DUoM Inventory Subscribers` (50104) son "thin" — sólo validan y delegan.
 
 ---
 
