@@ -150,6 +150,52 @@ codeunit 50202 "DUoM Item Card Opening Tests"
   `extends` clause with an incorrect name causes AL0247 and blocks compilation of the
   entire module.
 
+## Propagation patterns for posted document lines
+
+When copying custom extension fields from source document lines to posted/history lines,
+follow these rules to avoid fragile and build-breaking subscriber signatures:
+
+### Prefer InitFrom* table events over codeunit insert events
+
+For propagating DUoM fields (or any custom fields) from:
+- `Purchase Line` → `Purch. Rcpt. Line`: subscribe to `OnAfterInitFromPurchLine` on
+  **Table `"Purch. Rcpt. Line"`** (ObjectType::Table, Database::"Purch. Rcpt. Line").
+  Confirmed signature (BC 27 / runtime 15):
+  ```al
+  [EventSubscriber(ObjectType::Table, Database::"Purch. Rcpt. Line", 'OnAfterInitFromPurchLine', '', false, false)]
+  local procedure OnAfterInitFromPurchLine(PurchRcptHeader: Record "Purch. Rcpt. Header"; PurchLine: Record "Purchase Line"; var PurchRcptLine: Record "Purch. Rcpt. Line")
+  ```
+- `Sales Line` → `Sales Shipment Line`: subscribe to `OnAfterInitFromSalesLine` on
+  **Table `"Sales Shipment Line"`** (ObjectType::Table, Database::"Sales Shipment Line").
+  Confirmed signature (BC 27 / runtime 15):
+  ```al
+  [EventSubscriber(ObjectType::Table, Database::"Sales Shipment Line", 'OnAfterInitFromSalesLine', '', false, false)]
+  local procedure OnAfterInitFromSalesLine(SalesShptHeader: Record "Sales Shipment Header"; SalesLine: Record "Sales Line"; var SalesShptLine: Record "Sales Shipment Line")
+  ```
+
+**Do NOT** use guessed insert-phase events on `Codeunit::"Purch.-Post"` or `Codeunit::"Sales-Post"`
+such as `OnBeforePurchRcptLineInsert` or `OnBeforeInsertShipmentLine` — these events **do not exist**
+in BC 27 and cause AL0280/AL0282 compilation errors.
+
+### Thin subscribers + centralized transfer helpers
+
+- Event subscriber procedures must remain thin: they should only validate and delegate.
+- All DUoM field-copy logic must live in dedicated helper/codeunit methods
+  (currently in `DUoM Doc Transfer Helper`, codeunit 50105).
+- This makes the logic independently testable, maintainable, and extensible to future flows
+  (invoice lines, return lines, etc.).
+
+### Signature validation is mandatory
+
+Every new `[EventSubscriber]` added to this codebase must include a comment stating:
+- Publisher object (table or codeunit name and ID)
+- Event name
+- Why that event was chosen
+- Confirmation that the signature was validated against BC 27 symbols
+
+A subscriber with an incorrect signature is a design/process failure, not just a compile error.
+Future PRs touching subscribers must follow this rule.
+
 ## Delivery rules
 
 - Implement only what the current issue explicitly requires — no speculative scope
