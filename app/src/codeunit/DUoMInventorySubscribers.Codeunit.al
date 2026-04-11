@@ -76,13 +76,13 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// Purch. Rcpt. Line so that the posted receipt document contains the original
     /// DUoM data alongside the standard quantity.
     /// </summary>
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnAfterInsertReceiptLine', '', false, false)]
-    local procedure OnAfterInsertReceiptLine(var PurchRcptLine: Record "Purch. Rcpt. Line"; PurchLine: Record "Purchase Line")
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnAfterPurchRcptLineInsert', '', false, false)]
+    local procedure OnAfterInsertReceiptLine(var PurchRcptLine: Record "Purch. Rcpt. Line"; PurchaseLine: Record "Purchase Line")
     begin
-        if (PurchLine."DUoM Second Qty" = 0) and (PurchLine."DUoM Ratio" = 0) then
+        if (PurchaseLine."DUoM Second Qty" = 0) and (PurchaseLine."DUoM Ratio" = 0) then
             exit;
-        PurchRcptLine."DUoM Second Qty" := PurchLine."DUoM Second Qty";
-        PurchRcptLine."DUoM Ratio" := PurchLine."DUoM Ratio";
+        PurchRcptLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
+        PurchRcptLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
         PurchRcptLine.Modify(false);
     end;
 
@@ -92,13 +92,13 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// DUoM data alongside the standard quantity.
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnAfterInsertShipmentLine', '', false, false)]
-    local procedure OnAfterInsertShipmentLine(var SalesShipmentLine: Record "Sales Shipment Line"; SalesLine: Record "Sales Line")
+    local procedure OnAfterInsertShipmentLine(var SalesShptLine: Record "Sales Shipment Line"; SalesLine: Record "Sales Line")
     begin
         if (SalesLine."DUoM Second Qty" = 0) and (SalesLine."DUoM Ratio" = 0) then
             exit;
-        SalesShipmentLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
-        SalesShipmentLine."DUoM Ratio" := SalesLine."DUoM Ratio";
-        SalesShipmentLine.Modify(false);
+        SalesShptLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
+        SalesShptLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        SalesShptLine.Modify(false);
     end;
 
     /// <summary>
