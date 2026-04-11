@@ -1,8 +1,8 @@
 /// <summary>
-/// Extends the Purch. Rcpt. Line table with Dual Unit of Measure fields.
-/// These fields capture the DUoM Second Qty and Ratio from the originating
-/// Purchase Line at the time of posting. Values are immutable after posting.
-/// Propagation is performed by DUoM Inventory Subscribers (OnAfterInsertReceiptLine).
+/// Extiende la tabla Purch. Rcpt. Line con campos de Unidad de Medida Dual.
+/// Estos campos capturan DUoM Second Qty y DUoM Ratio desde la
+/// Purchase Line de origen en el momento del registro. Los valores son inmutables tras el registro.
+/// La propagación la realiza DUoM Inventory Subscribers (OnAfterInsertReceiptLine).
 /// </summary>
 tableextension 50114 "DUoM Purch. Rcpt. Line Ext" extends "Purch. Rcpt. Line"
 {

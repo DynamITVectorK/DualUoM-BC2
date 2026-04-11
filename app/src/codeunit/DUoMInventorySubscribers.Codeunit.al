@@ -79,6 +79,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnAfterInsertReceiptLine', '', false, false)]
     local procedure OnAfterInsertReceiptLine(var PurchRcptLine: Record "Purch. Rcpt. Line"; PurchLine: Record "Purchase Line")
     begin
+        if (PurchLine."DUoM Second Qty" = 0) and (PurchLine."DUoM Ratio" = 0) then
+            exit;
         PurchRcptLine."DUoM Second Qty" := PurchLine."DUoM Second Qty";
         PurchRcptLine."DUoM Ratio" := PurchLine."DUoM Ratio";
         PurchRcptLine.Modify(false);
@@ -92,6 +94,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnAfterInsertShipmentLine', '', false, false)]
     local procedure OnAfterInsertShipmentLine(var SalesShipmentLine: Record "Sales Shipment Line"; SalesLine: Record "Sales Line")
     begin
+        if (SalesLine."DUoM Second Qty" = 0) and (SalesLine."DUoM Ratio" = 0) then
+            exit;
         SalesShipmentLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         SalesShipmentLine."DUoM Ratio" := SalesLine."DUoM Ratio";
         SalesShipmentLine.Modify(false);

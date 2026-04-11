@@ -1,8 +1,8 @@
 /// <summary>
-/// Extends the Sales Shipment Line table with Dual Unit of Measure fields.
-/// These fields capture the DUoM Second Qty and Ratio from the originating
-/// Sales Line at the time of posting. Values are immutable after posting.
-/// Propagation is performed by DUoM Inventory Subscribers (OnAfterInsertShipmentLine).
+/// Amplía la tabla Sales Shipment Line con campos de Dual Unit of Measure.
+/// Estos campos capturan DUoM Second Qty y Ratio desde la
+/// Sales Line de origen en el momento del registro. Los valores son inmutables tras el registro.
+/// La propagación la realiza DUoM Inventory Subscribers (OnAfterInsertShipmentLine).
 /// </summary>
 tableextension 50115 "DUoM Sales Shipment Line Ext" extends "Sales Shipment Line"
 {

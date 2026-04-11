@@ -1,8 +1,8 @@
 /// <summary>
-/// Extends the Posted Purchase Receipt Subform page to display the Dual Unit of Measure
-/// fields (DUoM Second Qty and DUoM Ratio) on each posted receipt line.
-/// Both fields are read-only — posted documents are immutable.
-/// DUoM Second Qty shows the second unit of measure code as the column caption when available.
+/// Extiende la página Posted Purchase Receipt Subform para mostrar los campos de Dual Unit of Measure
+/// (DUoM Second Qty y DUoM Ratio) en cada línea de recepción registrada.
+/// Ambos campos son de solo lectura; los documentos registrados son inmutables.
+/// DUoM Second Qty muestra el código de la segunda unidad de medida como caption de la columna cuando está disponible.
 /// </summary>
 pageextension 50104 "DUoM Posted Purch. Rcpt. Subform" extends "Posted Purchase Receipt Subform"
 {
