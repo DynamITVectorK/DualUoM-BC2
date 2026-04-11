@@ -50,24 +50,32 @@ already covers the need:
 
 ### Table Extensions
 
-| Object | ID | Extended Table | Purpose |
+| Objeto | ID | Tabla extendida | Propósito |
 |---|---|---|---|
-| `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Second qty and ratio fields |
-| `DUoM Sales Line Ext` | 50111 | `Sales Line` | Second qty and ratio fields |
-| `DUoM Item Journal Line Ext` | 50112 | `Item Journal Line` | Second qty and ratio fields |
-| `DUoM Item Ledger Entry Ext` | 50113 | `Item Ledger Entry` | Second qty and ratio (posted, immutable) |
+| `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Campos Second Qty y Ratio |
+| `DUoM Sales Line Ext` | 50111 | `Sales Line` | Campos Second Qty y Ratio |
+| `DUoM Item Journal Line Ext` | 50112 | `Item Journal Line` | Campos Second Qty y Ratio |
+| `DUoM Item Ledger Entry Ext` | 50113 | `Item Ledger Entry` | Second Qty y Ratio (contabilizados, inmutables) |
+| `DUoM Purch. Rcpt. Line Ext` | 50114 | `Purch. Rcpt. Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar |
+| `DUoM Sales Shipment Line Ext` | 50115 | `Sales Shipment Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar |
 
-_Exact object IDs are assigned at implementation time within the 50100–50199 range._
+### Page Extensions
+
+| Objeto | ID | Página extendida | Propósito |
+|---|---|---|---|
+| `DUoM Purchase Order Subform` | 50101 | `Purchase Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de compra |
+| `DUoM Sales Order Subform` | 50102 | `Sales Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de venta |
+| `DUoM Posted Purch. Rcpt. Subform` | 50104 | `Posted Purchase Receipt Subform` | Muestra Second Qty y Ratio en líneas de recepción registrada (solo lectura) |
+| `DUoM Posted Sales Ship. Subform` | 50105 | `Posted Sales Shipment Subform` | Muestra Second Qty y Ratio en líneas de envío registrado (solo lectura) |
 
 ### Codeunits
 
-| Object | ID | Purpose |
+| Objeto | ID | Propósito |
 |---|---|---|
-| `DualUoM Pipeline Check` | 50100 | Build pipeline validation (temporary) |
-| `DUoM Calc Engine` | 50101 | Core second-quantity computation and validation |
-| `DUoM Purchase Subscribers` | 50102 | Event subscribers for purchase flow |
-| `DUoM Sales Subscribers` | 50103 | Event subscribers for sales flow |
-| `DUoM Inventory Subscribers` | 50104 | Event subscribers for item journal / ILE flow |
+| `DUoM Calc Engine` | 50101 | Cálculo y validación de la segunda cantidad |
+| `DUoM Purchase Subscribers` | 50102 | Subscribers de eventos del flujo de compras |
+| `DUoM Sales Subscribers` | 50103 | Subscribers de eventos del flujo de ventas |
+| `DUoM Inventory Subscribers` | 50104 | Subscribers para diario de productos / ILE / líneas de documentos registrados |
 
 ---
 
