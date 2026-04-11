@@ -72,6 +72,32 @@ codeunit 50104 "DUoM Inventory Subscribers"
     end;
 
     /// <summary>
+    /// During Purchase posting, copies DUoM fields from the Purchase Line to the
+    /// Purch. Rcpt. Line so that the posted receipt document contains the original
+    /// DUoM data alongside the standard quantity.
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnAfterInsertReceiptLine', '', false, false)]
+    local procedure OnAfterInsertReceiptLine(var PurchRcptLine: Record "Purch. Rcpt. Line"; PurchLine: Record "Purchase Line")
+    begin
+        PurchRcptLine."DUoM Second Qty" := PurchLine."DUoM Second Qty";
+        PurchRcptLine."DUoM Ratio" := PurchLine."DUoM Ratio";
+        PurchRcptLine.Modify(false);
+    end;
+
+    /// <summary>
+    /// During Sales posting, copies DUoM fields from the Sales Line to the
+    /// Sales Shipment Line so that the posted shipment document contains the original
+    /// DUoM data alongside the standard quantity.
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnAfterInsertShipmentLine', '', false, false)]
+    local procedure OnAfterInsertShipmentLine(var SalesShipmentLine: Record "Sales Shipment Line"; SalesLine: Record "Sales Line")
+    begin
+        SalesShipmentLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
+        SalesShipmentLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        SalesShipmentLine.Modify(false);
+    end;
+
+    /// <summary>
     /// Initialises DUoM fields on the new Item Ledger Entry from the Item Journal Line
     /// before the ILE is inserted — no Modify() call is needed.
     /// Covers both Purchase/Sales posting paths (fields propagated via

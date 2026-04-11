@@ -339,6 +339,82 @@
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════
+             TableExtension 1207475111  DUoM Purch. Rcpt. Line Ext
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 1207475111 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="translated">Cdad. dual 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Rcpt. Line Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 1207475111 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="translated">Ratio UdM dual</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Rcpt. Line Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             TableExtension 1465029608  DUoM Sales Shipment Line Ext
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 1465029608 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="translated">Cdad. dual 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Shipment Line Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 1465029608 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="translated">Ratio UdM dual</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Shipment Line Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 628704875  DUoM Posted Purch. Rcpt. Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 628704875 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this posted receipt line in the second unit of measure.</source>
+          <target state="translated">Especifica la cantidad secundaria de esta línea de recepción contabilizada en la segunda unidad de medida.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Posted Purchase Receipt Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Purch. Rcpt. Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 628704875 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio used for this posted receipt line.</source>
+          <target state="translated">Especifica la relación de conversión utilizada en esta línea de recepción contabilizada.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Posted Purchase Receipt Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Purch. Rcpt. Subform - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 628704875 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="translated">Cdad. dual 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Purch. Rcpt. Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
+             PageExtension 1106707672  DUoM Posted Sales Ship. Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 1106707672 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this posted shipment line in the second unit of measure.</source>
+          <target state="translated">Especifica la cantidad secundaria de esta línea de envío contabilizada en la segunda unidad de medida.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Posted Sales Shipment Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Sales Ship. Subform - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 1106707672 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio used for this posted shipment line.</source>
+          <target state="translated">Especifica la relación de conversión utilizada en esta línea de envío contabilizada.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Posted Sales Shipment Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Sales Ship. Subform - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 1106707672 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="translated">Cdad. dual 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Sales Ship. Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
              PermissionSet 2890406569  DUoM - All
              ═══════════════════════════════════════════ -->
         <trans-unit id="PermissionSet 2890406569 - Property 2879900210" translate="yes" xml:space="preserve">
