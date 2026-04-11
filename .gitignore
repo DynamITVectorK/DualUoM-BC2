@@ -19,3 +19,5 @@ rad.json
 .snapshots/
 cache_*
 ~$*
+node_modules/
+package-lock.json
