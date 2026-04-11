@@ -79,31 +79,47 @@ Integration tests: verify ILE fields exist and can hold DUoM data.
 
 **Deliverables:** `DUoMItemJournalLine.TableExt.al` (50112), `DUoMInventoryTests.Codeunit.al` (50207)
 
+### Issue 9 — Campos DUoM en líneas de documentos registrados + tests E2E Phase 1 ✅ IMPLEMENTADO
+
+Añadir campos `DUoM Second Qty` y `DUoM Ratio` a las tablas `Purch. Rcpt. Line` y
+`Sales Shipment Line` mediante nuevas table extensions. Suscribirse a los eventos
+`OnAfterInsertReceiptLine` y `OnAfterInsertShipmentLine` para propagar los valores desde
+las líneas de pedido origen. Ampliar las páginas de subformulario de recepción y envío
+registrados para mostrar los campos (solo lectura). Añadir tests de integración E2E que
+cubran el ciclo completo de contabilización (compra, venta, diario de productos) y
+verifiquen la propagación hasta ILE.
+
+**Deliverables:**
+- `DUoMPurchRcptLine.TableExt.al` (50114), `DUoMSalesShipmentLine.TableExt.al` (50115)
+- Subscribers en `DUoMInventorySubscribers.Codeunit.al` (50104): `OnAfterInsertReceiptLine`, `OnAfterInsertShipmentLine`
+- `DUoMPostedPurchRcptSubform.PageExt.al` (50104), `DUoMPostedSalesShipSubform.PageExt.al` (50105)
+- `DUoMILEIntegrationTests.Codeunit.al` (50209) — 6 tests E2E
+
 ---
 
 ## Phase 2
 
-### Issue 9 — Lot-Specific Real Ratio
+### Issue 10 — Lot-Specific Real Ratio
 
 Store the actual ratio per lot on Item Tracking Lines.
 Pre-fill the DUoM Ratio on document lines when a lot is selected.
 Tests: assign a lot, verify ratio pre-fill.
 
-### Issue 10 — Warehouse Receipt and Shipment DUoM Fields
+### Issue 11 — Warehouse Receipt and Shipment DUoM Fields
 
 Extend Warehouse Receipt Line and Warehouse Shipment Line.
 Propagate to Warehouse Entry and ILE at posting.
 
-### Issue 11 — Directed Put-Away and Pick DUoM Fields
+### Issue 12 — Directed Put-Away and Pick DUoM Fields
 
 Extend Warehouse Activity Line for directed warehouse.
 Show second qty on put-away and pick documents.
 
-### Issue 12 — Physical Inventory DUoM
+### Issue 13 — Physical Inventory DUoM
 
 Extend physical inventory journal to support second qty counting.
 
-### Issue 13 — Reporting Extensions
+### Issue 14 — Reporting Extensions
 
 Add second qty columns to key standard reports (purchase receipt, sales shipment,
 inventory valuation) using report extensions.
@@ -112,8 +128,8 @@ inventory valuation) using report extensions.
 
 ## Phase 3 / Later
 
-- Transfer order DUoM support (Issue 14+)
-- Return order DUoM support (Issue 15+)
+- Transfer order DUoM support (Issue 15+)
+- Return order DUoM support (Issue 16+)
 - Assembly order DUoM support (if ever in scope)
 
 ---
@@ -127,6 +143,9 @@ inventory valuation) using report extensions.
 - El Calc Engine usa ID 50101; los tests del Calc Engine usan ID 50204.
   Los IDs 50201–50203 están ya usados por `DUoM Item Setup Tests`,
   `DUoM Item Card Opening Tests` y `DUoM Item Delete Tests`.
-- **Localización Phase 1 (Issues 2–8):** ✅ Todos los trans-units de los nuevos objetos
-  (Codeunit 50101, PageExtensions 50101/50102) están en ambos XLF con IDs verificados
-  mediante `LanguageFileUtilities.GetNameHash` del compilador AL (runtime 15).
+- **Localización Phase 1 (Issues 2–9):** ✅ Todos los trans-units de los nuevos objetos
+  (Codeunit 50101, PageExtensions 50101/50102/50104/50105, TableExtensions 50114/50115)
+  están en ambos XLF con IDs verificados mediante `LanguageFileUtilities.GetNameHash`
+  del compilador AL (runtime 15).
+- Los IDs de test codeunit usados en Phase 1: 50201–50208 (codeunits de test unitarios
+  e integración) y 50209 (`DUoM ILE Integration Tests`, tests E2E de contabilización).
