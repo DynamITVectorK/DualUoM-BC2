@@ -155,7 +155,8 @@ codeunit 50202 "DUoM Item Card Opening Tests"
 ## AL Test Data Creation — Mandatory Standard
 
 Never use manual `Init()` + `Insert(false)` to create test records.
-Always use Microsoft's standard AL test libraries:
+Always use Microsoft's standard AL test libraries (from the `Tests-TestLibraries` app,
+ID `5d86850b-0d76-4eca-bd7b-951ad998e997`):
 
 | Entity            | Library call                                      |
 |-------------------|---------------------------------------------------|

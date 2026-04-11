@@ -136,4 +136,47 @@ codeunit 50207 "DUoM Inventory Tests"
         DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
+
+    // -------------------------------------------------------------------------
+    // OnValidate DUoM Ratio on Item Journal Line → recomputes DUoM Second Qty
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure ItemJournalLine_ValidateDUoMRatio_RecomputesSecondQty()
+    var
+        Item: Record Item;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] An item with DUoM setup: Fixed mode, ratio 2
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 2);
+
+        // [GIVEN] An Item Journal Line; Quantity validated to 5 → SecondQty = 10
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine,
+            ItemJnlBatch."Journal Template Name",
+            ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase,
+            Item."No.",
+            0);
+        ItemJnlLine.Validate(Quantity, 5);
+
+        // [WHEN] DUoM Ratio is validated to 3 (new per-line ratio)
+        ItemJnlLine.Validate("DUoM Ratio", 3);
+
+        // [THEN] DUoM Second Qty = 5 × 3 = 15 (recomputed with the new ratio)
+        LibraryAssert.AreEqual(15, ItemJnlLine."DUoM Second Qty", 'OnValidate DUoM Ratio must recompute DUoM Second Qty with the new ratio on Item Journal Line');
+
+        // Cleanup
+        ItemJnlLine.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
+        Item.Delete(false);
+    end;
 }
