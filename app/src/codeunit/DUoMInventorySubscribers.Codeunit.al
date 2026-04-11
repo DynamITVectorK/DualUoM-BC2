@@ -53,10 +53,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// can transfer them to the ILE without needing a Modify() call.
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
-    local procedure OnPurchPostCopyDocFieldsToItemJnlLine(var ItemJnlLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
+    local procedure OnPurchPostCopyDocFieldsToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
     begin
-        ItemJnlLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
-        ItemJnlLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+        ItemJournalLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
+        ItemJournalLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
     end;
 
     /// <summary>
@@ -65,10 +65,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// can transfer them to the ILE without needing a Modify() call.
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
-    local procedure OnSalesPostCopyDocFieldsToItemJnlLine(var ItemJnlLine: Record "Item Journal Line"; SalesLine: Record "Sales Line")
+    local procedure OnSalesPostCopyDocFieldsToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; SalesLine: Record "Sales Line")
     begin
-        ItemJnlLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
-        ItemJnlLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        ItemJournalLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
+        ItemJournalLine."DUoM Ratio" := SalesLine."DUoM Ratio";
     end;
 
     /// <summary>
