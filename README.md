@@ -21,6 +21,7 @@ and tracked — even when the ratio varies by lot.
 
 | Document | Description |
 |---|---|
+| [Manual de Usuario](docs/manual-usuario.md) | Guía completa para usuarios de negocio: Compras, Ventas, Inventario y Almacén |
 | [Vision](docs/00-vision.md) | Project objective, business need, target modules |
 | [Scope & MVP](docs/01-scope-mvp.md) | What is in MVP, Phase 2, and out of scope |
 | [Functional Design](docs/02-functional-design.md) | Item setup, conversion modes, propagation |
