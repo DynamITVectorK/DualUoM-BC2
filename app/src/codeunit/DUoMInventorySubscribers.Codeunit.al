@@ -2,6 +2,19 @@
 /// Event subscribers for the Inventory flow (Item Journal and Item Ledger Entry)
 /// in Dual Unit of Measure.
 ///
+/// Propagation strategy for posted document lines (BC 27 / runtime 15):
+///   - Purchase Line → Purch. Rcpt. Line:
+///     Subscriber to OnAfterInitFromPurchLine on Table "Purch. Rcpt. Line".
+///     This is the standard initialization event called by Purch.-Post when building
+///     the posted receipt line from the source purchase line. Signature verified against
+///     microsoft/bc-w1 PurchRcptLine.Table.al.
+///   - Sales Line → Sales Shipment Line:
+///     Subscriber to OnAfterInitFromSalesLine on Table "Sales Shipment Line".
+///     This is the standard initialization event called by Sales-Post when building
+///     the posted shipment line from the source sales line. Signature verified against
+///     microsoft/bc-w1 SalesShipmentLine.Table.al.
+///   The actual field-copy logic is centralized in DUoM Doc Transfer Helper (50105).
+///
 /// Propagation strategy for ILE:
 ///   DUoM fields are populated on the Item Journal Line upstream:
 ///   - For Purchase posting: OnPostItemJnlLineOnAfterCopyDocumentFields (Purch.-Post)
@@ -72,33 +85,33 @@ codeunit 50104 "DUoM Inventory Subscribers"
     end;
 
     /// <summary>
-    /// During Purchase posting, copies DUoM fields from the Purchase Line to the
-    /// Purch. Rcpt. Line BEFORE the record is inserted, so that no Modify() call
-    /// is needed — preventing the "Missing Modify permission on Table 121" error in
-    /// BC SaaS when the user only has the DUoM permission set assigned.
+    /// Durante la contabilización de compra, copia los campos DUoM desde la Purchase Line
+    /// a la Purch. Rcpt. Line en el momento de la inicialización del registro de destino.
+    /// Evento: OnAfterInitFromPurchLine en la tabla "Purch. Rcpt. Line" (BC 27 / runtime 15).
+    /// Firma verificada en microsoft/bc-w1: PurchRcptLine.Table.al, procedure InitFromPurchLine.
+    /// La lógica de copia está centralizada en DUoM Doc Transfer Helper (50105).
     /// </summary>
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforePurchRcptLineInsert', '', false, false)]
-    local procedure OnBeforeInsertReceiptLine(var PurchRcptLine: Record "Purch. Rcpt. Line"; PurchaseLine: Record "Purchase Line")
+    [EventSubscriber(ObjectType::Table, Database::"Purch. Rcpt. Line", 'OnAfterInitFromPurchLine', '', false, false)]
+    local procedure OnAfterInitFromPurchLine(PurchRcptHeader: Record "Purch. Rcpt. Header"; PurchLine: Record "Purchase Line"; var PurchRcptLine: Record "Purch. Rcpt. Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
     begin
-        if (PurchaseLine."DUoM Second Qty" = 0) and (PurchaseLine."DUoM Ratio" = 0) then
-            exit;
-        PurchRcptLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
-        PurchRcptLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+        DUoMDocTransferHelper.CopyFromPurchLineToPurchRcptLine(PurchLine, PurchRcptLine);
     end;
 
     /// <summary>
-    /// During Sales posting, copies DUoM fields from the Sales Line to the
-    /// Sales Shipment Line BEFORE the record is inserted, so that no Modify() call
-    /// is needed — preventing the same permission error that Table 121 triggers
-    /// on the purchase path.
+    /// Durante la contabilización de venta, copia los campos DUoM desde la Sales Line
+    /// a la Sales Shipment Line en el momento de la inicialización del registro de destino.
+    /// Evento: OnAfterInitFromSalesLine en la tabla "Sales Shipment Line" (BC 27 / runtime 15).
+    /// Firma verificada en microsoft/bc-w1: SalesShipmentLine.Table.al, procedure InitFromSalesLine.
+    /// La lógica de copia está centralizada en DUoM Doc Transfer Helper (50105).
     /// </summary>
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnBeforeInsertShipmentLine', '', false, false)]
-    local procedure OnBeforeInsertShipmentLine(var SalesShptLine: Record "Sales Shipment Line"; SalesLine: Record "Sales Line")
+    [EventSubscriber(ObjectType::Table, Database::"Sales Shipment Line", 'OnAfterInitFromSalesLine', '', false, false)]
+    local procedure OnAfterInitFromSalesLine(SalesShptHeader: Record "Sales Shipment Header"; SalesLine: Record "Sales Line"; var SalesShptLine: Record "Sales Shipment Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
     begin
-        if (SalesLine."DUoM Second Qty" = 0) and (SalesLine."DUoM Ratio" = 0) then
-            exit;
-        SalesShptLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
-        SalesShptLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        DUoMDocTransferHelper.CopyFromSalesLineToShipLine(SalesLine, SalesShptLine);
     end;
 
     /// <summary>

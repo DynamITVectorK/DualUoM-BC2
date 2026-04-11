@@ -115,6 +115,46 @@ que el evento y todos sus parámetros existen en la versión BC 27 (runtime 15) 
 Los eventos de BC cambian entre versiones (renombrados, parámetros modificados, eliminados).
 Un suscriptor que apunta a un evento inexistente provoca AL0280 o AL0282 y rompe el build.
 
+### Eventos InitFrom* para propagación a líneas de documentos contabilizados
+
+Para copiar campos de extensión desde una línea de documento origen a una línea de documento
+contabilizado, usar siempre los eventos de inicialización estándar de la **tabla destino**
+en lugar de eventos de inserción en el codeunit de contabilización. Estos eventos son más
+estables, tienen la línea origen disponible como parámetro y su firma es menos propensa a
+cambiar entre versiones de BC.
+
+| Flujo de propagación | Tabla publicadora | Nombre del evento |
+|---------------------|------------------|-------------------|
+| `Purchase Line` → `Purch. Rcpt. Line` | `"Purch. Rcpt. Line"` (Table) | `OnAfterInitFromPurchLine` |
+| `Sales Line` → `Sales Shipment Line` | `"Sales Shipment Line"` (Table) | `OnAfterInitFromSalesLine` |
+
+**Firma confirmada (BC 27 / runtime 15):**
+
+```al
+// Purchase
+[EventSubscriber(ObjectType::Table, Database::"Purch. Rcpt. Line", 'OnAfterInitFromPurchLine', '', false, false)]
+local procedure OnAfterInitFromPurchLine(PurchRcptHeader: Record "Purch. Rcpt. Header"; PurchLine: Record "Purchase Line"; var PurchRcptLine: Record "Purch. Rcpt. Line")
+
+// Sales
+[EventSubscriber(ObjectType::Table, Database::"Sales Shipment Line", 'OnAfterInitFromSalesLine', '', false, false)]
+local procedure OnAfterInitFromSalesLine(SalesShptHeader: Record "Sales Shipment Header"; SalesLine: Record "Sales Line"; var SalesShptLine: Record "Sales Shipment Line")
+```
+
+**No usar** eventos de inserción en `Codeunit::"Purch.-Post"` o `Codeunit::"Sales-Post"` como
+`OnBeforePurchRcptLineInsert` o `OnBeforeInsertShipmentLine` — estos eventos **no existen en BC 27**
+y causan errores AL0280/AL0282.
+
+### Suscriptores delgados + helpers de transferencia centralizados
+
+Los procedimientos suscriptores deben ser delgados: solo validar y delegar.
+La lógica de copia de campos DUoM vive en `DUoM Doc Transfer Helper` (codeunit 50105).
+
+Todo nuevo suscriptor debe incluir un comentario con:
+- Objeto publicador (tabla o codeunit)
+- Nombre del evento
+- Por qué se eligió ese evento
+- Confirmación de que la firma fue validada en los símbolos BC 27
+
 ### Verificación de páginas estándar en `pageextension`
 
 **Antes de crear un `pageextension`** que extienda una página estándar de Microsoft,
@@ -154,6 +194,11 @@ Un issue/PR se considera **terminado** solo cuando se cumple **todo** lo siguien
       (nombre de evento y parámetros correctos).
 - [ ] Todos los `pageextension` han sido verificados contra el Symbol Reference de BC 27
       (nombre exacto de la página objetivo).
+- [ ] Para propagar campos a líneas de documentos contabilizados, se usan eventos `InitFrom*`
+      en la **tabla destino** (no eventos de inserción en el codeunit de contabilización).
+- [ ] Los suscriptores son delgados: delegan la lógica de copia a `DUoM Doc Transfer Helper` (50105).
+- [ ] Todo nuevo suscriptor incluye comentario con: publicador, nombre evento, justificación y
+      confirmación de firma contra BC 27 symbols.
 
 ---
 
