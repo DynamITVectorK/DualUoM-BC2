@@ -15,6 +15,7 @@ pageextension 50103 "DUoM Item Journal Ext" extends "Item Journal"
             field("DUoM Second Qty"; Rec."DUoM Second Qty")
             {
                 ApplicationArea = All;
+                CaptionClass = DUoMSecondQtyCaption;
                 Editable = IsDUoMSecondQtyEditable;
                 ToolTip = 'Specifies the secondary quantity for this journal line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode.', Comment = 'ToolTip for DUoM Second Qty field on Item Journal; no placeholders.';
             }
@@ -31,13 +32,19 @@ pageextension 50103 "DUoM Item Journal Ext" extends "Item Journal"
         DUoMItemSetup: Record "DUoM Item Setup";
     begin
         IsDUoMSecondQtyEditable := false;
+        DUoMSecondQtyCaption := '3,' + DUoMSecondQtyDefaultLbl;
         if Rec."Item No." <> '' then
             if DUoMItemSetup.Get(Rec."Item No.") then
-                if DUoMItemSetup."Dual UoM Enabled" then
+                if DUoMItemSetup."Dual UoM Enabled" then begin
                     IsDUoMSecondQtyEditable :=
                         DUoMItemSetup."Conversion Mode" = DUoMItemSetup."Conversion Mode"::AlwaysVariable;
+                    if DUoMItemSetup."Second UoM Code" <> '' then
+                        DUoMSecondQtyCaption := '3,' + DUoMItemSetup."Second UoM Code";
+                end;
     end;
 
     var
         IsDUoMSecondQtyEditable: Boolean;
+        DUoMSecondQtyCaption: Text[30];
+        DUoMSecondQtyDefaultLbl: Label 'DUoM Second Qty', Comment = 'Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.';
 }

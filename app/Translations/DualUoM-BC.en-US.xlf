@@ -287,6 +287,12 @@
           <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Purchase Order Subform; no placeholders.</note>
           <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - Control DUoM Ratio - Property ToolTip</note>
         </trans-unit>
+        <trans-unit id="PageExtension 1390132160 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
 
         <!-- ═══════════════════════════════════════════
              PageExtension 2666451105  DUoM Sales Order Subform
@@ -303,6 +309,12 @@
           <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Sales Order Subform; no placeholders.</note>
           <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Sales Order Subform - Control DUoM Ratio - Property ToolTip</note>
         </trans-unit>
+        <trans-unit id="PageExtension 2666451105 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Sales Order Subform - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
 
         <!-- ═══════════════════════════════════════════
              PageExtension 60106018  DUoM Item Journal Ext
@@ -318,6 +330,12 @@
           <target state="final">Specifies the conversion ratio for this journal line. Overrides the item default when the item uses Variable conversion mode.</target>
           <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Item Journal; no placeholders.</note>
           <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Journal Ext - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 60106018 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Journal Ext - NamedType DUoMSecondQtyDefaultLbl</note>
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════
