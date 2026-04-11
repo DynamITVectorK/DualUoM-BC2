@@ -1,151 +1,318 @@
 # Backlog — DualUoM-BC
 
-This is the proposed ordered backlog for controlled, incremental delivery.
-Each item is scoped to be implementable in a single focused issue by GitHub Copilot.
+Backlog ordenado para la entrega incremental y controlada del proyecto.
+Cada issue está delimitado para poder ser implementado en un único issue enfocado por
+GitHub Copilot Coding Agent.
+
+> **Estado actualizado:** 2026-04-11 — sincronizado con el estado real de los objetos
+> implementados en el repositorio.
 
 ---
 
-## Phase 1 — MVP
+## Phase 1 — MVP ✅ COMPLETADA
 
-### Issue 1 — Project Governance Baseline *(this issue)*
+### Issue 1 — Project Governance Baseline ✅ IMPLEMENTADO
 
-Create documentation baseline: vision, scope, functional design, architecture, testing
-strategy, backlog. Update README and copilot-instructions.
+Creación de la base documental del proyecto: visión, alcance, diseño funcional,
+arquitectura, estrategia de testing y backlog. Actualización del README y las
+copilot-instructions.
 
 ### Issue 2 — DUoM Calculation Engine ✅ IMPLEMENTADO
 
-Create `DUoM Calc Engine` codeunit (ID 50101) with:
-- `ComputeSecondQty(FirstQty, Ratio, Mode)` function
-- Input validation (qty must be non-negative, ratio must be positive for Fixed/Variable)
-- Unit tests covering Fixed, Variable, Always-Variable modes and edge cases (zero qty, rounding)
+Codeunit `DUoM Calc Engine` (ID 50101):
+- `ComputeSecondQty(FirstQty, Ratio, Mode)` con validación de entrada
+- Tests unitarios para modos Fixed, Variable, AlwaysVariable y casos límite
 
 **Deliverables:** `DUoMCalcEngine.Codeunit.al` (50101), `DUoMCalcEngineTests.Codeunit.al` (50204)
 Codeunit temporal `DualUoM Pipeline Check` (50100) y su test (50200) eliminados.
 
-### Issue 3 — Item DUoM Setup Table and Page
+### Issue 3 — Item DUoM Setup Table and Page ✅ IMPLEMENTADO
 
-Create `DUoM Item Setup` table (ID 50100) linked to `Item`:
-- Fields: `Item No.`, `Dual UoM Enabled`, `Second UoM Code`, `Conversion Mode` (enum),
-  `Fixed Ratio`
-- Create setup page (ID 50100)
-- Create page extension on Item Card to open the setup page
-- Unit tests for setup validation rules
+Tabla `DUoM Item Setup` (ID 50100) vinculada a `Item` con campos:
+`Item No.`, `Dual UoM Enabled`, `Second UoM Code`, `Conversion Mode` (enum 50100),
+`Fixed Ratio`.
+Diseño adoptado: **tabla/página de setup separada** (Opción B). La tabla `Item` base
+no se extiende con campos de configuración DUoM; en su lugar, `Item.TableExt.al`
+(tableextension 50100) únicamente añade un trigger `OnDelete` para borrar en cascada
+el registro `DUoM Item Setup` huérfano. Esta decisión se mantiene como referencia para
+issues futuros (almacén, lotes).
 
-**Deliverables:** `DUoMItemSetup.Table.al`, `DUoMConversionMode.Enum.al`,
-`DUoMItemSetup.Page.al`, `ItemCard.PageExt.al`, `DUoMItemSetupTests.Codeunit.al`
+**Deliverables:**
+- `DUoMConversionMode.Enum.al` (enum 50100)
+- `DUoMItemSetup.Table.al` (table 50100) con `GetOrCreate()` y `ValidateSetup()`
+- `DUoMItemSetup.Page.al` (page 50100) — tarjeta de configuración por artículo
+- `DUoMItemCardExt.PageExt.al` (pageextension 50103) — acción en Item Card
+- `Item.TableExt.al` (tableextension 50100) — cascade delete
+- Tests: `DUoMItemSetupTests.Codeunit.al` (50201), `DUoMItemCardOpeningTests.Codeunit.al` (50202),
+  `DUoMItemDeleteTests.Codeunit.al` (50203)
 
 ### Issue 4 — Purchase Line DUoM Fields ✅ IMPLEMENTADO
 
-Extend `Purchase Line` with `DUoM Second Qty` and `DUoM Ratio` fields (table extension).
-Extend Purchase Order Line subpage to show the fields.
-Wire `OnAfterValidate` on `Quantity` to call the Calc Engine for auto-derivation.
-Integration tests: create a purchase order line, verify second qty is computed.
+Extensión de `Purchase Line` con campos `DUoM Second Qty` y `DUoM Ratio`.
+Extensión del subformulario de pedido de compra para mostrar los campos.
+Suscriptor `OnAfterValidateEvent` en `Quantity` de `Purchase Line` llama al Calc Engine.
 
 **Deliverables:** `DUoMPurchaseLine.TableExt.al` (50110), `DUoMPurchaseOrderSubform.PageExt.al` (50101),
 `DUoMPurchaseSubscribers.Codeunit.al` (50102), `DUoMPurchaseTests.Codeunit.al` (50205)
 
 ### Issue 5 — Purchase Posting — ILE Second Qty ✅ IMPLEMENTADO
 
-Subscribe to purchase receipt posting events to propagate `DUoM Second Qty` and
-`DUoM Ratio` from `Purchase Line` to `Item Ledger Entry` (table extension on ILE).
-Propagation via `OnAfterInsertItemLedgEntry` en Codeunit 22, trazando desde ILE
-a través de `Purch. Rcpt. Line` hasta la `Purchase Line` original.
+Propagación de campos DUoM desde `Purchase Line` hasta `Item Ledger Entry`.
+Estrategia de propagación real (BC 27 / runtime 15):
 
-**Deliverables:** `DUoMItemLedgerEntry.TableExt.al` (50113), `DUoMInventorySubscribers.Codeunit.al` (50104)
+1. `OnPostItemJnlLineOnAfterCopyDocumentFields` (Codeunit `Purch.-Post`) copia los
+   campos DUoM de `Purchase Line` al `Item Journal Line` antes de contabilizar.
+2. `OnAfterInitItemLedgEntry` (Codeunit `Item Jnl.-Post Line`) copia los campos DUoM
+   del `Item Journal Line` al nuevo ILE antes del `Insert()` — sin necesidad de `Modify()`.
+
+**Nota:** NO se usa `OnAfterInsertItemLedgEntry` ni se traza desde ILE hacia atrás.
+La propagación es hacia adelante, antes del Insert, lo que evita problemas de permisos
+Modify sobre tablas base en SaaS.
+
+**Deliverables:** `DUoMItemLedgerEntry.TableExt.al` (50113), incluido en
+`DUoMInventorySubscribers.Codeunit.al` (50104)
 
 ### Issue 6 — Sales Line DUoM Fields ✅ IMPLEMENTADO
 
-Extend `Sales Line` with `DUoM Second Qty` and `DUoM Ratio` fields.
-Extend Sales Order Line subpage to show the fields.
-Wire `OnAfterValidate` on `Quantity`.
-Integration tests.
+Extensión de `Sales Line` con campos `DUoM Second Qty` y `DUoM Ratio`.
+Extensión del subformulario de pedido de venta para mostrar los campos.
+Suscriptor `OnAfterValidateEvent` en `Quantity` de `Sales Line` llama al Calc Engine.
 
 **Deliverables:** `DUoMSalesLine.TableExt.al` (50111), `DUoMSalesOrderSubform.PageExt.al` (50102),
 `DUoMSalesSubscribers.Codeunit.al` (50103), `DUoMSalesTests.Codeunit.al` (50206)
 
 ### Issue 7 — Sales Posting — ILE Second Qty ✅ IMPLEMENTADO
 
-Subscribe to sales shipment posting events to propagate DUoM fields to ILE.
-Propagación via `OnAfterInsertItemLedgEntry` trazando a través de `Sales Shipment Line`
-hasta la `Sales Line` original (implementado en `DUoMInventorySubscribers`).
+Propagación de campos DUoM desde `Sales Line` hasta `Item Ledger Entry`.
+Misma estrategia que Issue 5 (propagación hacia adelante):
+
+1. `OnPostItemJnlLineOnAfterCopyDocumentFields` (Codeunit `Sales-Post`) copia DUoM
+   de `Sales Line` al `Item Journal Line`.
+2. `OnAfterInitItemLedgEntry` (Codeunit `Item Jnl.-Post Line`) copia al ILE.
 
 **Deliverables:** incluido en `DUoMInventorySubscribers.Codeunit.al` (50104)
 
 ### Issue 8 — Item Journal DUoM Fields and Posting ✅ IMPLEMENTADO
 
-Extend `Item Journal Line` with DUoM fields.
-Subscribe to item journal posting to propagate to ILE.
-Integration tests: verify ILE fields exist and can hold DUoM data.
+Extensión de `Item Journal Line` con campos DUoM.
+Suscriptor `OnAfterValidateEvent` en `Quantity` del diario para auto-calcular.
+Extensión del subformulario del diario de productos para mostrar los campos.
+`OnAfterInitItemLedgEntry` cubre también las contabilizaciones manuales por diario.
 
-**Deliverables:** `DUoMItemJournalLine.TableExt.al` (50112), `DUoMInventoryTests.Codeunit.al` (50207)
+**Deliverables:** `DUoMItemJournalLine.TableExt.al` (50112),
+`DUoMItemJournalExt.PageExt.al` (pageextension), `DUoMInventoryTests.Codeunit.al` (50207)
 
 ### Issue 9 — Campos DUoM en líneas de documentos registrados + tests E2E Phase 1 ✅ IMPLEMENTADO
 
-Añadir campos `DUoM Second Qty` y `DUoM Ratio` a las tablas `Purch. Rcpt. Line` y
-`Sales Shipment Line` mediante nuevas table extensions. Suscribirse a los eventos
-`OnAfterPurchRcptLineInsert` (Purch.-Post) y `OnAfterInsertShipmentLine` (Sales-Post) para
-propagar los valores desde las líneas de pedido origen. Ampliar las páginas de subformulario
-de recepción y envío registrados para mostrar los campos (solo lectura). Añadir tests de
-integración E2E que cubran el ciclo completo de contabilización (compra, venta, diario de
-productos) y verifiquen la propagación hasta ILE.
+Campos `DUoM Second Qty` y `DUoM Ratio` en `Purch. Rcpt. Line` y `Sales Shipment Line`
+mediante table extensions. Propagación desde las líneas de pedido origen mediante
+**eventos de inicialización de tabla** (BC 27 / runtime 15) — NO eventos de codeunit:
+
+- `OnAfterInitFromPurchLine` en **Table `"Purch. Rcpt. Line"`**: copia DUoM de
+  `Purchase Line` a `Purch. Rcpt. Line` durante la inicialización del registro de destino.
+- `OnAfterInitFromSalesLine` en **Table `"Sales Shipment Line"`**: copia DUoM de
+  `Sales Line` a `Sales Shipment Line` durante la inicialización.
+
+La lógica de copia está centralizada en `DUoM Doc Transfer Helper` (50105) — thin subscriber pattern.
+Subformularios de documentos registrados muestran los campos (solo lectura).
+Tests E2E cubren el ciclo completo: creación de pedido → contabilización → verificación en
+líneas registradas e ILE.
+
+**Nota de diseño:** Los eventos `OnBeforePurchRcptLineInsert` y `OnBeforeInsertShipmentLine`
+**no existen** en BC 27 y causarían AL0280/AL0282. Usar siempre los eventos de tabla listados.
 
 **Deliverables:**
 - `DUoMPurchRcptLine.TableExt.al` (50114), `DUoMSalesShipmentLine.TableExt.al` (50115)
-- Subscribers en `DUoMInventorySubscribers.Codeunit.al` (50104): `OnAfterPurchRcptLineInsert`, `OnAfterInsertShipmentLine`
-- `DUoMPostedPurchRcptSubform.PageExt.al` (50104) extiende `Posted Purchase Rcpt. Subform`, `DUoMPostedSalesShipSubform.PageExt.al` (50105) extiende `Posted Sales Shpt. Subform`
-- `DUoMILEIntegrationTests.Codeunit.al` (50209) — 6 tests E2E
+- `DUoMDocTransferHelper.Codeunit.al` (50105) — helper de copia de campos DUoM entre líneas
+- Subscribers en `DUoMInventorySubscribers.Codeunit.al` (50104):
+  `OnAfterInitFromPurchLine` (Table `"Purch. Rcpt. Line"`),
+  `OnAfterInitFromSalesLine` (Table `"Sales Shipment Line"`)
+- `DUoMPostedPurchRcptSubform.PageExt.al` (50104) extiende `Posted Purchase Rcpt. Subform`
+- `DUoMPostedSalesShipSubform.PageExt.al` (50105) extiende `Posted Sales Shpt. Subform`
+- `DUoMILEIntegrationTests.Codeunit.al` (50209) — tests E2E de contabilización completa
 
 ---
 
-## Phase 2
+## Phase 2 — Funcionalidad extendida
 
-### Issue 10 — Lot-Specific Real Ratio
+> **Siguiente issue recomendado:** Issue 10 — Modelo de coste/precio en doble UoM.
+> Es independiente de warehouse y lotes, por lo que puede comenzarse inmediatamente
+> una vez completada la Phase 1.
 
-Store the actual ratio per lot on Item Tracking Lines.
-Pre-fill the DUoM Ratio on document lines when a lot is selected.
-Tests: assign a lot, verify ratio pre-fill.
+### Issue 10 — Modelo de coste/precio en doble UoM
 
-### Issue 11 — Warehouse Receipt and Shipment DUoM Fields
+**Objetivo:** permitir que el precio unitario y el coste se expresen también en términos
+de la segunda unidad de medida, y que el importe de línea se calcule correctamente.
 
-Extend Warehouse Receipt Line and Warehouse Shipment Line.
-Propagate to Warehouse Entry and ILE at posting.
+Alcance:
+- Añadir campo `DUoM Unit Price` (Decimal) en la extensión de `Sales Line` para almacenar
+  el precio expresado en la segunda UoM (precio por unidad de segunda UoM).
+- Añadir campo `DUoM Unit Cost` (Decimal) en la extensión de `Purchase Line` para almacenar
+  el coste expresado en la segunda UoM.
+- Lógica de derivación: cuando el usuario introduce `DUoM Unit Price` y el ratio está fijado,
+  derivar automáticamente el `Unit Price` estándar (y viceversa).
+- Extender la extensión de `Item Ledger Entry` con `DUoM Unit Cost` para trazabilidad de coste.
+- Extender `Value Entry` (tableextension) con `DUoM Second Qty` para que las entradas de
+  valor reflejen la segunda cantidad contabilizada.
+- Tests TDD:
+  - Dado precio en segunda UoM y ratio fijo, verificar que `Unit Price` se deriva correctamente.
+  - Dado coste en segunda UoM y ratio fijo, verificar `Direct Unit Cost` derivado.
+  - Verificar que `Value Entry` recibe `DUoM Second Qty` tras contabilización.
 
-### Issue 12 — Directed Put-Away and Pick DUoM Fields
+**Dependencias:** Issues 1–9 completados.
+**Deliverables:** (IDs en rango 50116–50119 para table extensions, IDs codeunit libres en 50106+)
+Tests: nuevo codeunit `DUoM Cost Price Tests` (50210)
 
-Extend Warehouse Activity Line for directed warehouse.
-Show second qty on put-away and pick documents.
+### Issue 11 — Ratio real por lote
 
-### Issue 13 — Physical Inventory DUoM
+**Objetivo:** almacenar y recuperar el ratio de conversión real (medido al pesaje o recepción)
+asociado a un número de lote específico.
 
-Extend physical inventory journal to support second qty counting.
+Alcance:
+- Nueva tabla `DUoM Lot Ratio` (ID libre en rango 50101–50199) con campos:
+  `Item No.`, `Lot No.`, `Actual Ratio`, `Description`.
+- Página de mantenimiento de ratios por lote.
+- Suscriptor `OnAfterValidateEvent` en el campo `Lot No.` de `Purchase Line`, `Sales Line`
+  e `Item Journal Line`: si existe un ratio registrado para el lote, pre-rellena `DUoM Ratio`
+  en la línea de documento.
+- Actualización del permiso set `DUoM - All` (50100) y `DUoM - Test All` (50200).
+- Tests TDD:
+  - Dado lote con ratio registrado, asignar lote en línea de compra → verificar ratio pre-rellenado.
+  - Dado lote sin ratio, asignar lote → verificar que `DUoM Ratio` no se modifica.
+  - Verificar que el ratio de lote prevalece sobre el ratio fijo del artículo cuando el modo es Variable.
 
-### Issue 14 — Reporting Extensions
+**Dependencias:** Issues 1–9. Issue 10 recomendado antes (coste/precio usa el ratio).
+**Deliverables:** `DUoMLotRatio.Table.al`, `DUoMLotRatio.Page.al`,
+suscriptores en nuevo `DUoMLotSubscribers.Codeunit.al`,
+Tests: `DUoM Lot Ratio Tests` (ID en 50211+)
 
-Add second qty columns to key standard reports (purchase receipt, sales shipment,
-inventory valuation) using report extensions.
+### Issue 12 — Warehouse Receipt and Shipment DUoM Fields
+
+**Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
+
+Alcance:
+- Table extension en `Warehouse Receipt Line` con `DUoM Second Qty` y `DUoM Ratio`.
+- Table extension en `Warehouse Shipment Line` con los mismos campos.
+- Page extensions en los subformularios de entrada/salida de almacén para mostrar los campos.
+- Suscriptores para propagar DUoM desde `Purchase Line` / `Sales Line` al crear las líneas
+  de almacén (evento adecuado de BC 27, a verificar contra símbolos antes de implementar).
+- Propagación desde `Warehouse Receipt Line` / `Warehouse Shipment Line` hacia `ILE` al
+  contabilizar (a través del camino `Warehouse Entry` si procede, o directo a `Item Journal Line`).
+- Actualizar permission sets.
+- Tests TDD:
+  - Crear un Warehouse Receipt desde un Purchase Order con DUoM → verificar campos propagados.
+  - Contabilizar Warehouse Receipt → verificar ILE con `DUoM Second Qty`.
+  - Crear un Warehouse Shipment desde un Sales Order con DUoM → verificar campos.
+  - Contabilizar Warehouse Shipment → verificar ILE.
+
+**Dependencias:** Issues 1–9 completados. Issue 10 recomendado antes para consistencia de coste.
+**Nota:** Verificar nombres exactos de páginas BC 27 antes de crear page extensions
+(`Warehouse Receipt Subform`, `Warehouse Shipment Subform`) usando el BC Symbol Reference.
+
+### Issue 13 — Directed Put-Away and Pick DUoM Fields
+
+**Objetivo:** extender los documentos de actividad de almacén dirigido (put-away y pick)
+con campos DUoM para seguimiento de segunda cantidad en movimientos internos.
+
+Alcance:
+- Table extension en `Warehouse Activity Line` con `DUoM Second Qty` y `DUoM Ratio`.
+- Page extension en el subformulario de put-away/pick para mostrar los campos (solo lectura).
+- Propagación desde `Warehouse Receipt Line` / `Warehouse Shipment Line` al crear las
+  líneas de actividad (evento adecuado de BC 27, a verificar).
+- Tests TDD:
+  - Crear put-away desde Warehouse Receipt con DUoM → verificar campos en actividad.
+  - Crear pick desde Warehouse Shipment con DUoM → verificar campos.
+
+**Dependencias:** Issue 12 completado.
+
+### Issue 14 — Documentos de devolución DUoM
+
+**Objetivo:** soportar DUoM en órdenes de devolución de compra y venta.
+
+Alcance:
+- Extender `Return Shipment Line` con campos DUoM (table extension).
+- Extender `Return Receipt Line` con campos DUoM (table extension).
+- Suscriptores para propagar DUoM al contabilizar devoluciones:
+  - `Purchase Return Order` → `Return Shipment Line` → ILE
+  - `Sales Return Order` → `Return Receipt Line` → ILE
+- Extender las páginas de subformulario de documentos de devolución registrados.
+- Actualizar permission sets.
+- Tests TDD:
+  - Crear Purchase Return Order con DUoM → contabilizar → verificar Return Shipment Line e ILE.
+  - Crear Sales Return Order con DUoM → contabilizar → verificar Return Receipt Line e ILE.
+
+**Dependencias:** Issues 1–9. Issue 10 recomendado.
+**Nota:** Verificar nombres exactos de páginas BC 27 antes de implementar.
+
+### Issue 15 — Physical Inventory DUoM
+
+**Objetivo:** permitir el recuento de inventario físico expresando cantidades en segunda UoM.
+
+Alcance:
+- Extender `Phys. Inventory Ledger Entry` con `DUoM Second Qty`.
+- Extender `Item Journal Line` (modo recuento físico) — ya extendida; verificar si
+  se requiere lógica adicional para el flujo de inventario físico.
+- Tests TDD: crear línea de diario de recuento físico con segunda cantidad → contabilizar
+  → verificar movimiento de producto.
+
+**Dependencias:** Issue 8 completado (Item Journal ya extendido).
+
+### Issue 16 — Reporting Extensions
+
+**Objetivo:** añadir columnas de segunda cantidad y segunda UoM a los informes estándar clave.
+
+Alcance (report extensions en BC 27):
+- Informe de recepción de compra (Purchase Receipt): añadir `DUoM Second Qty` y `DUoM Ratio`
+  en líneas, con header de segunda UoM.
+- Informe de albarán de venta (Sales Shipment): ídem.
+- Informe de valoración de inventario: añadir columna de segunda cantidad total.
+- Tests: verificar que los campos se incluyen en los datasets de informe (unit tests de dataset).
+
+**Dependencias:** Issues 9 y 10 recomendados antes.
 
 ---
 
-## Phase 3 / Later
+## Phase 3 / Futuro
 
-- Transfer order DUoM support (Issue 15+)
-- Return order DUoM support (Issue 16+)
-- Assembly order DUoM support (if ever in scope)
+- Orden de traslado DUoM (`Transfer Order`) — Issue 17+
+- Órdenes de montaje DUoM (`Assembly Order`) — si entra en scope
+- Integración con Item Tracking avanzado (multi-lote en línea) — Issue 18+
 
 ---
 
 ## Notes
 
-- Issues should be implemented in order; later issues depend on earlier ones.
-- Each issue must include tests before it can be considered done.
+- Los issues deben implementarse en el orden indicado; los posteriores dependen de los anteriores.
+- **TDD obligatorio:** cada issue debe incluir tests en fallo antes de escribir el código de producción.
 - ~~The `DualUoM Pipeline Check` codeunit (ID 50100) and its test (ID 50200) are
   temporary and will be deleted when Issue 2 (Calc Engine) is merged.~~ ✅ Eliminados.
 - El Calc Engine usa ID 50101; los tests del Calc Engine usan ID 50204.
   Los IDs 50201–50203 están ya usados por `DUoM Item Setup Tests`,
   `DUoM Item Card Opening Tests` y `DUoM Item Delete Tests`.
+- **Localización:** todos los nuevos objetos con texto visible por el usuario deben incluir
+  Labels con `Comment` y tener ambos XLF (`en-US` y `es-ES`) actualizados en el mismo PR.
+  Ver `docs/07-localization.md` para el flujo completo.
 - **Localización Phase 1 (Issues 2–9):** ✅ Todos los trans-units de los nuevos objetos
   (Codeunit 50101, PageExtensions 50101/50102/50104/50105, TableExtensions 50114/50115)
   están en ambos XLF con IDs verificados mediante `LanguageFileUtilities.GetNameHash`
   del compilador AL (runtime 15).
-- Los IDs de test codeunit usados en Phase 1: 50201–50208 (codeunits de test unitarios
-  e integración) y 50209 (`DUoM ILE Integration Tests`, tests E2E de contabilización).
+- **IDs de test codeunit usados en Phase 1:** 50201–50208 (tests unitarios e integración)
+  y 50209 (`DUoM ILE Integration Tests`, tests E2E de contabilización).
+  **IDs libres para Phase 2:** 50210+ para nuevos codeunits de test.
+- **Rango de IDs de objetos de producción:** 50100–50199.
+  IDs ya asignados en Phase 1: tablas 50100; enums 50100; codeunits 50101–50105;
+  pages 50100; pageextensions 50101–50105; tableextensions 50100, 50110–50115.
+  IDs libres para Phase 2: tableextensions 50116+, codeunits 50106+, pages 50101+.
+- **Eventos BC 27 — referencia de firma verificada:**
+  - Purch. Rcpt. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Rcpt. Line"`
+  - Sales Shipment Line init: `OnAfterInitFromSalesLine` en Table `"Sales Shipment Line"`
+  - ILE init: `OnAfterInitItemLedgEntry` en Codeunit `"Item Jnl.-Post Line"`
+  - Item Journal Line copy (purchase): `OnPostItemJnlLineOnAfterCopyDocumentFields` en Codeunit `"Purch.-Post"`
+  - Item Journal Line copy (sales): `OnPostItemJnlLineOnAfterCopyDocumentFields` en Codeunit `"Sales-Post"`
+  - **Antes de añadir cualquier nuevo suscriptor**, verificar firma en BC 27 contra
+    `microsoft/ALAppExtensions` o el Symbol Reference de VS Code.
+- **Patrón thin subscriber + helper centralizado:** toda la lógica de copia de campos
+  DUoM entre líneas debe delegarse a `DUoM Doc Transfer Helper` (50105). Los suscriptores
+  son siempre delegadores. Esto aplica a todos los issues de Phase 2.
+- **Permission sets:** cada nueva tabla requiere entrada `tabledata ... = RIMD` en
+  `DUoMAll.PermissionSet.al` (50100) Y en `DUoMTestAll.PermissionSet.al` (50200) en el mismo PR.
