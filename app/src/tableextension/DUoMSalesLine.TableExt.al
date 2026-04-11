@@ -10,11 +10,13 @@ tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
     {
         field(50100; "DUoM Second Qty"; Decimal)
         {
+            Caption = 'DUoM Second Qty', Comment = 'Caption for DUoM Second Qty field; no placeholders.';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
         }
         field(50101; "DUoM Ratio"; Decimal)
         {
+            Caption = 'DUoM Ratio', Comment = 'Caption for DUoM Ratio field; no placeholders.';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
 

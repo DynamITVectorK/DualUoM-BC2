@@ -158,4 +158,127 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
+
+    // -------------------------------------------------------------------------
+    // Subscriber: Quantity validate in Variable mode → uses item default ratio
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchaseLine_ValidateQty_VariableMode_ComputesSecondQty()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] An item with DUoM setup: Variable conversion mode, Fixed Ratio 0.8 as default
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
+
+        // [GIVEN] A Vendor and a Purchase Header and Line for that item
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+
+        // [WHEN] Quantity is validated to 10 (no line ratio pre-set → uses item default 0.8)
+        PurchLine.Validate(Quantity, 10);
+
+        // [THEN] DUoM Second Qty = 10 × 0.8 = 8 (item default ratio applied)
+        LibraryAssert.AreEqual(8, PurchLine."DUoM Second Qty", 'Variable mode must compute DUoM Second Qty using item default ratio');
+        LibraryAssert.AreEqual(0.8, PurchLine."DUoM Ratio", 'Variable mode must populate DUoM Ratio from item Fixed Ratio default');
+
+        // Cleanup
+        PurchLine.Delete(false);
+        PurchHeader.Delete(false);
+        Vendor.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
+        Item.Delete(false);
+    end;
+
+    // -------------------------------------------------------------------------
+    // Subscriber: Quantity validate in Variable mode → pre-set line ratio wins
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchaseLine_ValidateQty_VariableMode_LineRatioOverridesItemDefault()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] An item with DUoM setup: Variable conversion mode, Fixed Ratio 0.8 as default
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
+
+        // [GIVEN] A Vendor and a Purchase Header and Line for that item
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+
+        // [GIVEN] A per-line ratio of 1.5 is set before validating Quantity
+        PurchLine."DUoM Ratio" := 1.5;
+
+        // [WHEN] Quantity is validated to 10 (line ratio 1.5 must override item default 0.8)
+        PurchLine.Validate(Quantity, 10);
+
+        // [THEN] DUoM Second Qty = 10 × 1.5 = 15 (line ratio used, not item default)
+        LibraryAssert.AreEqual(15, PurchLine."DUoM Second Qty", 'Variable mode must use the pre-set line ratio, not the item default');
+        LibraryAssert.AreEqual(1.5, PurchLine."DUoM Ratio", 'DUoM Ratio must remain the pre-set line value after Quantity validation');
+
+        // Cleanup
+        PurchLine.Delete(false);
+        PurchHeader.Delete(false);
+        Vendor.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
+        Item.Delete(false);
+    end;
+
+    // -------------------------------------------------------------------------
+    // OnValidate DUoM Ratio → recomputes DUoM Second Qty from current Quantity
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchaseLine_ValidateDUoMRatio_RecomputesSecondQty()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 0.8
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
+
+        // [GIVEN] A Vendor, a Purchase Header and Line; Quantity validated to 10 → SecondQty = 8
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+
+        // [WHEN] DUoM Ratio is validated to 1.5 (new per-line ratio)
+        PurchLine.Validate("DUoM Ratio", 1.5);
+
+        // [THEN] DUoM Second Qty = 10 × 1.5 = 15 (recomputed with the new ratio)
+        LibraryAssert.AreEqual(15, PurchLine."DUoM Second Qty", 'OnValidate DUoM Ratio must recompute DUoM Second Qty with the new ratio');
+
+        // Cleanup
+        PurchLine.Delete(false);
+        PurchHeader.Delete(false);
+        Vendor.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
+        Item.Delete(false);
+    end;
 }
