@@ -83,16 +83,16 @@ Integration tests: verify ILE fields exist and can hold DUoM data.
 
 Añadir campos `DUoM Second Qty` y `DUoM Ratio` a las tablas `Purch. Rcpt. Line` y
 `Sales Shipment Line` mediante nuevas table extensions. Suscribirse a los eventos
-`OnAfterInsertReceiptLine` y `OnAfterInsertShipmentLine` para propagar los valores desde
-las líneas de pedido origen. Ampliar las páginas de subformulario de recepción y envío
-registrados para mostrar los campos (solo lectura). Añadir tests de integración E2E que
-cubran el ciclo completo de contabilización (compra, venta, diario de productos) y
-verifiquen la propagación hasta ILE.
+`OnAfterPurchRcptLineInsert` (Purch.-Post) y `OnAfterInsertShipmentLine` (Sales-Post) para
+propagar los valores desde las líneas de pedido origen. Ampliar las páginas de subformulario
+de recepción y envío registrados para mostrar los campos (solo lectura). Añadir tests de
+integración E2E que cubran el ciclo completo de contabilización (compra, venta, diario de
+productos) y verifiquen la propagación hasta ILE.
 
 **Deliverables:**
 - `DUoMPurchRcptLine.TableExt.al` (50114), `DUoMSalesShipmentLine.TableExt.al` (50115)
-- Subscribers en `DUoMInventorySubscribers.Codeunit.al` (50104): `OnAfterInsertReceiptLine`, `OnAfterInsertShipmentLine`
-- `DUoMPostedPurchRcptSubform.PageExt.al` (50104), `DUoMPostedSalesShipSubform.PageExt.al` (50105)
+- Subscribers en `DUoMInventorySubscribers.Codeunit.al` (50104): `OnAfterPurchRcptLineInsert`, `OnAfterInsertShipmentLine`
+- `DUoMPostedPurchRcptSubform.PageExt.al` (50104) extiende `Posted Purchase Rcpt. Subform`, `DUoMPostedSalesShipSubform.PageExt.al` (50105) extiende `Posted Sales Shpt. Subform`
 - `DUoMILEIntegrationTests.Codeunit.al` (50209) — 6 tests E2E
 
 ---

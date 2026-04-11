@@ -4,7 +4,7 @@
 /// Ambos campos son de solo lectura, ya que los documentos registrados son inmutables.
 /// DUoM Second Qty muestra el código de la segunda unidad de medida como caption de la columna cuando está disponible.
 /// </summary>
-pageextension 50105 "DUoM Posted Sales Ship. Subform" extends "Posted Sales Shipment Subform"
+pageextension 50105 "DUoM Posted Ship. Subform" extends "Posted Sales Shpt. Subform"
 {
     layout
     {

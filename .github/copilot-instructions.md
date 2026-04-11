@@ -70,6 +70,9 @@ Los identificadores AL (nombres de objetos, campos, procedimientos, variables) y
 - Use `NoImplicitWith` — never rely on implicit `with` scoping
 - Modules in scope: Sales, Purchase, Inventory, Warehouse
 - Modules **out of scope**: Manufacturing, Projects, Service
+- **Object name length limit:** All AL object names (tables, pages, codeunits, page extensions,
+  etc.) **must not exceed 30 characters** (compiler limit AL0305). Verify length before opening
+  a PR. Page extension names must be especially compact to leave room for the `DUoM` prefix.
 
 ## Localization rule (mandatory)
 
@@ -135,6 +138,17 @@ codeunit 50202 "DUoM Item Card Opening Tests"
 - No deprecated APIs — always use current BC 27 patterns
 - SaaS deployments are cloud-only; no OnPrem-specific code
 - Do not assume access to Docker or file system at runtime
+- **Before implementing any `[EventSubscriber]`** pointing to a standard Microsoft codeunit
+  (e.g. `Purch.-Post`, `Sales-Post`, `Item Jnl.-Post Line`), verify that the event and all
+  its parameters exist in BC 27 (runtime 15) by consulting the BC Symbol Reference in VS Code
+  or the [microsoft/ALAppExtensions](https://github.com/microsoft/ALAppExtensions) repository.
+  BC events change between versions (renamed, modified parameters, removed). A subscriber
+  pointing to a non-existent event causes AL0280 or AL0282 and breaks the build.
+- **Before creating a `pageextension`** that extends a standard Microsoft page, verify that
+  the page exists in BC 27 with that exact name by consulting the BC 27 Symbol Reference.
+  Standard page names have changed across versions (renamed, moved to namespaces). An
+  `extends` clause with an incorrect name causes AL0247 and blocks compilation of the
+  entire module.
 
 ## Delivery rules
 

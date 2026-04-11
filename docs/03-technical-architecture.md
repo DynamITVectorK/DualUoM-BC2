@@ -65,8 +65,8 @@ already covers the need:
 |---|---|---|---|
 | `DUoM Purchase Order Subform` | 50101 | `Purchase Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de compra |
 | `DUoM Sales Order Subform` | 50102 | `Sales Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de venta |
-| `DUoM Posted Purch. Rcpt. Subform` | 50104 | `Posted Purchase Receipt Subform` | Muestra Second Qty y Ratio en líneas de recepción registrada (solo lectura) |
-| `DUoM Posted Sales Ship. Subform` | 50105 | `Posted Sales Shipment Subform` | Muestra Second Qty y Ratio en líneas de envío registrado (solo lectura) |
+| `DUoM Posted Rcpt. Subform` | 50104 | `Posted Purchase Rcpt. Subform` | Muestra Second Qty y Ratio en líneas de recepción registrada (solo lectura) |
+| `DUoM Posted Ship. Subform` | 50105 | `Posted Sales Shpt. Subform` | Muestra Second Qty y Ratio en líneas de envío registrado (solo lectura) |
 
 ### Codeunits
 

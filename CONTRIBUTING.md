@@ -26,6 +26,11 @@ El idioma oficial del proyecto es el **español**. Toda la documentación, comen
 4. **Localización:** actualizar ambos XLF **en el mismo PR** (ver sección siguiente).
 5. **PR:** abrir una Pull Request contra `main` con el checklist del issue completado.
 
+> **Límite de 30 caracteres en identificadores AL (AL0305):** Los nombres de todos los objetos AL
+> (tablas, páginas, codeunits, page extensions, etc.) **no pueden superar los 30 caracteres**.
+> Verificar la longitud antes de abrir un PR. Los nombres de page extensions deben ser
+> especialmente compactos para dejar margen al prefijo `DUoM`.
+
 ---
 
 ## Regla de localización (obligatoria)
@@ -96,6 +101,31 @@ Ver detalles en `.github/copilot-instructions.md` (sección "Permission set rule
 
 ---
 
+## Compatibilidad de API BC 27
+
+### Verificación de eventos de suscriptor
+
+**Antes de implementar cualquier `[EventSubscriber]`** que apunte a un codeunit estándar
+de Microsoft (por ejemplo `Purch.-Post`, `Sales-Post`, `Item Jnl.-Post Line`), verificar
+que el evento y todos sus parámetros existen en la versión BC 27 (runtime 15) consultando:
+
+- El **BC Symbol Reference** en VS Code (extensión AL).
+- El repositorio público [microsoft/ALAppExtensions](https://github.com/microsoft/ALAppExtensions).
+
+Los eventos de BC cambian entre versiones (renombrados, parámetros modificados, eliminados).
+Un suscriptor que apunta a un evento inexistente provoca AL0280 o AL0282 y rompe el build.
+
+### Verificación de páginas estándar en `pageextension`
+
+**Antes de crear un `pageextension`** que extienda una página estándar de Microsoft,
+verificar que la página existe en BC 27 con ese nombre exacto consultando el
+Symbol Reference de BC 27.  
+Los nombres de páginas estándar han cambiado en varias versiones (renombrados, movidos
+a namespaces). Una cláusula `extends` con un nombre incorrecto provoca AL0247 y bloquea
+toda la compilación del módulo donde aparece.
+
+---
+
 ## Tests
 
 - TDD es obligatorio: el test debe existir antes que la producción.
@@ -119,6 +149,11 @@ Un issue/PR se considera **terminado** solo cuando se cumple **todo** lo siguien
 - [ ] Terminología consistente con el glosario de `docs/07-localization.md`.
 - [ ] Permission sets actualizados si hay nuevas tablas: **tanto `DUoMAll.PermissionSet.al` (producción) como `DUoMTestAll.PermissionSet.al` (test)**.
 - [ ] Documentación técnica actualizada si procede.
+- [ ] Todos los nombres de objeto AL tienen ≤ 30 caracteres.
+- [ ] Todos los `[EventSubscriber]` han sido verificados contra el Symbol Reference de BC 27
+      (nombre de evento y parámetros correctos).
+- [ ] Todos los `pageextension` han sido verificados contra el Symbol Reference de BC 27
+      (nombre exacto de la página objetivo).
 
 ---
 
