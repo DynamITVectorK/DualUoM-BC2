@@ -1,0 +1,11 @@
+{
+  "name": "dualuom-bc-tools",
+  "version": "1.0.0",
+  "description": "Scripts de utilidad para DualUoM-BC",
+  "scripts": {
+    "generate-proposal": "node scripts/generate-proposal.js"
+  },
+  "dependencies": {
+    "docx": "^9.6.1"
+  }
+}
