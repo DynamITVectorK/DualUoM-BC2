@@ -4,6 +4,11 @@
 /// can both directly insert into Table 50100 and trigger indirect inserts via
 /// production codeunits (e.g. GetOrCreate), without relying on the deprecated
 /// Permissions property on codeunit objects (AL0246).
+///
+/// Incluye también RIMD sobre las tablas base escritas por los subscribers DUoM
+/// durante la contabilización (Purch. Rcpt. Line, Sales Shipment Line), necesario
+/// para que los tests E2E con TestPermissions = Restrictive no fallen por falta
+/// de permiso Modify en las tablas 121 / 111.
 /// </summary>
 permissionset 50200 "DUoM - Test All"
 {
@@ -11,5 +16,7 @@ permissionset 50200 "DUoM - Test All"
     Caption = 'DualUoM - Test All';
 
     Permissions =
-        tabledata "DUoM Item Setup" = RIMD;
+        tabledata "DUoM Item Setup" = RIMD,
+        tabledata "Purch. Rcpt. Line" = RIMD,
+        tabledata "Sales Shipment Line" = RIMD;
 }

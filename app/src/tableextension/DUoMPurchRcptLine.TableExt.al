@@ -2,7 +2,8 @@
 /// Extiende la tabla Purch. Rcpt. Line con campos de Unidad de Medida Dual.
 /// Estos campos capturan DUoM Second Qty y DUoM Ratio desde la
 /// Purchase Line de origen en el momento del registro. Los valores son inmutables tras el registro.
-/// La propagación la realiza DUoM Inventory Subscribers (OnAfterInsertReceiptLine).
+/// La propagación la realiza DUoM Inventory Subscribers (OnBeforeInsertReceiptLine),
+/// suscrito a OnBeforePurchRcptLineInsert — patrón seguro en SaaS que no requiere Modify().
 /// </summary>
 tableextension 50114 "DUoM Purch. Rcpt. Line Ext" extends "Purch. Rcpt. Line"
 {

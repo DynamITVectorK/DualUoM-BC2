@@ -73,32 +73,32 @@ codeunit 50104 "DUoM Inventory Subscribers"
 
     /// <summary>
     /// During Purchase posting, copies DUoM fields from the Purchase Line to the
-    /// Purch. Rcpt. Line so that the posted receipt document contains the original
-    /// DUoM data alongside the standard quantity.
+    /// Purch. Rcpt. Line BEFORE the record is inserted, so that no Modify() call
+    /// is needed — preventing the "Missing Modify permission on Table 121" error in
+    /// BC SaaS when the user only has the DUoM permission set assigned.
     /// </summary>
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnAfterPurchRcptLineInsert', '', false, false)]
-    local procedure OnAfterInsertReceiptLine(var PurchRcptLine: Record "Purch. Rcpt. Line"; PurchaseLine: Record "Purchase Line")
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforePurchRcptLineInsert', '', false, false)]
+    local procedure OnBeforeInsertReceiptLine(var PurchRcptLine: Record "Purch. Rcpt. Line"; PurchaseLine: Record "Purchase Line")
     begin
         if (PurchaseLine."DUoM Second Qty" = 0) and (PurchaseLine."DUoM Ratio" = 0) then
             exit;
         PurchRcptLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
         PurchRcptLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
-        PurchRcptLine.Modify(false);
     end;
 
     /// <summary>
     /// During Sales posting, copies DUoM fields from the Sales Line to the
-    /// Sales Shipment Line so that the posted shipment document contains the original
-    /// DUoM data alongside the standard quantity.
+    /// Sales Shipment Line BEFORE the record is inserted, so that no Modify() call
+    /// is needed — preventing the same permission error that Table 121 triggers
+    /// on the purchase path.
     /// </summary>
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnAfterInsertShipmentLine', '', false, false)]
-    local procedure OnAfterInsertShipmentLine(var SalesShptLine: Record "Sales Shipment Line"; SalesLine: Record "Sales Line")
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnBeforeInsertShipmentLine', '', false, false)]
+    local procedure OnBeforeInsertShipmentLine(var SalesShptLine: Record "Sales Shipment Line"; SalesLine: Record "Sales Line")
     begin
         if (SalesLine."DUoM Second Qty" = 0) and (SalesLine."DUoM Ratio" = 0) then
             exit;
         SalesShptLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         SalesShptLine."DUoM Ratio" := SalesLine."DUoM Ratio";
-        SalesShptLine.Modify(false);
     end;
 
     /// <summary>
