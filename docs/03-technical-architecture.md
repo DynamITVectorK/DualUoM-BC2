@@ -86,7 +86,7 @@ already covers the need:
 | `DUoM Sales Subscribers` | 50103 | Subscribers de eventos del flujo de ventas |
 | `DUoM Inventory Subscribers` | 50104 | Subscribers para diario de productos / ILE / líneas de documentos registrados |
 | `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
-| `DUoM UoM Helper` | 50106 | Helper de UoM: obtiene `Rounding Precision` de la segunda UoM del ítem para aplicarla al cálculo y validación de `DUoM Second Qty` |
+| `DUoM UoM Helper` | 50106 | Helper de UoM: obtiene `Qty. Rounding Precision` de la tabla `Item Unit of Measure` para la segunda UoM del ítem y la aplica al cálculo y validación de `DUoM Second Qty` |
 
 ---
 

@@ -260,21 +260,23 @@ codeunit 50206 "DUoM Sales Tests"
         Customer: Record Customer;
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
-        UnitOfMeasure: Record "Unit of Measure";
+        ItemUnitOfMeasure: Record "Item Unit of Measure";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
         LibraryAssert: Codeunit "Library Assert";
         UoMCode: Code[10];
     begin
-        // [GIVEN] A Unit of Measure with Rounding Precision = 1 (discrete, e.g. pieces)
+        // [GIVEN] A Unit of Measure code (discrete, e.g. pieces)
         UoMCode := LibraryInventory.CreateUnitOfMeasureCode();
-        UnitOfMeasure.Get(UoMCode);
-        UnitOfMeasure."Rounding Precision" := 1;
-        UnitOfMeasure.Modify(false);
 
-        // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 1.15, second UoM = discrete
+        // [GIVEN] An item with an Item Unit of Measure that has Qty. Rounding Precision = 1
         LibraryInventory.CreateItem(Item);
+        LibraryInventory.CreateItemUnitOfMeasure(ItemUnitOfMeasure, Item."No.", UoMCode, 1);
+        ItemUnitOfMeasure."Qty. Rounding Precision" := 1;
+        ItemUnitOfMeasure.Modify(false);
+
+        // [GIVEN] DUoM setup: Fixed conversion mode, ratio 1.15, second UoM = discrete
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, UoMCode, "DUoM Conversion Mode"::Fixed, 1.15);
 
         // [GIVEN] A Customer and Sales Order line for that item
@@ -295,6 +297,5 @@ codeunit 50206 "DUoM Sales Tests"
         Customer.Delete(false);
         DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
-        UnitOfMeasure.Delete(false);
     end;
 }
