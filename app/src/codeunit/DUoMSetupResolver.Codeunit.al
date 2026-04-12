@@ -17,7 +17,7 @@
 /// </summary>
 codeunit 50107 "DUoM Setup Resolver"
 {
-    Access = Internal;
+    Access = Public;
 
     /// <summary>
     /// Resolves the effective DUoM setup for the given item and variant combination.
