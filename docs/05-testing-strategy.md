@@ -141,6 +141,10 @@ The following scenarios must have passing tests before any Phase 2 work starts:
 7. **DUoM disabled item** — no DUoM fields affect standard posting flow
 8. **Purchase invoice/credit memo posting** — `Purch. Inv. Line` and `Purch. Cr. Memo Line` contain correct DUoM fields after posting
 9. **Sales invoice/credit memo posting** — `Sales Invoice Line` and `Sales Cr.Memo Line` contain correct DUoM fields after posting
+10. **Variant override — resolver hierarchy** — when a variant has a setup record in `DUoM Item Variant Setup`, `GetEffectiveSetup` returns the variant's fields instead of the item defaults
+11. **Variant override — fallback to item** — when no variant setup record exists, `GetEffectiveSetup` returns the item-level fields
+12. **Variant Code change on purchase line** — changing `Variant Code` on a purchase line with an existing quantity resets and recomputes `DUoM Second Qty` using the new variant's effective setup
+13. **Variant Code change on sales line** — same behavior as scenario 12 for sales lines
 
 ---
 
