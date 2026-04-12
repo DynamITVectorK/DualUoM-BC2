@@ -30,4 +30,25 @@ codeunit 50106 "DUoM UoM Helper"
             exit(ItemUnitOfMeasure."Qty. Rounding Precision");
         exit(0);
     end;
+
+    /// <summary>
+    /// Returns the Qty. Rounding Precision for a specific UoM code on an item.
+    /// Use this overload when the effective Second UoM Code is already known
+    /// (e.g. obtained from DUoM Setup Resolver after applying variant hierarchy).
+    /// Returns 0 when SecondUoMCode is blank or the Item Unit of Measure record
+    /// does not exist.
+    /// </summary>
+    /// <param name="ItemNo">The item number.</param>
+    /// <param name="SecondUoMCode">The secondary UoM code to look up.</param>
+    /// <returns>The Qty. Rounding Precision of the given UoM, or 0 as fallback.</returns>
+    procedure GetRoundingPrecisionByUoMCode(ItemNo: Code[20]; SecondUoMCode: Code[10]): Decimal
+    var
+        ItemUnitOfMeasure: Record "Item Unit of Measure";
+    begin
+        if SecondUoMCode = '' then
+            exit(0);
+        if ItemUnitOfMeasure.Get(ItemNo, SecondUoMCode) then
+            exit(ItemUnitOfMeasure."Qty. Rounding Precision");
+        exit(0);
+    end;
 }

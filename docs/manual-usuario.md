@@ -2,7 +2,7 @@
 
 **Extensión de Doble Unidad de Medida para Microsoft Dynamics 365 Business Central**
 
-> **Versión del documento:** 1.0 (MVP — Fase 1)
+> **Versión del documento:** 1.1 (MVP + Issue 11b — Variantes)
 > **Módulos cubiertos:** Compras · Ventas · Inventario · Almacén (básico)
 > **Audiencia:** Usuarios de negocio (sin conocimientos técnicos)
 
@@ -15,6 +15,7 @@
    - [2.1 Cómo acceder a la configuración DUoM](#cómo-acceder-a-la-configuración-duom-de-un-artículo)
    - [2.2 Campos y modos de conversión](#campos-de-configuración-duom)
    - [2.3 Precisión de redondeo de la segunda UdM](#23-precisión-de-redondeo-de-la-segunda-udm)
+   - [2.4 Configuración DUoM por variante (override opcional)](#24-configuración-duom-por-variante-override-opcional)
 3. [Compras](#3-compras)
 4. [Ventas](#4-ventas)
 5. [Inventario — Diario de productos](#5-inventario--diario-de-productos)
@@ -158,6 +159,117 @@ Esto evita que el usuario guarde cantidades físicamente imposibles en unidades 
 
 ---
 
+## 2.4 Configuración DUoM por variante (override opcional)
+
+Business Central permite que un artículo tenga varias **variantes** (por ejemplo, una lechuga puede tener las variantes ROMANA e ICEBERG). En DualUoM-BC es posible que cada variante tenga un ratio o una segunda unidad de medida distinta a la del artículo base.
+
+### Jerarquía de configuración: Artículo → Variante → Lote
+
+Cuando se registra una transacción con variante, el sistema aplica la siguiente jerarquía para determinar qué configuración DUoM usar:
+
+```
+1. Configuración base del artículo   → siempre obligatoria (activa/desactiva DUoM)
+2. Override de variante (opcional)   → si existe, sus valores prevalecen sobre el artículo
+3. Ratio real de lote (Fase 2)       → cuando aplica, prevalece sobre los anteriores
+```
+
+> **Regla clave:** La variante **no puede activar por sí sola** la DUoM si el artículo no la tiene activada. El interruptor **Dual UoM Enabled** siempre vive en la configuración del artículo.
+
+### ¿Cuándo usar overrides de variante?
+
+Use la configuración DUoM por variante cuando diferentes variantes del mismo artículo requieran:
+
+- Una **segunda unidad de medida** diferente (por ejemplo, la variante ROMANA se cuenta en PCS pero la variante TROCEADA en BOLSAS).
+- Un **ratio por defecto** diferente (ROMANA tiene en media 1,25 KG/PCS, ICEBERG tiene 1,05 KG/PCS).
+- Un **modo de conversión** diferente (la variante estándar es Fijo, pero la variante premium es Variable por variabilidad de peso).
+
+Si todas las variantes de un artículo comparten la misma segunda UdM y el mismo ratio, **no es necesario** crear ningún override de variante.
+
+### Cómo acceder a los overrides DUoM de variantes
+
+1. Abra la ficha del artículo (**Búsqueda** → *Artículos* → seleccione el artículo).
+2. En el menú de acciones, haga clic en **Navegar → DUoM Variant Overrides**.
+
+> `[PENDIENTE CAPTURA]` *Ficha de artículo con el botón "DUoM Variant Overrides" destacado en la cinta de acciones.*
+
+Se abrirá la página **DUoM Variant Setup List**, filtrada automáticamente al artículo actual.
+
+### Campos de la configuración DUoM por variante
+
+| Campo | Obligatorio | Descripción |
+|-------|-------------|-------------|
+| **Item No.** | — | Nº de artículo. Se rellena automáticamente y no es editable. |
+| **Variant Code** | Sí | Código de la variante del artículo a la que aplica este override. |
+| **Second UoM Code** | No | Override de la segunda unidad de medida para esta variante. Si se deja en blanco, se hereda del artículo. |
+| **Conversion Mode** | No | Override del modo de conversión para esta variante. Si no se cambia, se usa el del artículo. |
+| **Fixed Ratio** | No | Override del ratio por defecto para esta variante. Si se deja a cero, se usa el del artículo. |
+
+> **Nota:** Sólo es necesario crear un registro de override cuando la variante difiere del artículo en al menos uno de los campos anteriores. La ausencia de registro significa "hereda todo del artículo".
+
+### Ejemplo completo: Artículo LECHUGA con dos variantes
+
+**Configuración del artículo (nivel base):**
+
+| Campo | Valor |
+|-------|-------|
+| Nº artículo | LECHUGA-001 |
+| Dual UoM Enabled | Sí |
+| Second UoM Code | PCS |
+| Conversion Mode | Variable |
+| Fixed Ratio | 1,25 |
+
+Esto significa: por defecto, 1 KG de lechuga equivale a 1,25 piezas.
+
+**Configuración de variantes (overrides):**
+
+| Variante | Second UoM Code | Conversion Mode | Fixed Ratio | Efecto |
+|----------|-----------------|-----------------|-------------|--------|
+| ROMANA | *(sin override)* | *(sin override)* | *(sin override)* | Hereda todo del artículo: 1,25 KG/PCS, modo Variable |
+| ICEBERG | *(sin override)* | *(sin override)* | 1,05 | Override sólo del ratio: 1,05 KG/PCS, mismo modo Variable |
+| TROCEADA | BOLSAS | Fixed | 0,5 | Override de UdM y modo: 0,5 KG/BOLSA, modo Fijo |
+
+**Resultado en los documentos:**
+
+Cuando el usuario selecciona el artículo LECHUGA-001 y el **Código de variante**:
+
+- ROMANA → Sistema usa ratio **1,25** (hereda del artículo). Pedido 10 KG → **12,5 PCS** propuesto.
+- ICEBERG → Sistema usa ratio **1,05** (override de variante). Pedido 10 KG → **10,5 PCS** propuesto.
+- TROCEADA → Sistema usa ratio **0,5** en modo Fijo. Pedido 10 KG → **5 BOLSAS** calculadas automáticamente (no editable).
+
+> `[PENDIENTE CAPTURA]` *Página "DUoM Variant Setup List" con las tres variantes del ejemplo mostradas.*
+
+### Pasos para crear un override de variante
+
+1. Abra la ficha del artículo con DUoM ya configurado a nivel base.
+2. Haga clic en **Navegar → DUoM Variant Overrides**.
+3. Haga clic en **Nuevo** (o edite directamente en la línea en blanco al final de la lista).
+4. En **Variant Code**, seleccione la variante a configurar.
+5. Rellene sólo los campos que quieran difieren del artículo: **Second UoM Code**, **Conversion Mode** y/o **Fixed Ratio**.
+6. Cierre la página. Los cambios se guardan automáticamente.
+
+> **Precaución:** Si elimina una variante del artículo desde la ficha del artículo, su configuración DUoM de variante también se elimina automáticamente. Esta acción es irreversible.
+
+### Comportamiento al cambiar el Código de variante en un documento
+
+Cuando el usuario **cambia el código de variante en una línea de pedido** (compra o venta) que ya tiene una cantidad y una segunda cantidad introducidas:
+
+1. Los campos **DUoM Ratio** y **DUoM Second Qty** se **resetean a cero**.
+2. El sistema aplica la configuración DUoM efectiva de la nueva variante.
+3. Si el modo de la nueva variante es Fijo o Variable, la **DUoM Second Qty** se **recalcula automáticamente** usando el ratio de la nueva variante y la cantidad principal ya introducida.
+4. Si el modo es Siempre Variable, los campos quedan vacíos para que el usuario los introduzca.
+
+**Ejemplo:**
+
+| Acción del usuario | Resultado |
+|--------------------|-----------|
+| Selecciona artículo LECHUGA-001, variante ROMANA, cantidad 10 KG | DUoM Second Qty = **12,5 PCS** (ratio 1,25 heredado del artículo) |
+| Cambia variante a ICEBERG (ratio 1,05) | DUoM Second Qty se resetea y recalcula: = **10,5 PCS** |
+| Cambia variante a TROCEADA (Fijo, 0,5, BOLSAS) | DUoM Second Qty = **5 BOLSAS** (calculado automáticamente, no editable) |
+
+---
+
+## 3. Compras
+
 La extensión añade dos campos en las **líneas de pedido de compra**: **DUoM Second Qty** y **DUoM Ratio**. Estos campos aparecen automáticamente cuando el artículo tiene DUoM activado.
 
 ### 3.1 Introducir un pedido de compra con segunda cantidad
@@ -198,6 +310,28 @@ La extensión añade dos campos en las **líneas de pedido de compra**: **DUoM S
 5. (Opcional) El **DUoM Ratio** se puede dejar en blanco o introducir manualmente para registro histórico.
 
 > **Consejo:** Si tiene varias líneas con el mismo artículo en modo Variable, puede ajustar el **DUoM Ratio** en cada línea de forma independiente. El ratio no afecta al precio de compra — sólo a la cantidad secundaria.
+
+### 3.1.1 Pedido de compra con variante
+
+Cuando el artículo tiene **variantes** configuradas con overrides DUoM (véase [sección 2.4](#24-configuración-duom-por-variante-override-opcional)):
+
+**Pasos:**
+
+1. Introduzca el artículo en la línea de pedido (ej. LECHUGA-001).
+2. Seleccione el **Código de variante** (ej. ICEBERG). El sistema aplica automáticamente la configuración DUoM de esa variante.
+3. Introduzca la **Cantidad** principal (ej. 20 KG).
+4. La **DUoM Second Qty** y el **DUoM Ratio** se calculan con el ratio de la variante ICEBERG (ej. 1,05 → `20 × 1,05 = 21 PCS`).
+5. Si cambia el **Código de variante** a otra (ej. ROMANA), los campos DUoM se resetean y se recalculan con el ratio de ROMANA (ej. 1,25 → `20 × 1,25 = 25 PCS`).
+
+**Ejemplo con el artículo LECHUGA-001:**
+
+| Código de variante | Ratio efectivo | Cantidad | DUoM Second Qty |
+|--------------------|----------------|----------|-----------------|
+| ROMANA (hereda artículo) | 1,25 | 20 KG | **25 PCS** |
+| ICEBERG (override 1,05) | 1,05 | 20 KG | **21 PCS** |
+| TROCEADA (Fijo 0,5 BOLSAS) | 0,5 | 20 KG | **10 BOLSAS** |
+
+> `[PENDIENTE CAPTURA]` *Pedido de compra con artículo LECHUGA-001, variante ICEBERG, y campos DUoM calculados automáticamente con el ratio de la variante.*
 
 ### 3.2 Confirmar el albarán de compra con la segunda cantidad
 
@@ -248,6 +382,21 @@ La extensión añade los mismos campos (**DUoM Second Qty** y **DUoM Ratio**) en
 > `[PENDIENTE CAPTURA]` *Líneas de pedido de venta con DUoM Second Qty y DUoM Ratio visibles.*
 
 > **Nota de negocio:** En ventas, la segunda cantidad es informativa para la logística (ej. peso real para el transportista) pero no altera el precio ni la factura, que se basan en la cantidad principal.
+
+### 4.1.1 Pedido de venta con variante
+
+El comportamiento con variantes es idéntico al descrito para compras en la [sección 3.1.1](#311-pedido-de-compra-con-variante). Al seleccionar o cambiar el **Código de variante** en una línea de pedido de venta:
+
+1. El sistema aplica la configuración DUoM de la variante seleccionada.
+2. Los campos DUoM se calculan o resetean automáticamente según corresponda.
+
+**Ejemplo:** Pedido de venta de LECHUGA-001 a un cliente mayorista.
+
+| Código de variante | Cantidad vendida | DUoM Second Qty | Nota |
+|--------------------|-----------------|-----------------|------|
+| ROMANA (ratio 1,25) | 50 KG | **62,5 PCS** | Hereda ratio del artículo |
+| ICEBERG (ratio 1,05) | 50 KG | **52,5 PCS** | Override de variante |
+| *(sin variante)* | 50 KG | **62,5 PCS** | Sin variante → usa artículo directamente |
 
 ### 4.2 Confirmar el albarán de venta
 
@@ -491,26 +640,62 @@ Compruebe lo siguiente:
 
 ---
 
+### ¿Puedo tener diferentes ratios para distintas variantes del mismo artículo?
+
+**Sí.** Utilice la configuración DUoM por variante (véase [sección 2.4](#24-configuración-duom-por-variante-override-opcional)). Desde la ficha del artículo, haga clic en **Navegar → DUoM Variant Overrides** y cree un registro por cada variante que tenga un ratio o segunda UdM diferente al artículo base.
+
+Las variantes sin registro de override **heredan automáticamente** la configuración del artículo.
+
+---
+
+### ¿Qué ocurre si cambio la variante en un pedido ya iniciado?
+
+Si cambia el **Código de variante** en una línea de pedido que ya tiene cantidad y segunda cantidad introducidas:
+
+1. Los campos **DUoM Ratio** y **DUoM Second Qty** se **resetean a cero** automáticamente.
+2. Si la nueva variante tiene modo Fijo o Variable, la **DUoM Second Qty** se recalcula de inmediato con el ratio de la nueva variante y la cantidad principal ya introducida.
+3. Si el modo de la nueva variante es Siempre Variable, los campos quedan vacíos para introducción manual.
+
+Esto garantiza que el ratio aplicado sea siempre coherente con la variante seleccionada.
+
+---
+
+### ¿Una variante puede tener DUoM activado si el artículo no lo tiene?
+
+**No.** El interruptor **Dual UoM Enabled** controla si el artículo usa DUoM y siempre vive en la configuración del artículo. Una variante sólo puede sobrescribir los valores de **Second UoM Code**, **Conversion Mode** y **Fixed Ratio**, nunca puede activar DUoM por sí sola.
+
+---
+
+### ¿Qué pasa si elimino una variante que tiene configuración DUoM?
+
+La configuración DUoM de esa variante se **elimina automáticamente** al borrar la variante. Este comportamiento es intencionado para evitar configuraciones huérfanas. Las transacciones ya contabilizadas con esa variante no se ven afectadas — conservan los valores DUoM que tenían en el momento de la contabilización.
+
+---
+
 ## Apéndice: Resumen de campos DUoM por documento
 
 | Documento | Campo | Editable | Notas |
 |-----------|-------|----------|-------|
-| Pedido de compra (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Se redondea según `Qty. Rounding Precision` de la segunda UdM. |
-| Pedido de compra (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea |
-| Pedido de venta (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Se redondea según `Qty. Rounding Precision` de la segunda UdM. |
-| Pedido de venta (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea |
-| Diario de productos (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Se redondea según `Qty. Rounding Precision` de la segunda UdM. |
+| Pedido de compra (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Al cambiar Variante, se recalcula automáticamente. |
+| Pedido de compra (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea; se resetea al cambiar variante. |
+| Pedido de venta (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Ídem compras. Al cambiar Variante, se recalcula automáticamente. |
+| Pedido de venta (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea; se resetea al cambiar variante. |
+| Diario de productos (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Respeta variante si se informa. |
 | Diario de productos (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea |
 | Movimiento de producto | **DUoM Second Qty** | ❌ No editable | Inmutable tras contabilizar |
 | Movimiento de producto | **DUoM Ratio** | ❌ No editable | Inmutable tras contabilizar |
-| Configuración DUoM artículo | **Dual UoM Enabled** | ✅ Sí | Interruptor principal |
-| Configuración DUoM artículo | **Second UoM Code** | ✅ Sí | Código de UdM secundaria |
+| Configuración DUoM artículo | **Dual UoM Enabled** | ✅ Sí | Interruptor principal; no puede ser sobrescrito por variante |
+| Configuración DUoM artículo | **Second UoM Code** | ✅ Sí | Código de UdM secundaria base |
 | Configuración DUoM artículo | **Conversion Mode** | ✅ Sí | Fijo / Variable / Siempre Variable |
 | Configuración DUoM artículo | **Fixed Ratio** | ✅ Sí (modos Fijo y Variable) | No aplica en Siempre Variable |
+| Override DUoM variante | **Variant Code** | ✅ Sí | Identifica la variante con override |
+| Override DUoM variante | **Second UoM Code** | ✅ Sí | Override de segunda UdM para la variante |
+| Override DUoM variante | **Conversion Mode** | ✅ Sí | Override del modo de conversión |
+| Override DUoM variante | **Fixed Ratio** | ✅ Sí | Override del ratio por defecto |
 | Unid. medida por artículo (BC std.) | **Qty. Rounding Precision** | ✅ Sí | Controla el redondeo de `DUoM Second Qty`. Configurar en ficha artículo → pestaña Unidades de medida. |
 
 ---
 
 *Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, ratios por lote, informes) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
 
-*Última actualización: Fase 1 — MVP + Issue 11 (Qty. Rounding Precision).*
+*Última actualización: Issue 11b — Soporte DUoM por variante (jerarquía Artículo → Variante).*

@@ -42,32 +42,34 @@ codeunit 50104 "DUoM Inventory Subscribers"
 
     /// <summary>
     /// Reacts to Quantity changes on Item Journal Lines for items with DUoM enabled.
-    /// Auto-computes DUoM Second Qty from the effective ratio (line ratio or item default).
+    /// Auto-computes DUoM Second Qty from the effective ratio, applying the
+    /// Item → Variant hierarchy via DUoM Setup Resolver.
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Quantity', false, false)]
     local procedure OnAfterValidateItemJnlLineQty(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
     var
         DUoMCalcEngine: Codeunit "DUoM Calc Engine";
-        DUoMItemSetup: Record "DUoM Item Setup";
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
         EffectiveRatio: Decimal;
     begin
         if Rec."Item No." = '' then
             exit;
-        if not DUoMItemSetup.Get(Rec."Item No.") then
+        if not DUoMSetupResolver.GetEffectiveSetup(Rec."Item No.", Rec."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
             exit;
-        if not DUoMItemSetup."Dual UoM Enabled" then
-            exit;
-        if DUoMItemSetup."Conversion Mode" = DUoMItemSetup."Conversion Mode"::AlwaysVariable then
+        if ConversionMode = ConversionMode::AlwaysVariable then
             exit;
 
         EffectiveRatio := Rec."DUoM Ratio";
         if EffectiveRatio = 0 then begin
-            EffectiveRatio := DUoMItemSetup."Fixed Ratio";
+            EffectiveRatio := FixedRatio;
             if EffectiveRatio <> 0 then
                 Rec."DUoM Ratio" := EffectiveRatio;
         end;
 
-        Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQty(Rec.Quantity, EffectiveRatio, DUoMItemSetup."Conversion Mode");
+        Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQty(Rec.Quantity, EffectiveRatio, ConversionMode);
     end;
 
     /// <summary>
