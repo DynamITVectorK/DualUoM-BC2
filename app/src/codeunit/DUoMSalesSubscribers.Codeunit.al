@@ -11,10 +11,13 @@ codeunit 50103 "DUoM Sales Subscribers"
     /// <summary>
     /// When Quantity is validated on a Sales Line for an item with DUoM enabled,
     /// this subscriber computes and updates DUoM Second Qty using the effective ratio.
-    /// The effective setup is resolved via DUoM Setup Resolver, which applies the
-    /// Item → Variant hierarchy. The effective ratio is the line's DUoM Ratio if
-    /// already set, otherwise the resolved Fixed Ratio from setup.
-    /// For AlwaysVariable mode, the subscriber exits without computing (user enters manually).
+    /// The effective setup is resolved via DUoM Setup Resolver, applying the Item → Variant
+    /// hierarchy so that variant-level overrides take precedence.
+    /// For Fixed mode, the setup ratio is always used (ignoring any stale line value).
+    /// For Variable mode, the line's DUoM Ratio is used if already set by the user;
+    /// otherwise the setup default is applied.
+    /// For AlwaysVariable mode, any stale auto-computed ratio is cleared and the subscriber
+    /// exits without computing — the user must enter DUoM Ratio and Second Qty manually.
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Sales Line", 'OnAfterValidateEvent', 'Quantity', false, false)]
     local procedure OnAfterValidateSalesLineQty(var Rec: Record "Sales Line"; var xRec: Record "Sales Line")
@@ -33,16 +36,24 @@ codeunit 50103 "DUoM Sales Subscribers"
             exit;
         if not DUoMSetupResolver.GetEffectiveSetup(Rec."No.", Rec."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
             exit;
-        if ConversionMode = ConversionMode::AlwaysVariable then
+        if ConversionMode = ConversionMode::AlwaysVariable then begin
+            // AlwaysVariable: clear any stale auto-computed values; user must enter manually.
+            Rec."DUoM Ratio" := 0;
+            Rec."DUoM Second Qty" := 0;
             exit;
-
-        // Use the line's ratio if already set; otherwise default from effective setup.
-        EffectiveRatio := Rec."DUoM Ratio";
-        if EffectiveRatio = 0 then begin
-            EffectiveRatio := FixedRatio;
-            if EffectiveRatio <> 0 then
-                Rec."DUoM Ratio" := EffectiveRatio;
         end;
+
+        // For Fixed mode, always use the setup ratio (variant-aware via GetEffectiveSetup).
+        // For Variable mode, use the line's pre-set ratio if available; otherwise the setup default.
+        if ConversionMode = ConversionMode::Fixed then
+            EffectiveRatio := FixedRatio
+        else begin
+            EffectiveRatio := Rec."DUoM Ratio";
+            if EffectiveRatio = 0 then
+                EffectiveRatio := FixedRatio;
+        end;
+        if EffectiveRatio <> 0 then
+            Rec."DUoM Ratio" := EffectiveRatio;
 
         Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
             Rec.Quantity, EffectiveRatio, ConversionMode,
