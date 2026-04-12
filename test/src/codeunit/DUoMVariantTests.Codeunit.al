@@ -222,8 +222,7 @@ codeunit 50211 "DUoM Variant Tests"
         LibraryPurchase.CreateVendor(Vendor);
         LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
         LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
-        PurchLine."Variant Code" := 'ROMANA';
-        PurchLine.Modify(false);
+        PurchLine.Validate("Variant Code", 'ROMANA');
 
         // [WHEN] Quantity is validated to 10
         PurchLine.Validate(Quantity, 10);
@@ -330,8 +329,7 @@ codeunit 50211 "DUoM Variant Tests"
         LibrarySales.CreateCustomer(Customer);
         LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
         LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
-        SalesLine."Variant Code" := 'ICEBERG';
-        SalesLine.Modify(false);
+        SalesLine.Validate("Variant Code", 'ICEBERG');
 
         // [WHEN] Quantity is validated to 8
         SalesLine.Validate(Quantity, 8);
@@ -473,8 +471,7 @@ codeunit 50211 "DUoM Variant Tests"
         LibraryPurchase.CreateVendor(Vendor);
         LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
         LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
-        PurchLine."Variant Code" := 'FRESCA';
-        PurchLine.Modify(false);
+        PurchLine.Validate("Variant Code", 'FRESCA');
 
         // [WHEN] Quantity is validated to 10
         PurchLine.Validate(Quantity, 10);
@@ -690,8 +687,7 @@ codeunit 50211 "DUoM Variant Tests"
         LibrarySales.CreateCustomer(Customer);
         LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
         LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
-        SalesLine."Variant Code" := 'GRANEL';
-        SalesLine.Modify(false);
+        SalesLine.Validate("Variant Code", 'GRANEL');
 
         // [WHEN] Quantity is validated to 6
         SalesLine.Validate(Quantity, 6);
