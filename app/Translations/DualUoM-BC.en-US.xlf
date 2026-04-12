@@ -577,6 +577,28 @@
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════
+             PageExtension 2318363570  DUoM Item Ledger Entry
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 2318363570 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this item ledger entry in the second unit of measure.</source>
+          <target state="final">Specifies the secondary quantity for this item ledger entry in the second unit of measure.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Item Ledger Entries page; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Ledger Entry - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2318363570 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio used for this item ledger entry.</source>
+          <target state="final">Specifies the conversion ratio used for this item ledger entry.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Item Ledger Entries page; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Ledger Entry - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2318363570 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Ledger Entry - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
              PermissionSet 2890406569  DUoM - All
              ═══════════════════════════════════════════ -->
         <trans-unit id="PermissionSet 2890406569 - Property 2879900210" translate="yes" xml:space="preserve">
