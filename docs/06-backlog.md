@@ -264,6 +264,40 @@ Alcance implementado:
 - `DUoMCalcEngineTests.Codeunit.al` (50204), `DUoMPurchaseTests.Codeunit.al` (50205),
   `DUoMSalesTests.Codeunit.al` (50206) — nuevos tests
 
+### Issue BUG-01 — Qty. Rounding Precision no visible ni editable en Item Units of Measure ✅ IMPLEMENTADO
+
+**Objetivo:** corregir que el campo `Qty. Rounding Precision` de la tabla `Item Unit of Measure`
+no aparezca por defecto en el subformulario de unidades de medida del artículo y sea de solo
+lectura al añadirlo mediante personalización.
+
+**Causa raíz:** la página estándar de BC 27 `"Item Units of Measure"` (page 5404) solo expone
+`Qty. Rounding Precision` para la UoM base a través de una variable de página en el grupo
+`"Current Base Unit of Measure"`. Para las UoM alternativas el campo está completamente ausente
+del repeater. Al añadirlo mediante Personalizar, el runtime de BC lo muestra sin expresión
+`Editable` explícita, lo que junto con la validación de tabla (que lanza error si existen
+movimientos de almacén) lo hace aparecer como no editable.
+
+**Solución implementada:**
+- Nueva `pageextension 50110 "DUoM Item UoM Subform"` sobre `"Item Units of Measure"`.
+- Añade `Qty. Rounding Precision` al repeater (visible por defecto) con
+  `Editable = IsQtyRndPrecisionEditable`.
+- La expresión de edición se calcula en `OnAfterGetRecord`: el campo es editable mientras no
+  existan `Item Ledger Entry` para el artículo (indicativo de que no se han contabilizado
+  transacciones que dependan de la precisión actual).
+- 2 tests unitarios en `DUoM Item UoM Round Tests` (50212).
+
+**Deliverables:**
+- `DUoMItemUoMSubform.PageExt.al` (pageextension 50110)
+- `DUoMItemUoMRoundTests.Codeunit.al` (codeunit 50212) — 2 tests
+- `docs/06-backlog.md` actualizado
+
+**Limitaciones conocidas:**
+- Los IDs XLF correctos para el ToolTip del nuevo campo deben extraerse del artefacto
+  `DualUoM-BC.g.xlf` tras la primera compilación CI y añadirse a ambos XLF.
+  Ver `docs/07-localization.md`.
+
+---
+
 ### Issue 12 — Modelo de coste/precio en doble UoM
 
 **Objetivo:** permitir que el precio unitario y el coste se expresen también en términos
