@@ -2,7 +2,8 @@
 /// Extends the Sales Line table with Dual Unit of Measure fields.
 /// DUoM Second Qty holds the computed or user-entered secondary quantity.
 /// DUoM Ratio holds the conversion ratio used on this specific line.
-/// The OnValidate trigger on DUoM Ratio recomputes the secondary quantity immediately.
+/// The OnValidate trigger on DUoM Ratio recomputes the secondary quantity immediately,
+/// using the effective DUoM setup resolved through the Item → Variant hierarchy.
 /// </summary>
 tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
 {
@@ -16,12 +17,18 @@ tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
 
             trigger OnValidate()
             var
+                DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
                 DUoMUoMHelper: Codeunit "DUoM UoM Helper";
+                SecondUoMCode: Code[10];
+                ConversionMode: Enum "DUoM Conversion Mode";
+                FixedRatio: Decimal;
                 RoundingPrecision: Decimal;
             begin
                 if Rec.Type <> Rec.Type::Item then
                     exit;
-                RoundingPrecision := DUoMUoMHelper.GetSecondUoMRoundingPrecision(Rec."No.");
+                if not DUoMSetupResolver.GetEffectiveSetup(Rec."No.", Rec."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
+                    exit;
+                RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode);
                 if RoundingPrecision > 0 then
                     "DUoM Second Qty" := Round("DUoM Second Qty", RoundingPrecision);
             end;
@@ -36,21 +43,20 @@ tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
             var
                 DUoMCalcEngine: Codeunit "DUoM Calc Engine";
                 DUoMUoMHelper: Codeunit "DUoM UoM Helper";
-                DUoMItemSetup: Record "DUoM Item Setup";
+                DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+                SecondUoMCode: Code[10];
                 Mode: Enum "DUoM Conversion Mode";
+                FixedRatio: Decimal;
             begin
                 if Rec.Type <> Rec.Type::Item then
                     exit;
-                if not DUoMItemSetup.Get(Rec."No.") then
+                if not DUoMSetupResolver.GetEffectiveSetup(Rec."No.", Rec."Variant Code", SecondUoMCode, Mode, FixedRatio) then
                     exit;
-                if not DUoMItemSetup."Dual UoM Enabled" then
-                    exit;
-                Mode := DUoMItemSetup."Conversion Mode";
                 if Mode = Mode::AlwaysVariable then
                     exit;
                 "DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
                     Rec.Quantity, "DUoM Ratio", Mode,
-                    DUoMUoMHelper.GetSecondUoMRoundingPrecision(Rec."No."));
+                    DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode));
             end;
         }
     }

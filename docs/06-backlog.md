@@ -171,6 +171,65 @@ Subformularios de históricos muestran los campos (solo lectura).
 > Es independiente de warehouse y lotes, por lo que puede comenzarse inmediatamente
 > una vez completado Issue 11.
 
+### Issue 11b — Soporte Item Variants (jerarquía Item → Variant) ✅ IMPLEMENTADO
+
+**Objetivo:** extender la solución DUoM para soportar Item Variants con un modelo de
+override opcional: el artículo mantiene la configuración base, y cada variante puede
+sobreescribir campos concretos (Second UoM Code, Conversion Mode, Fixed Ratio) sin
+necesidad de duplicar toda la configuración.
+
+Alcance implementado:
+- Nueva tabla `DUoM Item Variant Setup` (50101) con clave `(Item No., Variant Code)`.
+  Campos: `Second UoM Code`, `Conversion Mode`, `Fixed Ratio`. No incluye
+  `Dual UoM Enabled` (el master switch siempre vive en el item setup).
+- Nuevo codeunit `DUoM Setup Resolver` (50107) que encapsula la lógica jerárquica:
+  Item Setup (master switch) → Variant Override → Item defaults. Todos los
+  suscriptores y triggers de tabla usan este resolver.
+- Nueva página `DUoM Variant Setup List` (50101) — lista de overrides por variante,
+  abierta desde el Item Card con un nuevo filtro por Item No.
+- Acción `DUoM Variant Overrides` añadida a `DUoM Item Card Ext` (pageextension 50100).
+- TableExtension `DUoM Item Variant Ext` (50120) sobre `Item Variant` con trigger
+  `OnDelete` para borrado en cascada del override DUoM de esa variante.
+- `DUoM Purchase Subscribers` (50102): suscriptor para `Variant Code` validate añadido;
+  suscriptor de `Quantity` refactorizado para usar el resolver.
+- `DUoM Sales Subscribers` (50103): mismo patrón que compras.
+- `DUoM Inventory Subscribers` (50104): suscriptor de `Quantity` en Item Journal Line
+  refactorizado para usar el resolver con `Variant Code`.
+- `DUoM UoM Helper` (50106): nuevo método `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)`
+  para obtener la precisión de redondeo a partir de un código UoM ya resuelto.
+- `DUoMPurchaseLine.TableExt.al` y `DUoMSalesLine.TableExt.al` (50110, 50111):
+  triggers `OnValidate` de `DUoM Ratio` y `DUoM Second Qty` refactorizados para usar
+  el resolver y el nuevo método de rounding del helper.
+- Permission sets `DUoM - All` (50100) y `DUoM - Test All` (50200): entrada
+  `tabledata "DUoM Item Variant Setup" = RIMD` añadida.
+- `DUoM Test Helpers` (50208): métodos `CreateVariantSetup` y `DeleteVariantSetupIfExists`.
+- 8 tests en nuevo codeunit `DUoM Variant Tests` (50211).
+- Documentación actualizada: `docs/04-item-setup-model.md`, `docs/06-backlog.md`.
+
+**Limitaciones conocidas:**
+- Soporte warehouse (Warehouse Receipt, Shipment, Activity Lines) queda para Issue 14/15.
+  El resolver está preparado para ser extendido con un tercer nivel de jerarquía (Lot).
+- Soporte de lotes (jerarquía Lot override) queda para Issue 13.
+- XLF (traducciones): los IDs correctos de los nuevos trans-units se generan por el
+  compilador AL; deben extraerse del artefacto `DualUoM-BC.g.xlf` tras la primera
+  compilación CI y commitearse en ambos XLF. Ver `docs/07-localization.md`.
+
+**Deliverables:**
+- `DUoMItemVariantSetup.Table.al` (table 50101)
+- `DUoMSetupResolver.Codeunit.al` (codeunit 50107)
+- `DUoMVariantSetupList.Page.al` (page 50101)
+- `DUoMItemVariant.TableExt.al` (tableextension 50120)
+- `DUoMPurchaseSubscribers.Codeunit.al` (50102) — refactorizado + subscriber Variant Code
+- `DUoMSalesSubscribers.Codeunit.al` (50103) — refactorizado + subscriber Variant Code
+- `DUoMInventorySubscribers.Codeunit.al` (50104) — refactorizado
+- `DUoMUoMHelper.Codeunit.al` (50106) — nuevo método GetRoundingPrecisionByUoMCode
+- `DUoMPurchaseLine.TableExt.al` (50110), `DUoMSalesLine.TableExt.al` (50111) — actualizados
+- `DUoMItemCardExt.PageExt.al` (50100) — acción DUoM Variant Overrides
+- `DUoMAll.PermissionSet.al` (50100), `DUoMTestAll.PermissionSet.al` (50200) — actualizados
+- `DUoMTestHelpers.Codeunit.al` (50208) — métodos variant
+- `DUoMVariantTests.Codeunit.al` (codeunit 50211) — 8 tests
+- `docs/04-item-setup-model.md`, `docs/06-backlog.md`
+
 ### Issue 11 — Aplicar Rounding Precision de la UoM secundaria a `DUoM Second Qty` ✅ IMPLEMENTADO
 
 **Objetivo:** aplicar el campo `Qty. Rounding Precision` de la tabla `Item Unit of Measure`
@@ -367,11 +426,17 @@ Alcance (report extensions en BC 27):
 - **IDs de test codeunit usados en Phase 1:** 50201–50208 (tests unitarios e integración),
   50209 (`DUoM ILE Integration Tests`, tests E2E de contabilización) y
   50210 (`DUoM Inv CrMemo Post Tests`, tests E2E de facturación y abono).
-  **IDs libres para Phase 2:** 50211+ para nuevos codeunits de test.
+  **Issue 11b:** `DUoM Variant Tests` usa ID 50211.
+  **IDs libres para Phase 2:** 50212+ para nuevos codeunits de test.
 - **Rango de IDs de objetos de producción:** 50100–50199.
-  IDs ya asignados en Phase 1 + Issue 11: tablas 50100; enums 50100; codeunits 50101–50106;
-  pages 50100; pageextensions 50101–50109; tableextensions 50100, 50110–50119.
-  IDs libres para Phase 2 (Issue 12+): tableextensions 50120+, codeunits 50107+, pages 50101+.
+  IDs ya asignados en Phase 1 + Issues 11/11b:
+  - tablas: 50100 (`DUoM Item Setup`), 50101 (`DUoM Item Variant Setup`)
+  - enums: 50100
+  - codeunits: 50101–50107 (50107 = `DUoM Setup Resolver`)
+  - pages: 50100 (`DUoM Item Setup`), 50101 (`DUoM Variant Setup List`)
+  - pageextensions: 50100–50109
+  - tableextensions: 50100, 50110–50120 (50120 = `DUoM Item Variant Ext`)
+  IDs libres para Phase 2 (Issue 12+): tableextensions 50121+, codeunits 50108+, pages 50102+.
 - **Eventos BC 27 — referencia de firma verificada:**
   - Purch. Rcpt. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Rcpt. Line"` — var ÚLTIMO
   - Purch. Inv. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Inv. Line"` — var ÚLTIMO

@@ -1,7 +1,6 @@
 /// <summary>
-/// Extends the Item Card with an action to open the DUoM Item Setup page for the current item.
-/// The action always retrieves or creates the setup record before opening the page,
-/// preventing blank or contextless setup pages.
+/// Extends the Item Card with actions to open DUoM setup for the current item
+/// and to manage DUoM variant-level overrides.
 /// </summary>
 pageextension 50100 "DUoM Item Card Ext" extends "Item Card"
 {
@@ -22,6 +21,21 @@ pageextension 50100 "DUoM Item Card Ext" extends "Item Card"
                 begin
                     DUoMItemSetup.GetOrCreate(Rec."No.");
                     Page.Run(Page::"DUoM Item Setup", DUoMItemSetup);
+                end;
+            }
+            action(DUoMVariantSetup)
+            {
+                ApplicationArea = All;
+                Caption = 'DUoM Variant Overrides';
+                Image = Variants;
+                ToolTip = 'Opens the DUoM variant-level overrides for this item. Each row overrides the item DUoM setup for a specific variant.';
+
+                trigger OnAction()
+                var
+                    DUoMVariantSetup: Record "DUoM Item Variant Setup";
+                begin
+                    DUoMVariantSetup.SetRange("Item No.", Rec."No.");
+                    Page.Run(Page::"DUoM Variant Setup List", DUoMVariantSetup);
                 end;
             }
         }

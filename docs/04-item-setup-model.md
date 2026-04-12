@@ -40,6 +40,8 @@ is acceptable and keeping all DUoM setup in one place is cleaner.
 
 ## Table Structure
 
+### `DUoM Item Setup` (50100) — Item-level configuration
+
 | Field | Type | Purpose |
 |---|---|---|
 | `Item No.` | Code[20] PK | Links to `Item`; defines setup scope |
@@ -47,6 +49,48 @@ is acceptable and keeping all DUoM setup in one place is cleaner.
 | `Second UoM Code` | Code[10] | The secondary UoM (e.g. PCS when base is KG) |
 | `Conversion Mode` | Enum `DUoM Conversion Mode` | Fixed / Variable / Always Variable |
 | `Fixed Ratio` | Decimal(0:5) | Ratio when mode is Fixed or Variable; cleared for Always Variable |
+
+---
+
+## Variant-Level Override Table
+
+### `DUoM Item Variant Setup` (50101) — Optional variant override
+
+When Item Variants require a different DUoM configuration from the item default,
+an optional override record can be stored in this table.
+
+**Design principle:** the item-level setup is the master configuration.
+A variant record only exists when at least one field should differ from the item.
+When no variant record exists, the item setup is used as-is.
+
+| Field | Type | Purpose |
+|---|---|---|
+| `Item No.` | Code[20] PK | Links to `Item` |
+| `Variant Code` | Code[10] PK | Links to `Item Variant` |
+| `Second UoM Code` | Code[10] | Override for secondary UoM code |
+| `Conversion Mode` | Enum `DUoM Conversion Mode` | Override for conversion mode |
+| `Fixed Ratio` | Decimal(0:5) | Override for the fixed/default ratio |
+
+**Important:** `Dual UoM Enabled` lives only on the item setup — a variant
+cannot independently enable DUoM if the item has it disabled.
+
+---
+
+## Configuration Hierarchy: Item → Variant
+
+Resolved by `DUoM Setup Resolver` (codeunit 50107):
+
+```
+1. Check DUoM Item Setup (50100) for the item.
+   If not found or Dual UoM Enabled = false → DUoM is OFF.
+2. If VariantCode is not empty, check DUoM Item Variant Setup (50101).
+   If a record exists → use its fields (Second UoM Code, Conversion Mode, Fixed Ratio).
+3. Otherwise → use the item-level fields from DUoM Item Setup.
+```
+
+All callers (subscribers, table extension triggers) must use `DUoM Setup Resolver`
+to resolve the effective setup. Direct reads from `DUoM Item Setup` are only
+acceptable where variant context is absent (e.g. setup pages, item-only flows).
 
 ---
 
@@ -62,6 +106,8 @@ is acceptable and keeping all DUoM setup in one place is cleaner.
 
 ## Validation Rules
 
+### Item Setup (`DUoM Item Setup`)
+
 | Rule | Enforcement point |
 |---|---|
 | If DUoM disabled → Second UoM Code, Conversion Mode, Fixed Ratio are cleared | `Dual UoM Enabled` OnValidate trigger |
@@ -70,18 +116,25 @@ is acceptable and keeping all DUoM setup in one place is cleaner.
 | If Fixed mode → Fixed Ratio > 0 | `ValidateSetup()` procedure |
 | Switching from Fixed to Variable/Always Variable → Fixed Ratio cleared | `Conversion Mode` OnValidate trigger |
 
-`ValidateSetup()` is a public procedure intended for use by document/posting flows
-(future issues) to assert setup consistency before using DUoM data.
+### Variant Setup (`DUoM Item Variant Setup`)
+
+| Rule | Enforcement point |
+|---|---|
+| Second UoM Code ≠ Item base UoM (when specified) | `Second UoM Code` OnValidate trigger |
+| Setting Conversion Mode to AlwaysVariable → Fixed Ratio cleared | `Conversion Mode` OnValidate trigger |
+| Deleting an Item Variant → cascade-deletes the variant setup | `Item Variant` OnDelete trigger (tableextension 50120) |
 
 ---
 
 ## Future Extensibility
 
 - **Lot-specific ratios (Phase 2)**: will be stored in a separate table keyed by
-  `(Item No., Lot No.)` — no changes needed to `DUoM Item Setup`.
-- **Warehouse fields (Phase 2)**: additional boolean flags (e.g. `Track in WMS`)
-  can be added to `DUoM Item Setup` as new fields without breaking existing data.
-- **Document propagation**: document line codeunits will call `DUoM Item Setup.Get()`
-  to retrieve the conversion mode and ratio — the table key design supports this.
+  `(Item No., Lot No.)` or `(Item No., Variant Code, Lot No.)`. The resolver will
+  be extended with a third level: Lot override → Variant override → Item setup.
+- **Warehouse fields (Phase 2)**: additional boolean flags can be added to
+  `DUoM Item Setup` as new fields without breaking existing data.
+- **Document propagation**: all document line logic uses `DUoM Setup Resolver`
+  (codeunit 50107) to retrieve effective setup — adding new hierarchy levels
+  only requires updating the resolver, not all callers.
 - **Mass update tooling**: a future issue can add a report/page to bulk-enable DUoM
   for multiple items without changing the table structure.
