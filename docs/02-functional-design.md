@@ -46,6 +46,43 @@ Example: Fresh produce sold by weight but counted by piece — each shipment dif
 
 ---
 
+## Rounding Precision
+
+When the second Unit of Measure is discrete (e.g. PCS, BOX, PALLET), fractional
+quantities such as 11.5 PCS are physically meaningless. Business Central stores a
+`Rounding Precision` field on each `Unit of Measure` record that defines the minimum
+unit step (e.g. `1` for PCS, `0.001` for KG).
+
+The DualUoM extension reads this field to ensure `DUoM Second Qty` is always
+rounded to a physically valid value:
+
+| Scenario | Second UoM | Rounding Precision | Qty | Ratio | Result |
+|---|---|---|---|---|---|
+| Auto-calculate Fixed | PCS | 1 | 10 | 1.15 | **12** |
+| Auto-calculate Fixed | KG | 0.001 | 10 | 1.15 | **11.5** |
+| Manual entry | PCS | 1 | — | — | 11.5 entered → stored as **12** |
+| No setup (fallback) | any | 0 | 10 | 1.15 | **11.5** (no rounding) |
+
+Rounding is applied in two places:
+
+1. **Auto-calculation** — `DUoM Calc Engine.ComputeSecondQtyRounded` rounds the
+   computed result before storing it on the document line.
+2. **Manual entry** — the `OnValidate` trigger of the `DUoM Second Qty` field in
+   `Purchase Line`, `Sales Line` and `Item Journal Line` rounds the user-entered value
+   using the same precision.
+
+The `DUoM UoM Helper` codeunit (50106) centralises the precision lookup:
+`GetSecondUoMRoundingPrecision(ItemNo)` reads `UnitOfMeasure."Rounding Precision"` for
+the item's configured second UoM and returns `0` as fallback when no setup exists.
+When the precision is `0` (older BC records), a fallback of `0.00001` is used internally
+to preserve the current unrounded behaviour without truncation.
+
+> **Note:** `DecimalPlaces = 0:5` on the field definition is intentionally kept unchanged.
+> Rounding is a logical constraint, not a storage constraint. High-precision intermediate
+> values for continuous UoMs (KG, LT) remain fully representable.
+
+---
+
 ## Second Quantity Propagation
 
 The second quantity must be visible and editable (subject to conversion mode) at:

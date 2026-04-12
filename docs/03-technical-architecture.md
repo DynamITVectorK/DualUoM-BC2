@@ -81,11 +81,12 @@ already covers the need:
 
 | Objeto | ID | Propósito |
 |---|---|---|
-| `DUoM Calc Engine` | 50101 | Cálculo y validación de la segunda cantidad |
+| `DUoM Calc Engine` | 50101 | Cálculo y validación de la segunda cantidad. Incluye `ComputeSecondQtyRounded` con soporte de `Rounding Precision` |
 | `DUoM Purchase Subscribers` | 50102 | Subscribers de eventos del flujo de compras |
 | `DUoM Sales Subscribers` | 50103 | Subscribers de eventos del flujo de ventas |
 | `DUoM Inventory Subscribers` | 50104 | Subscribers para diario de productos / ILE / líneas de documentos registrados |
 | `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
+| `DUoM UoM Helper` | 50106 | Helper de UoM: obtiene `Rounding Precision` de la segunda UoM del ítem para aplicarla al cálculo y validación de `DUoM Second Qty` |
 
 ---
 
