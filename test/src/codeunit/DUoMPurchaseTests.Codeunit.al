@@ -281,4 +281,53 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
+
+    // -------------------------------------------------------------------------
+    // Integration: Quantity validate with discrete UoM → DUoM Second Qty rounded
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchaseLine_ValidateQty_DiscreteUoM_SecondQtyIsRounded()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        UnitOfMeasure: Record "Unit of Measure";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+        UoMCode: Code[10];
+    begin
+        // [GIVEN] A Unit of Measure with Rounding Precision = 1 (discrete, e.g. pieces)
+        UoMCode := LibraryInventory.CreateUnitOfMeasureCode();
+        UnitOfMeasure.Get(UoMCode);
+        UnitOfMeasure."Rounding Precision" := 1;
+        UnitOfMeasure.Modify(false);
+
+        // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 1.15, second UoM = discrete
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, UoMCode, "DUoM Conversion Mode"::Fixed, 1.15);
+
+        // [GIVEN] A Vendor and Purchase Order line for that item
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+
+        // [WHEN] Quantity is validated to 10 → raw result would be 10 × 1.15 = 11.5
+        PurchLine.Validate(Quantity, 10);
+
+        // [THEN] DUoM Second Qty = 12 (11.5 rounded to precision 1)
+        LibraryAssert.AreEqual(12, PurchLine."DUoM Second Qty",
+            'Discrete UoM: DUoM Second Qty must be rounded to 12 (not 11.5) after Quantity validate');
+
+        // Cleanup
+        PurchLine.Delete(false);
+        PurchHeader.Delete(false);
+        Vendor.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
+        Item.Delete(false);
+        UnitOfMeasure.Delete(false);
+    end;
 }

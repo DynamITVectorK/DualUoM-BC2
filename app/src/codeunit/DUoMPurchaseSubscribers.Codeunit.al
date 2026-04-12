@@ -18,6 +18,7 @@ codeunit 50102 "DUoM Purchase Subscribers"
     local procedure OnAfterValidatePurchLineQty(var Rec: Record "Purchase Line"; var xRec: Record "Purchase Line")
     var
         DUoMCalcEngine: Codeunit "DUoM Calc Engine";
+        DUoMUoMHelper: Codeunit "DUoM UoM Helper";
         DUoMItemSetup: Record "DUoM Item Setup";
         EffectiveRatio: Decimal;
     begin
@@ -40,6 +41,8 @@ codeunit 50102 "DUoM Purchase Subscribers"
                 Rec."DUoM Ratio" := EffectiveRatio;
         end;
 
-        Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQty(Rec.Quantity, EffectiveRatio, DUoMItemSetup."Conversion Mode");
+        Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
+            Rec.Quantity, EffectiveRatio, DUoMItemSetup."Conversion Mode",
+            DUoMUoMHelper.GetSecondUoMRoundingPrecision(Rec."No."));
     end;
 }

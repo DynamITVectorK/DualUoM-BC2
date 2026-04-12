@@ -49,6 +49,32 @@ codeunit 50101 "DUoM Calc Engine"
         end;
     end;
 
+    /// <summary>
+    /// Same as ComputeSecondQty but applies Round() using the secondary UoM rounding precision.
+    /// When RoundingPrecision = 0, a fallback of 0.00001 is used (maximum precision),
+    /// which reproduces the unrounded behaviour of ComputeSecondQty.
+    /// For AlwaysVariable mode the result is always 0 and no rounding is applied.
+    /// </summary>
+    /// <param name="FirstQty">The primary quantity (must be ≥ 0).</param>
+    /// <param name="Ratio">The conversion ratio (constraints depend on Mode).</param>
+    /// <param name="Mode">The conversion mode that determines the computation rules.</param>
+    /// <param name="RoundingPrecision">The Rounding Precision of the secondary UoM (0 = fallback to 0.00001).</param>
+    /// <returns>The rounded secondary quantity, or 0 for AlwaysVariable mode.</returns>
+    procedure ComputeSecondQtyRounded(FirstQty: Decimal; Ratio: Decimal;
+        Mode: Enum "DUoM Conversion Mode"; RoundingPrecision: Decimal): Decimal
+    var
+        Result: Decimal;
+        EffectivePrecision: Decimal;
+    begin
+        Result := ComputeSecondQty(FirstQty, Ratio, Mode);
+        if Mode = Mode::AlwaysVariable then
+            exit(Result);
+        EffectivePrecision := RoundingPrecision;
+        if EffectivePrecision <= 0 then
+            EffectivePrecision := 0.00001;
+        exit(Round(Result, EffectivePrecision));
+    end;
+
     var
         NegativeQtyErr: Label 'Quantity cannot be negative.', Comment = 'Validation error; no placeholders.';
         ZeroRatioFixedErr: Label 'Ratio must be greater than zero when Conversion Mode is Fixed.', Comment = 'Validation error; no placeholders.';

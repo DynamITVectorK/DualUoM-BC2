@@ -229,4 +229,84 @@ codeunit 50204 "DUoM Calc Engine Tests"
         // [THEN] Result = 0 — AlwaysVariable always returns zero
         LibraryAssert.AreEqual(0, Result, 'AlwaysVariable with zero inputs should return zero without error');
     end;
+
+    // =========================================================================
+    // ComputeSecondQtyRounded — unit tests
+    // =========================================================================
+
+    // -------------------------------------------------------------------------
+    // Rounded — discrete UoM (Rounding Precision = 1) → result rounded to integer
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure ComputeSecondQtyRounded_DiscreteUoM()
+    var
+        CalcEngine: Codeunit "DUoM Calc Engine";
+        LibraryAssert: Codeunit "Library Assert";
+        Result: Decimal;
+    begin
+        // [GIVEN] FirstQty = 10, Ratio = 1.15, Mode = Fixed, RoundingPrecision = 1
+        // [WHEN] ComputeSecondQtyRounded is called
+        Result := CalcEngine.ComputeSecondQtyRounded(10, 1.15, "DUoM Conversion Mode"::Fixed, 1);
+
+        // [THEN] Result = Round(10 × 1.15, 1) = Round(11.5, 1) = 12
+        LibraryAssert.AreEqual(12, Result, 'Discrete UoM: 10 × 1.15 rounded to precision 1 should yield 12');
+    end;
+
+    // -------------------------------------------------------------------------
+    // Rounded — continuous UoM (Rounding Precision = 0.001) → 3 decimal places
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure ComputeSecondQtyRounded_ContinuousUoM()
+    var
+        CalcEngine: Codeunit "DUoM Calc Engine";
+        LibraryAssert: Codeunit "Library Assert";
+        Result: Decimal;
+    begin
+        // [GIVEN] FirstQty = 10, Ratio = 1.15, Mode = Fixed, RoundingPrecision = 0.001
+        // [WHEN] ComputeSecondQtyRounded is called
+        Result := CalcEngine.ComputeSecondQtyRounded(10, 1.15, "DUoM Conversion Mode"::Fixed, 0.001);
+
+        // [THEN] Result = Round(11.5, 0.001) = 11.5 (no change for continuous UoM)
+        LibraryAssert.AreEqual(11.5, Result, 'Continuous UoM: 10 × 1.15 rounded to precision 0.001 should yield 11.5');
+    end;
+
+    // -------------------------------------------------------------------------
+    // Rounded — zero precision fallback → same as unrounded ComputeSecondQty
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure ComputeSecondQtyRounded_ZeroPrecisionFallback()
+    var
+        CalcEngine: Codeunit "DUoM Calc Engine";
+        LibraryAssert: Codeunit "Library Assert";
+        Result: Decimal;
+    begin
+        // [GIVEN] FirstQty = 10, Ratio = 1.15, Mode = Fixed, RoundingPrecision = 0
+        // [WHEN] ComputeSecondQtyRounded is called with precision 0
+        Result := CalcEngine.ComputeSecondQtyRounded(10, 1.15, "DUoM Conversion Mode"::Fixed, 0);
+
+        // [THEN] Result = 11.5 — fallback precision 0.00001 produces no visible rounding
+        LibraryAssert.AreEqual(11.5, Result, 'Zero precision fallback should produce same result as unrounded ComputeSecondQty');
+    end;
+
+    // -------------------------------------------------------------------------
+    // Rounded — AlwaysVariable mode → always returns 0 regardless of precision
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure ComputeSecondQtyRounded_AlwaysVariable()
+    var
+        CalcEngine: Codeunit "DUoM Calc Engine";
+        LibraryAssert: Codeunit "Library Assert";
+        Result: Decimal;
+    begin
+        // [GIVEN] FirstQty = 10, Ratio = 1.15, Mode = AlwaysVariable, RoundingPrecision = 1
+        // [WHEN] ComputeSecondQtyRounded is called
+        Result := CalcEngine.ComputeSecondQtyRounded(10, 1.15, "DUoM Conversion Mode"::AlwaysVariable, 1);
+
+        // [THEN] Result = 0 — AlwaysVariable always returns 0; rounding is not applied
+        LibraryAssert.AreEqual(0, Result, 'AlwaysVariable mode must return 0 regardless of rounding precision');
+    end;
 }

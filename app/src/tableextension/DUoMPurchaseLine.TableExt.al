@@ -14,6 +14,18 @@ tableextension 50110 "DUoM Purchase Line Ext" extends "Purchase Line"
             Caption = 'DUoM Second Qty', Comment = 'Caption for DUoM Second Qty field; no placeholders.';
             DecimalPlaces = 0 : 5;
             DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            var
+                DUoMUoMHelper: Codeunit "DUoM UoM Helper";
+                RoundingPrecision: Decimal;
+            begin
+                if Rec.Type <> Rec.Type::Item then
+                    exit;
+                RoundingPrecision := DUoMUoMHelper.GetSecondUoMRoundingPrecision(Rec."No.");
+                if RoundingPrecision > 0 then
+                    "DUoM Second Qty" := Round("DUoM Second Qty", RoundingPrecision);
+            end;
         }
         field(50101; "DUoM Ratio"; Decimal)
         {
@@ -24,6 +36,7 @@ tableextension 50110 "DUoM Purchase Line Ext" extends "Purchase Line"
             trigger OnValidate()
             var
                 DUoMCalcEngine: Codeunit "DUoM Calc Engine";
+                DUoMUoMHelper: Codeunit "DUoM UoM Helper";
                 DUoMItemSetup: Record "DUoM Item Setup";
                 Mode: Enum "DUoM Conversion Mode";
             begin
@@ -36,7 +49,9 @@ tableextension 50110 "DUoM Purchase Line Ext" extends "Purchase Line"
                 Mode := DUoMItemSetup."Conversion Mode";
                 if Mode = Mode::AlwaysVariable then
                     exit;
-                "DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQty(Rec.Quantity, "DUoM Ratio", Mode);
+                "DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
+                    Rec.Quantity, "DUoM Ratio", Mode,
+                    DUoMUoMHelper.GetSecondUoMRoundingPrecision(Rec."No."));
             end;
         }
     }
