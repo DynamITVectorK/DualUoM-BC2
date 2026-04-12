@@ -131,15 +131,47 @@ líneas registradas e ILE.
 - `DUoMPostedSalesShipSubform.PageExt.al` (50105) extiende `Posted Sales Shpt. Subform`
 - `DUoMILEIntegrationTests.Codeunit.al` (50209) — tests E2E de contabilización completa
 
+### Issue 10 — Propagar DUoM a históricos de facturas y abonos ✅ IMPLEMENTADO
+
+Campos `DUoM Second Qty` y `DUoM Ratio` en las cuatro líneas de documentos históricos
+registrados de factura y abono de compra y venta, mediante table extensions.
+Propagación desde las líneas de pedido origen usando **eventos de inicialización de tabla**
+(BC 27 / runtime 15):
+
+- `OnAfterInitFromPurchLine` en **Table `"Purch. Inv. Line"`**: copia DUoM de `Purchase Line`
+  a la factura de compra registrada durante la inicialización.
+- `OnAfterInitFromPurchLine` en **Table `"Purch. Cr. Memo Line"`**: ídem para abono de compra.
+- `OnAfterInitFromSalesLine` en **Table `"Sales Invoice Line"`**: copia DUoM de `Sales Line`
+  a la factura de venta registrada.
+- `OnAfterInitFromSalesLine` en **Table `"Sales Cr.Memo Line"`**: ídem para abono de venta.
+
+> **IMPORTANTE — firma BC 27:** En los eventos de Sales (`Sales Invoice Line` y
+> `Sales Cr.Memo Line`), el parámetro `var` de destino es el **PRIMER** parámetro de la
+> firma, a diferencia de los eventos de Purchase donde es el **ÚLTIMO**. Verificar siempre
+> la firma exacta en el código fuente BC 27 antes de añadir un suscriptor.
+
+La lógica de copia está centralizada en `DUoM Doc Transfer Helper` (50105) — thin subscriber pattern.
+Subformularios de históricos muestran los campos (solo lectura).
+
+**Deliverables:**
+- `DUoMPurchInvLine.TableExt.al` (50116), `DUoMPurchCrMemoLine.TableExt.al` (50117)
+- `DUoMSalesInvLine.TableExt.al` (50118), `DUoMSalesCrMemoLine.TableExt.al` (50119)
+- Nuevos métodos en `DUoMDocTransferHelper.Codeunit.al` (50105): `CopyFromPurchLineToPurchInvLine`,
+  `CopyFromPurchLineToPurchCrMemoLine`, `CopyFromSalesLineToSalesInvLine`, `CopyFromSalesLineToSalesCrMemoLine`
+- Nuevos suscriptores en `DUoMInventorySubscribers.Codeunit.al` (50104)
+- `DUoMPostedPurchInvSubform.PageExt.al` (50106), `DUoMPostedPurchCrMemoSubform.PageExt.al` (50107)
+- `DUoMPostedSalesInvSubform.PageExt.al` (50108), `DUoMPostedSalesCrMemoSubform.PageExt.al` (50109)
+- `DUoMInvCrMemoPostTests.Codeunit.al` (50210) — 5 tests E2E de facturación y abono
+
 ---
 
 ## Phase 2 — Funcionalidad extendida
 
-> **Siguiente issue recomendado:** Issue 10 — Modelo de coste/precio en doble UoM.
+> **Siguiente issue recomendado:** Issue 11 — Modelo de coste/precio en doble UoM.
 > Es independiente de warehouse y lotes, por lo que puede comenzarse inmediatamente
 > una vez completada la Phase 1.
 
-### Issue 10 — Modelo de coste/precio en doble UoM
+### Issue 11 — Modelo de coste/precio en doble UoM
 
 **Objetivo:** permitir que el precio unitario y el coste se expresen también en términos
 de la segunda unidad de medida, y que el importe de línea se calcule correctamente.
@@ -159,11 +191,11 @@ Alcance:
   - Dado coste en segunda UoM y ratio fijo, verificar `Direct Unit Cost` derivado.
   - Verificar que `Value Entry` recibe `DUoM Second Qty` tras contabilización.
 
-**Dependencias:** Issues 1–9 completados.
-**Deliverables:** (IDs en rango 50116–50119 para table extensions, IDs codeunit libres en 50106+)
-Tests: nuevo codeunit `DUoM Cost Price Tests` (50210)
+**Dependencias:** Issues 1–10 completados.
+**Deliverables:** (IDs en rango 50120+ para table extensions, IDs codeunit libres en 50106+)
+Tests: nuevo codeunit `DUoM Cost Price Tests` (50211)
 
-### Issue 11 — Ratio real por lote
+### Issue 12 — Ratio real por lote
 
 **Objetivo:** almacenar y recuperar el ratio de conversión real (medido al pesaje o recepción)
 asociado a un número de lote específico.
@@ -181,12 +213,12 @@ Alcance:
   - Dado lote sin ratio, asignar lote → verificar que `DUoM Ratio` no se modifica.
   - Verificar que el ratio de lote prevalece sobre el ratio fijo del artículo cuando el modo es Variable.
 
-**Dependencias:** Issues 1–9. Issue 10 recomendado antes (coste/precio usa el ratio).
+**Dependencias:** Issues 1–10. Issue 11 recomendado antes (coste/precio usa el ratio).
 **Deliverables:** `DUoMLotRatio.Table.al`, `DUoMLotRatio.Page.al`,
 suscriptores en nuevo `DUoMLotSubscribers.Codeunit.al`,
-Tests: `DUoM Lot Ratio Tests` (ID en 50211+)
+Tests: `DUoM Lot Ratio Tests` (ID en 50212+)
 
-### Issue 12 — Warehouse Receipt and Shipment DUoM Fields
+### Issue 13 — Warehouse Receipt and Shipment DUoM Fields
 
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
 
@@ -205,11 +237,11 @@ Alcance:
   - Crear un Warehouse Shipment desde un Sales Order con DUoM → verificar campos.
   - Contabilizar Warehouse Shipment → verificar ILE.
 
-**Dependencias:** Issues 1–9 completados. Issue 10 recomendado antes para consistencia de coste.
+**Dependencias:** Issues 1–10 completados. Issue 11 recomendado antes para consistencia de coste.
 **Nota:** Verificar nombres exactos de páginas BC 27 antes de crear page extensions
 (`Warehouse Receipt Subform`, `Warehouse Shipment Subform`) usando el BC Symbol Reference.
 
-### Issue 13 — Directed Put-Away and Pick DUoM Fields
+### Issue 14 — Directed Put-Away and Pick DUoM Fields
 
 **Objetivo:** extender los documentos de actividad de almacén dirigido (put-away y pick)
 con campos DUoM para seguimiento de segunda cantidad en movimientos internos.
@@ -223,9 +255,9 @@ Alcance:
   - Crear put-away desde Warehouse Receipt con DUoM → verificar campos en actividad.
   - Crear pick desde Warehouse Shipment con DUoM → verificar campos.
 
-**Dependencias:** Issue 12 completado.
+**Dependencias:** Issue 13 completado.
 
-### Issue 14 — Documentos de devolución DUoM
+### Issue 15 — Documentos de devolución DUoM
 
 **Objetivo:** soportar DUoM en órdenes de devolución de compra y venta.
 
@@ -241,10 +273,10 @@ Alcance:
   - Crear Purchase Return Order con DUoM → contabilizar → verificar Return Shipment Line e ILE.
   - Crear Sales Return Order con DUoM → contabilizar → verificar Return Receipt Line e ILE.
 
-**Dependencias:** Issues 1–9. Issue 10 recomendado.
+**Dependencias:** Issues 1–10. Issue 11 recomendado.
 **Nota:** Verificar nombres exactos de páginas BC 27 antes de implementar.
 
-### Issue 15 — Physical Inventory DUoM
+### Issue 16 — Physical Inventory DUoM
 
 **Objetivo:** permitir el recuento de inventario físico expresando cantidades en segunda UoM.
 
@@ -257,7 +289,7 @@ Alcance:
 
 **Dependencias:** Issue 8 completado (Item Journal ya extendido).
 
-### Issue 16 — Reporting Extensions
+### Issue 17 — Reporting Extensions
 
 **Objetivo:** añadir columnas de segunda cantidad y segunda UoM a los informes estándar clave.
 
@@ -268,15 +300,15 @@ Alcance (report extensions en BC 27):
 - Informe de valoración de inventario: añadir columna de segunda cantidad total.
 - Tests: verificar que los campos se incluyen en los datasets de informe (unit tests de dataset).
 
-**Dependencias:** Issues 9 y 10 recomendados antes.
+**Dependencias:** Issues 9 y 11 recomendados antes.
 
 ---
 
 ## Phase 3 / Futuro
 
-- Orden de traslado DUoM (`Transfer Order`) — Issue 17+
+- Orden de traslado DUoM (`Transfer Order`) — Issue 18+
 - Órdenes de montaje DUoM (`Assembly Order`) — si entra en scope
-- Integración con Item Tracking avanzado (multi-lote en línea) — Issue 18+
+- Integración con Item Tracking avanzado (multi-lote en línea) — Issue 19+
 
 ---
 
@@ -292,20 +324,25 @@ Alcance (report extensions en BC 27):
 - **Localización:** todos los nuevos objetos con texto visible por el usuario deben incluir
   Labels con `Comment` y tener ambos XLF (`en-US` y `es-ES`) actualizados en el mismo PR.
   Ver `docs/07-localization.md` para el flujo completo.
-- **Localización Phase 1 (Issues 2–9):** ✅ Todos los trans-units de los nuevos objetos
-  (Codeunit 50101, PageExtensions 50101/50102/50104/50105, TableExtensions 50114/50115)
+- **Localización Phase 1 (Issues 2–10):** ✅ Todos los trans-units de los nuevos objetos
+  (Codeunit 50101, PageExtensions 50101/50102/50104–50109, TableExtensions 50114–50119)
   están en ambos XLF con IDs verificados mediante `LanguageFileUtilities.GetNameHash`
   del compilador AL (runtime 15).
-- **IDs de test codeunit usados en Phase 1:** 50201–50208 (tests unitarios e integración)
-  y 50209 (`DUoM ILE Integration Tests`, tests E2E de contabilización).
-  **IDs libres para Phase 2:** 50210+ para nuevos codeunits de test.
+- **IDs de test codeunit usados en Phase 1:** 50201–50208 (tests unitarios e integración),
+  50209 (`DUoM ILE Integration Tests`, tests E2E de contabilización) y
+  50210 (`DUoM Inv CrMemo Post Tests`, tests E2E de facturación y abono).
+  **IDs libres para Phase 2:** 50211+ para nuevos codeunits de test.
 - **Rango de IDs de objetos de producción:** 50100–50199.
   IDs ya asignados en Phase 1: tablas 50100; enums 50100; codeunits 50101–50105;
-  pages 50100; pageextensions 50101–50105; tableextensions 50100, 50110–50115.
-  IDs libres para Phase 2: tableextensions 50116+, codeunits 50106+, pages 50101+.
+  pages 50100; pageextensions 50101–50109; tableextensions 50100, 50110–50119.
+  IDs libres para Phase 2: tableextensions 50120+, codeunits 50106+, pages 50101+.
 - **Eventos BC 27 — referencia de firma verificada:**
-  - Purch. Rcpt. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Rcpt. Line"`
-  - Sales Shipment Line init: `OnAfterInitFromSalesLine` en Table `"Sales Shipment Line"`
+  - Purch. Rcpt. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Rcpt. Line"` — var ÚLTIMO
+  - Purch. Inv. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Inv. Line"` — var ÚLTIMO
+  - Purch. Cr. Memo Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Cr. Memo Line"` — var ÚLTIMO
+  - Sales Shipment Line init: `OnAfterInitFromSalesLine` en Table `"Sales Shipment Line"` — var ÚLTIMO
+  - Sales Invoice Line init: `OnAfterInitFromSalesLine` en Table `"Sales Invoice Line"` — var **PRIMERO**
+  - Sales Cr.Memo Line init: `OnAfterInitFromSalesLine` en Table `"Sales Cr.Memo Line"` — var **PRIMERO**
   - ILE init: `OnAfterInitItemLedgEntry` en Codeunit `"Item Jnl.-Post Line"`
   - Item Journal Line copy (purchase): `OnPostItemJnlLineOnAfterCopyDocumentFields` en Codeunit `"Purch.-Post"`
   - Item Journal Line copy (sales): `OnPostItemJnlLineOnAfterCopyDocumentFields` en Codeunit `"Sales-Post"`
