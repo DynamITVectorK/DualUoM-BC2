@@ -277,24 +277,27 @@ del repeater. Al añadirlo mediante Personalizar, el runtime de BC lo muestra si
 `Editable` explícita, lo que junto con la validación de tabla (que lanza error si existen
 movimientos de almacén) lo hace aparecer como no editable.
 
+**Bug corregido (BUG-01b):** la implementación inicial filtraba `Item Ledger Entry` solo
+por `Item No.`, por lo que cualquier artículo con transacciones contabilizadas en *cualquier*
+UoM aparecía como no editable en *todas* sus UoMs. Además, no se verificaban los `Warehouse Entry`.
+
 **Solución implementada:**
 - Nueva `pageextension 50110 "DUoM Item UoM Subform"` sobre `"Item Units of Measure"`.
 - Añade `Qty. Rounding Precision` al repeater (visible por defecto) con
   `Editable = IsQtyRndPrecisionEditable`.
-- La expresión de edición se calcula en `OnAfterGetRecord`: el campo es editable mientras no
-  existan `Item Ledger Entry` para el artículo (indicativo de que no se han contabilizado
-  transacciones que dependan de la precisión actual).
-- 2 tests unitarios en `DUoM Item UoM Round Tests` (50212).
+- La expresión de edición se calcula en `OnAfterGetRecord` por la combinación exacta
+  `(Item No., Unit of Measure Code)`: el campo es editable solo cuando no existen
+  `Item Ledger Entry` **ni** `Warehouse Entry` para esa UoM concreta del artículo.
+  Transacciones en otras UoMs del mismo artículo no afectan la editabilidad de esta línea.
+- 4 tests unitarios en `DUoM Item UoM Round Tests` (50212):
+  (a) sin entradas → editable; (b) ILE para esa UoM → no editable;
+  (c) ILE para otra UoM → editable; (d) WH entry para esa UoM → no editable.
 
 **Deliverables:**
 - `DUoMItemUoMSubform.PageExt.al` (pageextension 50110)
-- `DUoMItemUoMRoundTests.Codeunit.al` (codeunit 50212) — 2 tests
+- `DUoMItemUoMRoundTests.Codeunit.al` (codeunit 50212) — 4 tests
+- `DualUoM-BC.en-US.xlf` y `DualUoM-BC.es-ES.xlf` — trans-unit del ToolTip añadido
 - `docs/06-backlog.md` actualizado
-
-**Limitaciones conocidas:**
-- Los IDs XLF correctos para el ToolTip del nuevo campo deben extraerse del artefacto
-  `DualUoM-BC.g.xlf` tras la primera compilación CI y añadirse a ambos XLF.
-  Ver `docs/07-localization.md`.
 
 ---
 
