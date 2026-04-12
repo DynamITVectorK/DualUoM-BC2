@@ -166,6 +166,50 @@ toda la compilación del módulo donde aparece.
 
 ---
 
+## Regla de mantenimiento de documentación (obligatoria)
+
+> **Todo cambio en el repositorio obliga a revisar la documentación afectada y actualizarla en el mismo trabajo. Si tras la revisión no hay nada que modificar, debe indicarse explícitamente "No aplica" con una justificación breve y concreta. No se acepta un cambio silencioso que omita esta revisión.**
+
+Esta norma aplica a **cualquier tipo de cambio**, sin excepción:
+
+- código AL y tests
+- `app.json` / `test/app.json`
+- permission sets y traducciones
+- pipelines, workflows y configuración de AL-Go
+- estructura de carpetas
+- backlog y roadmap
+- decisiones de diseño o arquitectura
+- documentación funcional y técnica
+- `README.md` y cualquier archivo `.md` relacionado
+
+### Documentos mínimos a revisar en cada cambio
+
+Al trabajar en un issue o PR, identificar y revisar al menos los siguientes documentos cuando el cambio los afecte:
+
+| Documento | Cuándo revisarlo |
+|-----------|-----------------|
+| `README.md` | Cualquier cambio que altere el alcance, la configuración o el tech stack |
+| `docs/02-functional-design.md` | Cambios en lógica funcional, modos de conversión, propagación |
+| `docs/03-technical-architecture.md` | Cambios en diseño técnico, eventos, patrones de extensión |
+| `docs/04-item-setup-model.md` | Cambios en tablas o campos de configuración de artículo |
+| `docs/05-testing-strategy.md` | Cambios en estrategia o estructura de tests |
+| `docs/06-backlog.md` | Cierre de issues, cambios de prioridad o alcance |
+| `docs/07-localization.md` | Cambios en textos, Labels o flujo XLF |
+| `docs/ci-cost-decisions.md` | Cambios en workflows o configuración de CI |
+| `CONTRIBUTING.md` | Cambios en normas, convenciones o DoD del proyecto |
+| `.github/copilot-instructions.md` | Cambios en reglas que el agente Copilot debe aplicar |
+
+### Resultado requerido en cada PR
+
+Cada PR debe incluir una de estas dos declaraciones en la descripción o en los comentarios:
+
+- **Documentación actualizada:** listar los archivos `.md` modificados y qué se cambió.
+- **No aplica:** justificar brevemente por qué ningún documento necesita cambio (p.ej. "corrección de typo interno en codeunit sin impacto en diseño ni APIs").
+
+Un PR sin esta declaración explícita no cumple la definición de trabajo completado.
+
+---
+
 ## Tests
 
 - TDD es obligatorio: el test debe existir antes que la producción.
@@ -188,7 +232,7 @@ Un issue/PR se considera **terminado** solo cuando se cumple **todo** lo siguien
 - [ ] `DualUoM-BC.es-ES.xlf` actualizado con `state="translated"`.
 - [ ] Terminología consistente con el glosario de `docs/07-localization.md`.
 - [ ] Permission sets actualizados si hay nuevas tablas: **tanto `DUoMAll.PermissionSet.al` (producción) como `DUoMTestAll.PermissionSet.al` (test)**.
-- [ ] Documentación técnica actualizada si procede.
+- [ ] **Documentación revisada:** todos los documentos afectados están actualizados, o se ha declarado explícitamente "No aplica" con justificación (ver sección "Regla de mantenimiento de documentación").
 - [ ] Todos los nombres de objeto AL tienen ≤ 30 caracteres.
 - [ ] Todos los `[EventSubscriber]` han sido verificados contra el Symbol Reference de BC 27
       (nombre de evento y parámetros correctos).
@@ -204,8 +248,9 @@ Un issue/PR se considera **terminado** solo cuando se cumple **todo** lo siguien
 
 ## Referencias
 
-- `.github/copilot-instructions.md` — Instrucciones para el agente Copilot
+- `.github/copilot-instructions.md` — Instrucciones para el agente Copilot (incluye la norma de documentación para el agente)
 - `docs/07-localization.md` — Flujo XLF, glosario y reglas de localización detalladas
 - `docs/06-backlog.md` — Backlog ordenado de entregables
 - `docs/05-testing-strategy.md` — Estrategia de tests
+- `docs/03-technical-architecture.md` — Arquitectura técnica de la extensión
 - `docs/02-functional-design.md` — Diseño funcional de Dual UoM

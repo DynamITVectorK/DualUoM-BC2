@@ -204,6 +204,39 @@ Future PRs touching subscribers must follow this rule.
 - Do not implement warehouse or lot logic until the relevant Phase 2 issues are opened
 - Do not implement costing or value entry logic unless explicitly scoped
 
+## Documentation maintenance rule (mandatory)
+
+**Every change in the repository requires reviewing affected documentation and updating it in the same work item.**
+If no documentation needs updating, the PR description or a comment must state **"Not applicable"** with a brief, concrete justification.
+
+This rule applies to all changes: AL code, tests, `app.json`, permission sets, translations, pipelines, workflows, AL-Go configuration, folder structure, backlog, design decisions, functional documentation, and technical documentation.
+
+### Minimum documents to review per change
+
+When working on an issue, identify and review at least the following documents whenever the change affects them:
+
+| Document | When to review |
+|----------|----------------|
+| `README.md` | Changes that affect scope, configuration, or tech stack |
+| `docs/02-functional-design.md` | Changes in functional logic, conversion modes, propagation |
+| `docs/03-technical-architecture.md` | Changes in technical design, events, extension patterns |
+| `docs/04-item-setup-model.md` | Changes in item setup tables or fields |
+| `docs/05-testing-strategy.md` | Changes in test strategy or structure |
+| `docs/06-backlog.md` | Issue closures, priority or scope changes |
+| `docs/07-localization.md` | Changes to texts, Labels, or XLF flow |
+| `docs/ci-cost-decisions.md` | Changes to workflows or CI configuration |
+| `CONTRIBUTING.md` | Changes to project norms, conventions, or DoD |
+| `.github/copilot-instructions.md` | Changes to rules the Copilot agent must apply |
+
+### Required declaration in every PR
+
+Each PR must include one of these two explicit statements:
+
+- **Documentation updated:** list the `.md` files modified and what changed.
+- **Not applicable:** briefly justify why no documentation change was needed (e.g., "internal typo fix in codeunit with no impact on design or APIs").
+
+An issue is **not considered done** without this explicit declaration.
+
 ## Testing rules
 
 - TDD is mandatory: write a failing test first, then the production code
