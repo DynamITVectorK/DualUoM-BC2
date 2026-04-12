@@ -12,6 +12,9 @@
 
 1. [Introducción](#1-introducción)
 2. [Configuración del artículo](#2-configuración-del-artículo)
+   - [2.1 Cómo acceder a la configuración DUoM](#cómo-acceder-a-la-configuración-duom-de-un-artículo)
+   - [2.2 Campos y modos de conversión](#campos-de-configuración-duom)
+   - [2.3 Precisión de redondeo de la segunda UdM](#23-precisión-de-redondeo-de-la-segunda-udm)
 3. [Compras](#3-compras)
 4. [Ventas](#4-ventas)
 5. [Inventario — Diario de productos](#5-inventario--diario-de-productos)
@@ -44,6 +47,7 @@ La extensión **DualUoM-BC** añade a Business Central la capacidad de registrar
 | **Segunda Qty** (`DUoM Second Qty`) | La cantidad en la segunda unidad de medida, visible en las líneas de documento. |
 | **Ratio DUoM** (`DUoM Ratio`) | El factor de conversión entre la primera y la segunda UdM para esa línea concreta. Fórmula: `Segunda Qty = Primera Qty × Ratio`. |
 | **Modo de conversión** | Define cómo se calcula (o no) automáticamente el ratio. Véase la sección siguiente. |
+| **Precisión de redondeo** (`Qty. Rounding Precision`) | Paso mínimo permitido para la segunda cantidad. Configurado en BC en la tabla **Unidades de medida por artículo** (`Item Unit of Measure`). Véase la sección [2.3 — Precisión de redondeo de la segunda UdM](#23-precisión-de-redondeo-de-la-segunda-udm). |
 
 ---
 
@@ -96,7 +100,63 @@ Se abrirá la página **DUoM Item Setup**, que contiene los siguientes campos.
 
 ---
 
-## 3. Compras
+### 2.3 Precisión de redondeo de la segunda UdM
+
+Cuando la segunda unidad de medida es **discreta** (por ejemplo PCS, CAJA, PALET), cantidades
+fraccionarias como 11,5 piezas carecen de sentido físico. Business Central permite controlar esto
+mediante el campo **Qty. Rounding Precision** en la tabla estándar de BC **Unidades de medida por
+artículo** (`Item Unit of Measure`).
+
+La extensión DUoM **lee automáticamente** ese campo y redondea la **DUoM Second Qty** al paso
+mínimo configurado, tanto al calcular automáticamente como cuando el usuario introduce el valor
+manualmente.
+
+#### ¿Cómo configurar la precisión de redondeo?
+
+La precisión **no** se configura en la página DUoM Setup — se configura directamente en BC,
+en la ficha del artículo → pestaña **Unidades de medida**.
+
+1. Abra la ficha del artículo.
+2. Vaya a la pestaña **Unidades de medida** (o **Navegar → Unidades de medida**).
+3. Localice la fila correspondiente a la **segunda UdM** (ej. `PCS`).
+4. Edite el campo **Precisión de redondeo de cant.** (`Qty. Rounding Precision`) con el valor
+   deseado:
+
+| Valor | Efecto |
+|-------|--------|
+| `1` | La segunda cantidad siempre será un número entero (ej. 12, nunca 11,5). Adecuado para unidades discretas: piezas, cajas, palets. |
+| `0,001` | La segunda cantidad se redondea a 3 decimales. Adecuado para unidades continuas de alta precisión: KG, litros. |
+| `0,01` | La segunda cantidad se redondea a 2 decimales. |
+| `0` *(vacío)* | Sin redondeo. La segunda cantidad puede tener hasta 5 decimales. |
+
+> `[PENDIENTE CAPTURA]` *Pestaña "Unidades de medida" de la ficha del artículo, con el campo "Qty. Rounding Precision" visible para la UdM PCS con valor 1.*
+
+#### Ejemplo práctico
+
+**Artículo:** Lechuga Iceberg · **Segunda UdM:** PCS · **Qty. Rounding Precision = 1** · **Ratio = 1,15**
+
+| Cantidad principal | Resultado bruto | Segunda Qty almacenada |
+|--------------------|-----------------|------------------------|
+| 10 KG | 10 × 1,15 = 11,5 PCS | **12 PCS** *(redondeado a 1)* |
+| 7 KG | 7 × 1,15 = 8,05 PCS | **8 PCS** *(redondeado a 1)* |
+| 20 KG | 20 × 1,15 = 23,0 PCS | **23 PCS** *(sin cambio, ya es entero)* |
+
+> **Nota:** Si **Qty. Rounding Precision = 0** (campo vacío o sin configurar), el sistema no
+> aplica redondeo y almacena el resultado exacto del cálculo (hasta 5 decimales). Este es el
+> comportamiento por defecto cuando no se configura la precisión.
+
+#### Redondeo en la entrada manual (modo Siempre Variable)
+
+En el modo **AlwaysVariable**, el usuario introduce la **DUoM Second Qty** manualmente. Si la
+segunda UdM tiene **Qty. Rounding Precision** configurada, el sistema también aplica el redondeo
+al salir del campo:
+
+- El usuario escribe `11,5` → el campo queda como `12` (con precisión = 1).
+- El usuario escribe `8,07` → el campo queda como `8` (con precisión = 1).
+
+Esto evita que el usuario guarde cantidades físicamente imposibles en unidades discretas.
+
+---
 
 La extensión añade dos campos en las **líneas de pedido de compra**: **DUoM Second Qty** y **DUoM Ratio**. Estos campos aparecen automáticamente cuando el artículo tiene DUoM activado.
 
@@ -122,18 +182,20 @@ La extensión añade dos campos en las **líneas de pedido de compra**: **DUoM S
 2. El sistema rellena automáticamente **DUoM Second Qty** aplicando la fórmula `Segunda Qty = Primera Qty × Ratio`. Por ejemplo, con Ratio = 0,8: `100 KG × 0,8 = 80 PCS`.
 3. El campo **DUoM Second Qty** aparece en gris (no editable).
 4. Si modifica la cantidad principal, la segunda se recalcula al instante.
+5. Si la segunda UdM tiene **Qty. Rounding Precision** configurada, el resultado se redondea automáticamente (ej. 11,5 PCS → 12 PCS con precisión = 1). Véase [sección 2.3](#23-precisión-de-redondeo-de-la-segunda-udm).
 
 **Modo Variable:**
 1. Introduzca el artículo y la cantidad (ej. 100 KG).
 2. El sistema propone la **DUoM Second Qty** usando el ratio por defecto del artículo (ej. 125 PCS si el ratio es 1,25).
 3. El campo **DUoM Second Qty** aparece en gris (no editable directamente), pero puede modificar el **DUoM Ratio** en la línea.
-4. Al cambiar el **DUoM Ratio** (ej. a 1,31), la **DUoM Second Qty** se recalcula (ej. 131 PCS).
+4. Al cambiar el **DUoM Ratio** (ej. a 1,31), la **DUoM Second Qty** se recalcula (ej. 131 PCS) y se redondea si la segunda UdM tiene precisión configurada.
 
 **Modo Siempre Variable:**
 1. Introduzca el artículo y la cantidad (ej. 50 KG).
 2. Los campos **DUoM Second Qty** y **DUoM Ratio** aparecen vacíos.
 3. Introduzca directamente la **DUoM Second Qty** (ej. 42 PCS). El campo es editable.
-4. (Opcional) El **DUoM Ratio** se puede dejar en blanco o introducir manualmente para registro histórico.
+4. Si la segunda UdM tiene **Qty. Rounding Precision = 1**, el sistema redondeará al entero más próximo al confirmar el campo (ej. si escribe 41,7 → queda 42).
+5. (Opcional) El **DUoM Ratio** se puede dejar en blanco o introducir manualmente para registro histórico.
 
 > **Consejo:** Si tiene varias líneas con el mismo artículo en modo Variable, puede ajustar el **DUoM Ratio** en cada línea de forma independiente. El ratio no afecta al precio de compra — sólo a la cantidad secundaria.
 
@@ -179,9 +241,9 @@ La extensión añade los mismos campos (**DUoM Second Qty** y **DUoM Ratio**) en
 2. En las líneas, añada el artículo con DUoM activado.
 3. Introduzca la cantidad principal en el campo **Cantidad** (ej. 20 PCS).
 4. Según el modo de conversión del artículo:
-   - **Fijo:** La **DUoM Second Qty** se calcula automáticamente (ej. 25 KG si ratio = 1,25). No editable.
-   - **Variable:** Se propone la **DUoM Second Qty** según el ratio por defecto. Puede modificar el **DUoM Ratio** para ajustar.
-   - **Siempre Variable:** Introduzca manualmente la **DUoM Second Qty**.
+   - **Fijo:** La **DUoM Second Qty** se calcula automáticamente (ej. 25 KG si ratio = 1,25). No editable. Si la segunda UdM tiene **Qty. Rounding Precision** configurada, el resultado se redondea al salir del campo Cantidad.
+   - **Variable:** Se propone la **DUoM Second Qty** según el ratio por defecto. Puede modificar el **DUoM Ratio** para ajustar. El resultado se redondea si hay precisión configurada.
+   - **Siempre Variable:** Introduzca manualmente la **DUoM Second Qty**. Si hay precisión configurada, el valor se redondeará al salir del campo (ej. 11,5 → 12 con precisión = 1).
 
 > `[PENDIENTE CAPTURA]` *Líneas de pedido de venta con DUoM Second Qty y DUoM Ratio visibles.*
 
@@ -393,6 +455,30 @@ El soporte de **ratios específicos por lote** (es decir, registrar y reutilizar
 
 ---
 
+### ¿Por qué la DUoM Second Qty se redondea automáticamente?
+
+El sistema aplica la **Qty. Rounding Precision** configurada en la tabla estándar
+**Unidades de medida por artículo** de BC para la segunda UdM del artículo.
+
+Por ejemplo, si la segunda UdM es `PCS` con `Qty. Rounding Precision = 1`, el sistema
+redondea cualquier resultado fraccionario al entero más próximo (11,5 PCS → 12 PCS).
+
+**¿Cómo puedo cambiar o desactivar el redondeo?**
+
+1. Abra la ficha del artículo.
+2. Vaya a la pestaña **Unidades de medida**.
+3. Localice la fila de la segunda UdM (ej. `PCS`).
+4. Modifique el campo **Qty. Rounding Precision**:
+   - Para redondeo a entero: `1`
+   - Para 2 decimales: `0,01`
+   - Para sin redondeo: deje el campo en `0` o vacío.
+
+> **Nota:** Este campo es estándar de BC y puede afectar a otras partes del sistema
+> (p. ej. al introducir cantidades en unidades de medida alternativas). Consúltelo con
+> su administrador de sistema antes de modificarlo.
+
+---
+
 ### ¿Por qué no veo los campos DUoM en las líneas de mi pedido?
 
 Compruebe lo siguiente:
@@ -409,11 +495,11 @@ Compruebe lo siguiente:
 
 | Documento | Campo | Editable | Notas |
 |-----------|-------|----------|-------|
-| Pedido de compra (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable |
+| Pedido de compra (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Se redondea según `Qty. Rounding Precision` de la segunda UdM. |
 | Pedido de compra (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea |
-| Pedido de venta (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable |
+| Pedido de venta (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Se redondea según `Qty. Rounding Precision` de la segunda UdM. |
 | Pedido de venta (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea |
-| Diario de productos (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable |
+| Diario de productos (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Se redondea según `Qty. Rounding Precision` de la segunda UdM. |
 | Diario de productos (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea |
 | Movimiento de producto | **DUoM Second Qty** | ❌ No editable | Inmutable tras contabilizar |
 | Movimiento de producto | **DUoM Ratio** | ❌ No editable | Inmutable tras contabilizar |
@@ -421,9 +507,10 @@ Compruebe lo siguiente:
 | Configuración DUoM artículo | **Second UoM Code** | ✅ Sí | Código de UdM secundaria |
 | Configuración DUoM artículo | **Conversion Mode** | ✅ Sí | Fijo / Variable / Siempre Variable |
 | Configuración DUoM artículo | **Fixed Ratio** | ✅ Sí (modos Fijo y Variable) | No aplica en Siempre Variable |
+| Unid. medida por artículo (BC std.) | **Qty. Rounding Precision** | ✅ Sí | Controla el redondeo de `DUoM Second Qty`. Configurar en ficha artículo → pestaña Unidades de medida. |
 
 ---
 
 *Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, ratios por lote, informes) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
 
-*Última actualización: Fase 1 — MVP.*
+*Última actualización: Fase 1 — MVP + Issue 11 (Qty. Rounding Precision).*

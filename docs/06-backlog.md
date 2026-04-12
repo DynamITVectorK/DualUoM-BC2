@@ -173,8 +173,8 @@ Subformularios de históricos muestran los campos (solo lectura).
 
 ### Issue 11 — Aplicar Rounding Precision de la UoM secundaria a `DUoM Second Qty` ✅ IMPLEMENTADO
 
-**Objetivo:** aplicar el campo `Rounding Precision` de la tabla `Unit of Measure` de BC 27
-al cálculo y a la entrada manual de `DUoM Second Qty`, evitando valores físicamente
+**Objetivo:** aplicar el campo `Qty. Rounding Precision` de la tabla `Item Unit of Measure`
+de BC 27 al cálculo y a la entrada manual de `DUoM Second Qty`, evitando valores físicamente
 incoherentes como 11,5 PCS cuando la segunda UoM es discreta.
 
 Alcance implementado:
@@ -183,8 +183,8 @@ Alcance implementado:
   Para `AlwaysVariable` devuelve siempre 0 sin redondeo. La firma original
   `ComputeSecondQty` se mantiene sin cambios (compatibilidad hacia atrás).
 - Nuevo `codeunit 50106 "DUoM UoM Helper"` con `GetSecondUoMRoundingPrecision(ItemNo)`
-  que lee `UnitOfMeasure."Rounding Precision"` para la segunda UoM del ítem y devuelve 0
-  como fallback.
+  que lee `ItemUnitOfMeasure."Qty. Rounding Precision"` para la segunda UoM del ítem y
+  devuelve 0 como fallback.
 - `DUoMPurchaseSubscribers` (50102) y `DUoMSalesSubscribers` (50103) usan
   `ComputeSecondQtyRounded` con la precisión obtenida de `DUoMUoMHelper`.
 - Trigger `OnValidate` añadido al campo `DUoM Second Qty` en `DUoMPurchaseLine`,
@@ -192,8 +192,9 @@ Alcance implementado:
 - Trigger `OnValidate` de `DUoM Ratio` en las tres table extensions actualizado para
   usar `ComputeSecondQtyRounded`.
 - 4 tests unitarios para `ComputeSecondQtyRounded` en `DUoMCalcEngineTests` (50204).
-- 2 tests E2E de integración (compra y venta) que crean una UoM con `Rounding Precision = 1`
-  y verifican que `DUoM Second Qty` = 12 (no 11,5) tras validar Qty = 10 con ratio 1,15.
+- 2 tests E2E de integración (compra y venta) que crean un `Item Unit of Measure` con
+  `Qty. Rounding Precision = 1` y verifican que `DUoM Second Qty` = 12 (no 11,5) tras
+  validar Qty = 10 con ratio 1,15.
 
 **Deliverables:**
 - `DUoMCalcEngine.Codeunit.al` (50101) — nueva sobrecarga `ComputeSecondQtyRounded`

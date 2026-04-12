@@ -50,8 +50,8 @@ Example: Fresh produce sold by weight but counted by piece — each shipment dif
 
 When the second Unit of Measure is discrete (e.g. PCS, BOX, PALLET), fractional
 quantities such as 11.5 PCS are physically meaningless. Business Central stores a
-`Rounding Precision` field on each `Unit of Measure` record that defines the minimum
-unit step (e.g. `1` for PCS, `0.001` for KG).
+`Qty. Rounding Precision` field on each `Item Unit of Measure` record that defines the
+minimum unit step for that item/UoM combination (e.g. `1` for PCS, `0.001` for KG).
 
 The DualUoM extension reads this field to ensure `DUoM Second Qty` is always
 rounded to a physically valid value:
@@ -72,9 +72,10 @@ Rounding is applied in two places:
    using the same precision.
 
 The `DUoM UoM Helper` codeunit (50106) centralises the precision lookup:
-`GetSecondUoMRoundingPrecision(ItemNo)` reads `UnitOfMeasure."Rounding Precision"` for
-the item's configured second UoM and returns `0` as fallback when no setup exists.
-When the precision is `0` (older BC records), a fallback of `0.00001` is used internally
+`GetSecondUoMRoundingPrecision(ItemNo)` reads `ItemUnitOfMeasure."Qty. Rounding Precision"`
+for the combination of the item and its configured second UoM code, and returns `0` as
+fallback when no setup or `Item Unit of Measure` record exists.
+When the precision is `0` (no rounding configured), a fallback of `0.00001` is used internally
 to preserve the current unrounded behaviour without truncation.
 
 > **Note:** `DecimalPlaces = 0:5` on the field definition is intentionally kept unchanged.
