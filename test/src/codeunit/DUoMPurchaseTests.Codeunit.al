@@ -302,7 +302,8 @@ codeunit 50205 "DUoM Purchase Tests"
         UoMCode: Code[10];
     begin
         // [GIVEN] A Unit of Measure code (discrete, e.g. pieces)
-        UoMCode := LibraryInventory.CreateUnitOfMeasureCode(UnitOfMeasure);
+        LibraryInventory.CreateUnitOfMeasureCode(UnitOfMeasure);
+        UoMCode := UnitOfMeasure.Code;
 
         // [GIVEN] An item with an Item Unit of Measure that has Qty. Rounding Precision = 1
         LibraryInventory.CreateItem(Item);
