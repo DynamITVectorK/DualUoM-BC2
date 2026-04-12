@@ -48,11 +48,20 @@ already covers the need:
 | Object | ID | Purpose |
 |---|---|---|
 | `DUoM Item Setup` | 50100 | Per-item DUoM configuration (enabled, second UoM, mode, ratio) |
+| `DUoM Item Variant Setup` | 50101 | Optional per-variant DUoM override (Second UoM Code, Conversion Mode, Fixed Ratio). Absent = inherit from item. |
+
+### Custom Pages
+
+| Object | ID | Purpose |
+|---|---|---|
+| `DUoM Item Setup` | 50100 | Card page for item-level DUoM configuration |
+| `DUoM Variant Setup List` | 50101 | List page for per-variant DUoM overrides; opened from Item Card filtered to current item |
 
 ### Table Extensions
 
 | Objeto | ID | Tabla extendida | Propósito |
 |---|---|---|---|
+| `Item.TableExt` | 50100 | `Item` | Cascade-delete del registro DUoM Item Setup al borrar el artículo |
 | `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Campos Second Qty y Ratio |
 | `DUoM Sales Line Ext` | 50111 | `Sales Line` | Campos Second Qty y Ratio |
 | `DUoM Item Journal Line Ext` | 50112 | `Item Journal Line` | Campos Second Qty y Ratio |
@@ -63,30 +72,69 @@ already covers the need:
 | `DUoM Purch. Cr. Memo Line Ext` | 50117 | `Purch. Cr. Memo Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar abono |
 | `DUoM Sales Inv. Line Ext` | 50118 | `Sales Invoice Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar factura |
 | `DUoM Sales Cr.Memo Line Ext` | 50119 | `Sales Cr.Memo Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar abono |
+| `DUoM Item Variant Ext` | 50120 | `Item Variant` | Cascade-delete del override DUoM de la variante al borrarla |
 
 ### Page Extensions
 
 | Objeto | ID | Página extendida | Propósito |
 |---|---|---|---|
+| `DUoM Item Card Ext` | 50100 | `Item Card` | Acciones de navegación: DUoM Setup y DUoM Variant Overrides |
 | `DUoM Purchase Order Subform` | 50101 | `Purchase Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de compra |
 | `DUoM Sales Order Subform` | 50102 | `Sales Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de venta |
+| `DUoM Item Journal Ext` | 50103 | `Item Journal` | Muestra Second Qty y Ratio en líneas del diario de productos |
 | `DUoM Posted Rcpt. Subform` | 50104 | `Posted Purchase Rcpt. Subform` | Muestra Second Qty y Ratio en líneas de recepción registrada (solo lectura) |
 | `DUoM Posted Ship. Subform` | 50105 | `Posted Sales Shpt. Subform` | Muestra Second Qty y Ratio en líneas de envío registrado (solo lectura) |
 | `DUoM Pstd Purch Inv Subform` | 50106 | `Posted Purch. Invoice Subform` | Muestra Second Qty y Ratio en líneas de factura de compra registrada (solo lectura) |
 | `DUoM Pstd Purch CrM Subform` | 50107 | `Posted Purch. Cr. Memo Subform` | Muestra Second Qty y Ratio en líneas de abono de compra registrado (solo lectura) |
 | `DUoM Pstd Sales Inv Subform` | 50108 | `Posted Sales Invoice Subform` | Muestra Second Qty y Ratio en líneas de factura de venta registrada (solo lectura) |
 | `DUoM Pstd Sales CrM Subform` | 50109 | `Posted Sales Cr. Memo Subform` | Muestra Second Qty y Ratio en líneas de abono de venta registrado (solo lectura) |
+| `DUoM Item UoM Subform` | 50110 | `Item Units of Measure` | Añade `Qty. Rounding Precision` al repeater; editable solo si no existen ILE ni Warehouse Entry para esa UdM |
 
 ### Codeunits
 
 | Objeto | ID | Propósito |
 |---|---|---|
 | `DUoM Calc Engine` | 50101 | Cálculo y validación de la segunda cantidad. Incluye `ComputeSecondQtyRounded` con soporte de `Rounding Precision` |
-| `DUoM Purchase Subscribers` | 50102 | Subscribers de eventos del flujo de compras |
-| `DUoM Sales Subscribers` | 50103 | Subscribers de eventos del flujo de ventas |
+| `DUoM Purchase Subscribers` | 50102 | Subscribers de eventos del flujo de compras (Quantity y Variant Code en Purchase Line) |
+| `DUoM Sales Subscribers` | 50103 | Subscribers de eventos del flujo de ventas (Quantity y Variant Code en Sales Line) |
 | `DUoM Inventory Subscribers` | 50104 | Subscribers para diario de productos / ILE / líneas de documentos registrados |
 | `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
-| `DUoM UoM Helper` | 50106 | Helper de UoM: obtiene `Qty. Rounding Precision` de la tabla `Item Unit of Measure` para la segunda UoM del ítem y la aplica al cálculo y validación de `DUoM Second Qty` |
+| `DUoM UoM Helper` | 50106 | Helper de UoM: `GetSecondUoMRoundingPrecision(ItemNo)` y `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` para obtener `Qty. Rounding Precision` de la tabla `Item Unit of Measure` |
+| `DUoM Setup Resolver` | 50107 | Centraliza la resolución jerárquica Item → Variante de la configuración DUoM efectiva. Todos los suscriptores y triggers deben llamar a `GetEffectiveSetup(ItemNo, VariantCode, ...)` |
+
+---
+
+## Resolución de configuración por variante
+
+### DUoM Setup Resolver (codeunit 50107)
+
+El `DUoM Setup Resolver` es el punto único de entrada para obtener la configuración DUoM
+efectiva de cualquier combinación `(Item No., Variant Code)`. Implementa la jerarquía:
+
+```
+Item Setup (master switch) → Variant Override → Item defaults
+```
+
+**Firma del método principal:**
+
+```al
+procedure GetEffectiveSetup(
+    ItemNo: Code[20];
+    VariantCode: Code[10];
+    var SecondUoMCode: Code[10];
+    var ConversionMode: Enum "DUoM Conversion Mode";
+    var FixedRatio: Decimal): Boolean
+```
+
+- Devuelve `true` cuando DUoM está activo y rellena los parámetros de salida.
+- Devuelve `false` si el artículo no tiene setup DUoM o `Dual UoM Enabled = false`.
+- Cuando `VariantCode` no está vacío y existe un registro en `DUoM Item Variant Setup`
+  para `(ItemNo, VariantCode)`, los campos del override de variante prevalecen.
+- En caso contrario, se usan los campos de nivel artículo de `DUoM Item Setup`.
+
+**Regla de uso:** todos los suscriptores y triggers que necesiten la configuración DUoM
+deben llamar a este método. Las lecturas directas de `DUoM Item Setup` son admisibles
+solo en páginas de configuración o en contextos donde la variante no existe.
 
 ---
 

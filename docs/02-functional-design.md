@@ -6,14 +6,85 @@ Each item that participates in dual UoM requires the following configuration:
 
 | Field | Description |
 |---|---|
-| `Dual UoM Enabled` | Boolean — activates DUoM for this item |
+| `Dual UoM Enabled` | Boolean — master switch; activates DUoM for this item |
 | `Second UoM Code` | The second unit of measure code (e.g. PCS while base is KG) |
 | `Conversion Mode` | Fixed / Variable / Always-Variable (see below) |
-| `Fixed Ratio` | Used only when Conversion Mode = Fixed |
+| `Fixed Ratio` | Used only when Conversion Mode = Fixed or Variable (default ratio) |
 
-This setup is stored on the item itself (table extension on `Item`) or on a dedicated
-DUoM Item Setup table linked by item number. The exact design is decided at implementation
-time; the functional intent is item-level configuration.
+This setup is stored in the dedicated table `DUoM Item Setup` (50100) linked by item
+number (Option B design). The base `Item` table is not extended with DUoM configuration
+fields; a cascade-delete trigger on `Item` (tableextension 50100) removes the DUoM
+setup when an item is deleted. See `docs/04-item-setup-model.md` for the full design rationale.
+
+---
+
+## Item Variant Setup — Override por Variante
+
+Cuando un artículo tiene variantes y cada variante requiere una configuración DUoM
+diferente, se puede crear un registro de override en la tabla `DUoM Item Variant Setup`
+(50101), con clave primaria `(Item No., Variant Code)`.
+
+### Campos del override de variante
+
+| Field | Description |
+|---|---|
+| `Item No.` | Clave — artículo al que pertenece la variante |
+| `Variant Code` | Clave — variante del artículo |
+| `Second UoM Code` | Override de la segunda UdM. Si se deja en blanco se hereda del artículo. |
+| `Conversion Mode` | Override del modo de conversión. Si no se establece se usa el del artículo. |
+| `Fixed Ratio` | Override del ratio por defecto. Si se deja a cero se usa el del artículo. |
+
+> **Regla clave:** `Dual UoM Enabled` vive **únicamente** en `DUoM Item Setup` (50100).
+> Una variante **no puede activar DUoM** si el artículo base no lo tiene habilitado.
+
+### Jerarquía de configuración: Artículo → Variante
+
+La resolución efectiva de configuración DUoM la centraliza el codeunit
+`DUoM Setup Resolver` (50107), siguiendo este orden:
+
+```
+1. Comprobar DUoM Item Setup (50100) para el artículo.
+   Si no existe registro o Dual UoM Enabled = false → DUoM desactivado.
+2. Si VariantCode no está vacío, comprobar DUoM Item Variant Setup (50101)
+   para el par (ItemNo, VariantCode).
+   Si existe registro → usar sus campos (Second UoM Code, Conversion Mode, Fixed Ratio).
+3. En caso contrario → usar los campos de nivel artículo de DUoM Item Setup.
+```
+
+Todos los suscriptores de eventos y triggers de tabla deben llamar a
+`DUoM Setup Resolver.GetEffectiveSetup(ItemNo, VariantCode, ...)` para obtener la
+configuración efectiva. Las lecturas directas de `DUoM Item Setup` solo son aceptables
+en contextos donde no existe variante (páginas de configuración, flujos solo-artículo).
+
+### Cambio de variante en línea de documento
+
+Cuando el usuario cambia el `Variant Code` en una línea de pedido de compra o venta que
+ya tiene una cantidad introducida:
+
+1. Los campos DUoM (`DUoM Second Qty`, `DUoM Ratio`) se resetean a cero.
+2. El sistema aplica la configuración DUoM efectiva de la nueva variante mediante el resolver.
+3. Si el modo de la nueva variante es Fijo o Variable, `DUoM Second Qty` se **recalcula
+   automáticamente** con el ratio efectivo y la cantidad principal ya introducida.
+4. Si el modo es AlwaysVariable, `DUoM Second Qty` queda a cero y el usuario debe
+   introducirlo manualmente.
+
+### Borrado en cascada
+
+Al eliminar una variante del artículo, el trigger `OnDelete` de la tableextension
+`DUoM Item Variant Ext` (50120) borra automáticamente el registro de override DUoM
+correspondiente, evitando huérfanos en `DUoM Item Variant Setup`.
+
+### ¿Cuándo usar overrides de variante?
+
+Use la configuración por variante cuando distintas variantes del mismo artículo requieran:
+
+- Una **segunda unidad de medida** diferente (ej. variante ROMANA se mide en PCS, variante
+  TROCEADA en BOLSAS).
+- Un **ratio de conversión** diferente (ej. variante estándar 1,25 KG/PCS, variante premium 1,05 KG/PCS).
+- Un **modo de conversión** diferente (ej. variante estándar en modo Fijo, variante premium en Variable).
+
+Si todas las variantes del artículo comparten la misma configuración DUoM, **no es necesario**
+crear ningún override de variante.
 
 ---
 
@@ -71,12 +142,18 @@ Rounding is applied in two places:
    `Purchase Line`, `Sales Line` and `Item Journal Line` rounds the user-entered value
    using the same precision.
 
-The `DUoM UoM Helper` codeunit (50106) centralises the precision lookup:
-`GetSecondUoMRoundingPrecision(ItemNo)` reads `ItemUnitOfMeasure."Qty. Rounding Precision"`
-for the combination of the item and its configured second UoM code, and returns `0` as
-fallback when no setup or `Item Unit of Measure` record exists.
-When the precision is `0` (no rounding configured), a fallback of `0.00001` is used internally
-to preserve the current unrounded behaviour without truncation.
+El codeunit `DUoM UoM Helper` (50106) centraliza la consulta de la precisión de redondeo.
+Expone dos métodos:
+
+- `GetSecondUoMRoundingPrecision(ItemNo)` — para contextos sin variante; lee
+  `ItemUnitOfMeasure."Qty. Rounding Precision"` usando el `Second UoM Code` del artículo.
+- `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` — para contextos con variante;
+  recibe el código UoM ya resuelto por `DUoM Setup Resolver` y busca directamente en
+  `Item Unit of Measure` para el par `(ItemNo, SecondUoMCode)`.
+
+Ambos métodos devuelven `0` como fallback cuando no existe el registro de
+`Item Unit of Measure`. Cuando la precisión es `0`, se aplica internamente un fallback de
+`0.00001` para preservar el comportamiento sin truncación.
 
 > **Note:** `DecimalPlaces = 0:5` on the field definition is intentionally kept unchanged.
 > Rounding is a logical constraint, not a storage constraint. High-precision intermediate
