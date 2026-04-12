@@ -57,6 +57,14 @@ The second quantity must be visible and editable (subject to conversion mode) at
 5. **Sales Shipment Line** — confirmed at shipment
 6. **Item Journal Line** — entered manually for adjustments
 
+For full traceability, the second quantity and conversion ratio are also preserved on all
+posted historical document lines (read-only, copied from the source line at posting time):
+
+7. **Purchase Invoice Line** — propagated from the `Purchase Line` when posting as invoice
+8. **Purchase Cr. Memo Line** — propagated from the `Purchase Line` when posting a credit memo
+9. **Sales Invoice Line** — propagated from the `Sales Line` when posting as invoice
+10. **Sales Cr.Memo Line** — propagated from the `Sales Line` when posting a credit memo
+
 In all cases, the ratio used at posting time is stored alongside the quantity so that
 historical analysis is possible without recalculation.
 

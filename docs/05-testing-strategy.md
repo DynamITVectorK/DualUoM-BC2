@@ -139,6 +139,8 @@ The following scenarios must have passing tests before any Phase 2 work starts:
 5. **Sales posting** — ILE contains correct second qty after posting a sales shipment
 6. **Item journal posting** — ILE contains correct second qty after posting an item journal line
 7. **DUoM disabled item** — no DUoM fields affect standard posting flow
+8. **Purchase invoice/credit memo posting** — `Purch. Inv. Line` and `Purch. Cr. Memo Line` contain correct DUoM fields after posting
+9. **Sales invoice/credit memo posting** — `Sales Invoice Line` and `Sales Cr.Memo Line` contain correct DUoM fields after posting
 
 ---
 
