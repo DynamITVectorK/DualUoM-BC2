@@ -339,6 +339,16 @@
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════
+             PageExtension 2222816725  DUoM Item UoM Subform
+             ═══════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 2222816725 - Control 1362962586 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the rounding precision for quantities in this unit of measure. Can only be changed when no item ledger entries or warehouse entries exist for this unit of measure.</source>
+          <target state="final">Specifies the rounding precision for quantities in this unit of measure. Can only be changed when no item ledger entries or warehouse entries exist for this unit of measure.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for Qty. Rounding Precision field on Item Units of Measure page extension; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item UoM Subform - Control Qty. Rounding Precision - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════
              TableExtension 1207475111  DUoM Purch. Rcpt. Line Ext
              ═══════════════════════════════════════════ -->
         <trans-unit id="TableExtension 1207475111 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
