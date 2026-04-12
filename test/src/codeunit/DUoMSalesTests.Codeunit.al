@@ -261,6 +261,7 @@ codeunit 50206 "DUoM Sales Tests"
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
         ItemUnitOfMeasure: Record "Item Unit of Measure";
+        UnitOfMeasure: Record "Unit of Measure";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
@@ -268,7 +269,7 @@ codeunit 50206 "DUoM Sales Tests"
         UoMCode: Code[10];
     begin
         // [GIVEN] A Unit of Measure code (discrete, e.g. pieces)
-        UoMCode := LibraryInventory.CreateUnitOfMeasureCode();
+        UoMCode := LibraryInventory.CreateUnitOfMeasureCode(UnitOfMeasure);
 
         // [GIVEN] An item with an Item Unit of Measure that has Qty. Rounding Precision = 1
         LibraryInventory.CreateItem(Item);
