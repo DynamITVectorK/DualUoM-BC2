@@ -29,6 +29,7 @@ and tracked — even when the ratio varies by lot.
 | [Testing Strategy](docs/05-testing-strategy.md) | TDD rules, test types, CI validation |
 | [Backlog](docs/06-backlog.md) | Ordered delivery backlog |
 | [CI Cost Decisions](docs/ci-cost-decisions.md) | Why CI is configured the way it is |
+| [Estimación y Valoración Económica](docs/08-estimacion-esfuerzo-y-valoracion-economica.md) | Análisis de esfuerzo, valoración económica y escenarios de contratación |
 
 ## Modules in Scope
 
