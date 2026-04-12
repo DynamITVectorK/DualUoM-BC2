@@ -167,11 +167,44 @@ Subformularios de históricos muestran los campos (solo lectura).
 
 ## Phase 2 — Funcionalidad extendida
 
-> **Siguiente issue recomendado:** Issue 11 — Modelo de coste/precio en doble UoM.
+> **Siguiente issue recomendado:** Issue 12 — Modelo de coste/precio en doble UoM.
 > Es independiente de warehouse y lotes, por lo que puede comenzarse inmediatamente
-> una vez completada la Phase 1.
+> una vez completado Issue 11.
 
-### Issue 11 — Modelo de coste/precio en doble UoM
+### Issue 11 — Aplicar Rounding Precision de la UoM secundaria a `DUoM Second Qty` ✅ IMPLEMENTADO
+
+**Objetivo:** aplicar el campo `Rounding Precision` de la tabla `Unit of Measure` de BC 27
+al cálculo y a la entrada manual de `DUoM Second Qty`, evitando valores físicamente
+incoherentes como 11,5 PCS cuando la segunda UoM es discreta.
+
+Alcance implementado:
+- Nueva sobrecarga `ComputeSecondQtyRounded(FirstQty, Ratio, Mode, RoundingPrecision)` en
+  `DUoM Calc Engine` (50101). Cuando `RoundingPrecision = 0` usa fallback `0.00001`.
+  Para `AlwaysVariable` devuelve siempre 0 sin redondeo. La firma original
+  `ComputeSecondQty` se mantiene sin cambios (compatibilidad hacia atrás).
+- Nuevo `codeunit 50106 "DUoM UoM Helper"` con `GetSecondUoMRoundingPrecision(ItemNo)`
+  que lee `UnitOfMeasure."Rounding Precision"` para la segunda UoM del ítem y devuelve 0
+  como fallback.
+- `DUoMPurchaseSubscribers` (50102) y `DUoMSalesSubscribers` (50103) usan
+  `ComputeSecondQtyRounded` con la precisión obtenida de `DUoMUoMHelper`.
+- Trigger `OnValidate` añadido al campo `DUoM Second Qty` en `DUoMPurchaseLine`,
+  `DUoMSalesLine` y `DUoMItemJournalLine` para redondear la entrada manual del usuario.
+- Trigger `OnValidate` de `DUoM Ratio` en las tres table extensions actualizado para
+  usar `ComputeSecondQtyRounded`.
+- 4 tests unitarios para `ComputeSecondQtyRounded` en `DUoMCalcEngineTests` (50204).
+- 2 tests E2E de integración (compra y venta) que crean una UoM con `Rounding Precision = 1`
+  y verifican que `DUoM Second Qty` = 12 (no 11,5) tras validar Qty = 10 con ratio 1,15.
+
+**Deliverables:**
+- `DUoMCalcEngine.Codeunit.al` (50101) — nueva sobrecarga `ComputeSecondQtyRounded`
+- `DUoMUoMHelper.Codeunit.al` (50106) — helper de precisión de redondeo
+- `DUoMPurchaseSubscribers.Codeunit.al` (50102), `DUoMSalesSubscribers.Codeunit.al` (50103) — actualizados
+- `DUoMPurchaseLine.TableExt.al` (50110), `DUoMSalesLine.TableExt.al` (50111),
+  `DUoMItemJournalLine.TableExt.al` (50112) — triggers `OnValidate` en `DUoM Second Qty`
+- `DUoMCalcEngineTests.Codeunit.al` (50204), `DUoMPurchaseTests.Codeunit.al` (50205),
+  `DUoMSalesTests.Codeunit.al` (50206) — nuevos tests
+
+### Issue 12 — Modelo de coste/precio en doble UoM
 
 **Objetivo:** permitir que el precio unitario y el coste se expresen también en términos
 de la segunda unidad de medida, y que el importe de línea se calcule correctamente.
@@ -191,11 +224,11 @@ Alcance:
   - Dado coste en segunda UoM y ratio fijo, verificar `Direct Unit Cost` derivado.
   - Verificar que `Value Entry` recibe `DUoM Second Qty` tras contabilización.
 
-**Dependencias:** Issues 1–10 completados.
-**Deliverables:** (IDs en rango 50120+ para table extensions, IDs codeunit libres en 50106+)
+**Dependencias:** Issues 1–11 completados.
+**Deliverables:** (IDs en rango 50120+ para table extensions, IDs codeunit libres en 50107+)
 Tests: nuevo codeunit `DUoM Cost Price Tests` (50211)
 
-### Issue 12 — Ratio real por lote
+### Issue 13 — Ratio real por lote
 
 **Objetivo:** almacenar y recuperar el ratio de conversión real (medido al pesaje o recepción)
 asociado a un número de lote específico.
@@ -213,12 +246,12 @@ Alcance:
   - Dado lote sin ratio, asignar lote → verificar que `DUoM Ratio` no se modifica.
   - Verificar que el ratio de lote prevalece sobre el ratio fijo del artículo cuando el modo es Variable.
 
-**Dependencias:** Issues 1–10. Issue 11 recomendado antes (coste/precio usa el ratio).
+**Dependencias:** Issues 1–11. Issue 12 recomendado antes (coste/precio usa el ratio).
 **Deliverables:** `DUoMLotRatio.Table.al`, `DUoMLotRatio.Page.al`,
 suscriptores en nuevo `DUoMLotSubscribers.Codeunit.al`,
 Tests: `DUoM Lot Ratio Tests` (ID en 50212+)
 
-### Issue 13 — Warehouse Receipt and Shipment DUoM Fields
+### Issue 14 — Warehouse Receipt and Shipment DUoM Fields
 
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
 
@@ -237,11 +270,11 @@ Alcance:
   - Crear un Warehouse Shipment desde un Sales Order con DUoM → verificar campos.
   - Contabilizar Warehouse Shipment → verificar ILE.
 
-**Dependencias:** Issues 1–10 completados. Issue 11 recomendado antes para consistencia de coste.
+**Dependencias:** Issues 1–11 completados. Issue 12 recomendado antes para consistencia de coste.
 **Nota:** Verificar nombres exactos de páginas BC 27 antes de crear page extensions
 (`Warehouse Receipt Subform`, `Warehouse Shipment Subform`) usando el BC Symbol Reference.
 
-### Issue 14 — Directed Put-Away and Pick DUoM Fields
+### Issue 15 — Directed Put-Away and Pick DUoM Fields
 
 **Objetivo:** extender los documentos de actividad de almacén dirigido (put-away y pick)
 con campos DUoM para seguimiento de segunda cantidad en movimientos internos.
@@ -255,9 +288,9 @@ Alcance:
   - Crear put-away desde Warehouse Receipt con DUoM → verificar campos en actividad.
   - Crear pick desde Warehouse Shipment con DUoM → verificar campos.
 
-**Dependencias:** Issue 13 completado.
+**Dependencias:** Issue 14 completado.
 
-### Issue 15 — Documentos de devolución DUoM
+### Issue 16 — Documentos de devolución DUoM
 
 **Objetivo:** soportar DUoM en órdenes de devolución de compra y venta.
 
@@ -273,10 +306,10 @@ Alcance:
   - Crear Purchase Return Order con DUoM → contabilizar → verificar Return Shipment Line e ILE.
   - Crear Sales Return Order con DUoM → contabilizar → verificar Return Receipt Line e ILE.
 
-**Dependencias:** Issues 1–10. Issue 11 recomendado.
+**Dependencias:** Issues 1–11. Issue 12 recomendado.
 **Nota:** Verificar nombres exactos de páginas BC 27 antes de implementar.
 
-### Issue 16 — Physical Inventory DUoM
+### Issue 17 — Physical Inventory DUoM
 
 **Objetivo:** permitir el recuento de inventario físico expresando cantidades en segunda UoM.
 
@@ -289,7 +322,7 @@ Alcance:
 
 **Dependencias:** Issue 8 completado (Item Journal ya extendido).
 
-### Issue 17 — Reporting Extensions
+### Issue 18 — Reporting Extensions
 
 **Objetivo:** añadir columnas de segunda cantidad y segunda UoM a los informes estándar clave.
 
@@ -300,7 +333,7 @@ Alcance (report extensions en BC 27):
 - Informe de valoración de inventario: añadir columna de segunda cantidad total.
 - Tests: verificar que los campos se incluyen en los datasets de informe (unit tests de dataset).
 
-**Dependencias:** Issues 9 y 11 recomendados antes.
+**Dependencias:** Issues 9 y 12 recomendados antes.
 
 ---
 
@@ -328,14 +361,16 @@ Alcance (report extensions en BC 27):
   (Codeunit 50101, PageExtensions 50101/50102/50104–50109, TableExtensions 50114–50119)
   están en ambos XLF con IDs verificados mediante `LanguageFileUtilities.GetNameHash`
   del compilador AL (runtime 15).
+- **Localización Issue 11 (Rounding Precision):** ✅ `DUoM UoM Helper` (50106) no introduce
+  cadenas de usuario visibles (sin `Label`). No se requieren nuevas entradas XLF.
 - **IDs de test codeunit usados en Phase 1:** 50201–50208 (tests unitarios e integración),
   50209 (`DUoM ILE Integration Tests`, tests E2E de contabilización) y
   50210 (`DUoM Inv CrMemo Post Tests`, tests E2E de facturación y abono).
   **IDs libres para Phase 2:** 50211+ para nuevos codeunits de test.
 - **Rango de IDs de objetos de producción:** 50100–50199.
-  IDs ya asignados en Phase 1: tablas 50100; enums 50100; codeunits 50101–50105;
+  IDs ya asignados en Phase 1 + Issue 11: tablas 50100; enums 50100; codeunits 50101–50106;
   pages 50100; pageextensions 50101–50109; tableextensions 50100, 50110–50119.
-  IDs libres para Phase 2: tableextensions 50120+, codeunits 50106+, pages 50101+.
+  IDs libres para Phase 2 (Issue 12+): tableextensions 50120+, codeunits 50107+, pages 50101+.
 - **Eventos BC 27 — referencia de firma verificada:**
   - Purch. Rcpt. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Rcpt. Line"` — var ÚLTIMO
   - Purch. Inv. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Inv. Line"` — var ÚLTIMO

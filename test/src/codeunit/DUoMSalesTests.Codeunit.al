@@ -248,4 +248,53 @@ codeunit 50206 "DUoM Sales Tests"
         DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
+
+    // -------------------------------------------------------------------------
+    // Integration: Quantity validate with discrete UoM → DUoM Second Qty rounded
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure SalesLine_ValidateQty_DiscreteUoM_SecondQtyIsRounded()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        UnitOfMeasure: Record "Unit of Measure";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+        UoMCode: Code[10];
+    begin
+        // [GIVEN] A Unit of Measure with Rounding Precision = 1 (discrete, e.g. pieces)
+        UoMCode := LibraryInventory.CreateUnitOfMeasureCode();
+        UnitOfMeasure.Get(UoMCode);
+        UnitOfMeasure."Rounding Precision" := 1;
+        UnitOfMeasure.Modify(false);
+
+        // [GIVEN] An item with DUoM setup: Fixed conversion mode, ratio 1.15, second UoM = discrete
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, UoMCode, "DUoM Conversion Mode"::Fixed, 1.15);
+
+        // [GIVEN] A Customer and Sales Order line for that item
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+
+        // [WHEN] Quantity is validated to 10 → raw result would be 10 × 1.15 = 11.5
+        SalesLine.Validate(Quantity, 10);
+
+        // [THEN] DUoM Second Qty = 12 (11.5 rounded to precision 1)
+        LibraryAssert.AreEqual(12, SalesLine."DUoM Second Qty",
+            'Discrete UoM: DUoM Second Qty must be rounded to 12 (not 11.5) after Quantity validate');
+
+        // Cleanup
+        SalesLine.Delete(false);
+        SalesHeader.Delete(false);
+        Customer.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
+        Item.Delete(false);
+        UnitOfMeasure.Delete(false);
+    end;
 }
