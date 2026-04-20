@@ -31,10 +31,7 @@ codeunit 50215 "DUoM Variant Del Tests"
         LibraryInventory.CreateItem(Item);
 
         // [GIVEN] Existe una Item Variant para ese artículo
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'VDT-01';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'VDT-01', ItemVariant);
 
         // [GIVEN] Existe un registro DUoM Item Variant Setup para esa variante
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'VDT-01', 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
@@ -60,15 +57,13 @@ codeunit 50215 "DUoM Variant Del Tests"
     var
         Item: Record Item;
         ItemVariant: Record "Item Variant";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryAssert: Codeunit "Library Assert";
     begin
         // [GIVEN] Un artículo y una Item Variant sin setup DUoM correspondiente
         LibraryInventory.CreateItem(Item);
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'VDT-02';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'VDT-02', ItemVariant);
 
         // [WHEN] Se elimina la Item Variant
         ItemVariant.Delete(true);
@@ -100,15 +95,9 @@ codeunit 50215 "DUoM Variant Del Tests"
         // [GIVEN] Un artículo con dos variantes, cada una con su propio DUoM setup
         LibraryInventory.CreateItem(Item);
 
-        ItemVariant1.Init();
-        ItemVariant1."Item No." := Item."No.";
-        ItemVariant1.Code := 'VDT-03A';
-        ItemVariant1.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'VDT-03A', ItemVariant1);
 
-        ItemVariant2.Init();
-        ItemVariant2."Item No." := Item."No.";
-        ItemVariant2.Code := 'VDT-03B';
-        ItemVariant2.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'VDT-03B', ItemVariant2);
 
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'VDT-03A', 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'VDT-03B', 'KG', "DUoM Conversion Mode"::Variable, 1.0);
