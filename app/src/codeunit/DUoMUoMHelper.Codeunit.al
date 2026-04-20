@@ -5,7 +5,7 @@
 /// </summary>
 codeunit 50106 "DUoM UoM Helper"
 {
-    Access = Internal;
+    Access = Public;
 
     /// <summary>
     /// Returns the Qty. Rounding Precision of the secondary Unit of Measure
