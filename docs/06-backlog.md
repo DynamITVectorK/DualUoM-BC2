@@ -4,7 +4,7 @@ Backlog ordenado para la entrega incremental y controlada del proyecto.
 Cada issue está delimitado para poder ser implementado en un único issue enfocado por
 GitHub Copilot Coding Agent.
 
-> **Estado actualizado:** 2026-04-11 — sincronizado con el estado real de los objetos
+> **Estado actualizado:** 2026-04-20 — sincronizado con el estado real de los objetos
 > implementados en el repositorio.
 
 ---
@@ -162,6 +162,35 @@ Subformularios de históricos muestran los campos (solo lectura).
 - `DUoMPostedPurchInvSubform.PageExt.al` (50106), `DUoMPostedPurchCrMemoSubform.PageExt.al` (50107)
 - `DUoMPostedSalesInvSubform.PageExt.al` (50108), `DUoMPostedSalesCrMemoSubform.PageExt.al` (50109)
 - `DUoMInvCrMemoPostTests.Codeunit.al` (50210) — 5 tests E2E de facturación y abono
+
+---
+
+### Auditoría TDD — Revisión de cobertura de pruebas ✅ IMPLEMENTADO
+
+**Objetivo:** revisar la cobertura de pruebas del proyecto DualUoM-BC, identificar los gaps
+existentes y crear los codeunits de test necesarios para cerrar dichos gaps.
+
+Resultado:
+- Nuevo documento `docs/TestCoverageAudit.md` con la matriz de cobertura completa y el
+  análisis de gaps clasificados por prioridad (P0/P1/P2).
+- Gap P0-01 cerrado: `DUoM UoM Helper` (50106) cambiado de `Access = Internal` a
+  `Access = Public` para permitir tests unitarios directos desde el test app.
+  Nuevo codeunit `DUoM UoM Helper Tests` (50213) — 7 tests unitarios para ambos métodos
+  del helper (`GetSecondUoMRoundingPrecision`, `GetRoundingPrecisionByUoMCode`).
+- Gap P0-02 cerrado: nuevo codeunit `DUoM Variable Mode Post Tests` (50214) — 4 tests
+  de integración que cubren los modos Variable y AlwaysVariable en el flujo completo de
+  contabilización (compra y venta), complementando los tests Fixed ya existentes en 50209.
+- Gap P1-01 cerrado: nuevo codeunit `DUoM Variant Del Tests` (50215) — 3 tests que
+  verifican el borrado en cascada de `DUoM Item Variant Setup` cuando se elimina la
+  `Item Variant` correspondiente (trigger `OnDelete` en tableextension 50120).
+- Gaps P1-02 y P2 documentados en `TestCoverageAudit.md` para futuros issues.
+
+**Deliverables:**
+- `docs/TestCoverageAudit.md` — matriz de cobertura y análisis de gaps
+- `app/src/codeunit/DUoMUoMHelper.Codeunit.al` (50106) — `Access = Internal` → `Access = Public`
+- `test/src/codeunit/DUoMUoMHelperTests.Codeunit.al` (codeunit 50213) — 7 tests P0
+- `test/src/codeunit/DUoMVarModePostTests.Codeunit.al` (codeunit 50214) — 4 tests P0
+- `test/src/codeunit/DUoMVariantDelTests.Codeunit.al` (codeunit 50215) — 3 tests P1
 
 ---
 
