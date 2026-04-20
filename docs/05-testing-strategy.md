@@ -49,6 +49,48 @@ Workflow for every new feature:
 - Use the `// [GIVEN] / [WHEN] / [THEN]` comment pattern in every test procedure
 - Use `Library Assert` (`Codeunit "Library Assert"`) for all assertions — no custom assert helpers
 
+---
+
+## Norma de creación de datos de test (obligatoria)
+
+En el código de tests, **si existe un helper estándar de Microsoft `Library - *` que cubra
+razonablemente el caso, debe usarse ese helper** en lugar de implementar lógica manual o un
+helper propio equivalente. Nunca usar `Init()` + `Insert(false)` manual sobre tablas estándar
+de BC cuando existe un helper de librería equivalente.
+
+### Jerarquía de decisión
+
+1. **Primero**: usar helper estándar `Library - *`.
+2. **Si no existe helper estándar suficiente**: usar helper propio reutilizable del proyecto (`DUoM Test Helpers`, codeunit 50208).
+3. **Si tampoco existe helper propio**: crear uno nuevo en la capa de tests, nunca en la app productiva.
+4. **Toda excepción** debe quedar justificada en comentario en el propio código.
+
+### Helpers disponibles
+
+| Entity              | Helper recomendado                                            |
+|---------------------|---------------------------------------------------------------|
+| Item                | `LibraryInventory.CreateItem(Item)`                          |
+| Item Variant (auto) | `LibraryInventory.CreateItemVariant(ItemVariant, ItemNo)`    |
+| Item Variant (code) | `DUoMTestHelpers.CreateItemVariantWithCode(ItemNo, Code, ItemVariant)` |
+| Vendor              | `LibraryPurchase.CreateVendor(Vendor)`                       |
+| Customer            | `LibrarySales.CreateCustomer(Customer)`                      |
+| Purchase Header     | `LibraryPurchase.CreatePurchaseHeader(...)`                  |
+| Purchase Line       | `LibraryPurchase.CreatePurchaseLine(...)`                    |
+| Sales Header        | `LibrarySales.CreateSalesHeader(...)`                        |
+| Sales Line          | `LibrarySales.CreateSalesLine(...)`                          |
+| Item Journal Line   | `LibraryInventory.CreateItemJournalLine(...)`                |
+| DUoM Item Setup     | `DUoMTestHelpers.CreateItemSetup(...)`                       |
+| DUoM Variant Setup  | `DUoMTestHelpers.CreateVariantSetup(...)`                    |
+
+### Excepciones justificadas (documentadas en código)
+
+- `Init()` sin `Insert()` es válido para registros puramente en memoria (p.ej. test de validación de campos en aislamiento).
+- `WhseEntry.Init()` + `Insert(false)` es aceptable para crear entradas de almacén en tests de condición de editabilidad, porque no existe helper estándar sin configuración completa de almacén. Debe documentarse en comentario en el test.
+- `DUoMTestHelpers.CreateItemVariantWithCode` usa `LibraryInventory.CreateItemVariant` internamente y después renombra al código específico. Se justifica porque los tests DUoM requieren códigos con semántica de negocio determinista (`'ROMANA'`, `'ICEBERG'`, `'GRANEL'`).
+- Los helpers propios `DUoMTestHelpers.CreateItemSetup` y `CreateVariantSetup` crean registros de tablas propias de la extensión sin equivalente estándar de Microsoft.
+
+---
+
 Example structure:
 
 ```al

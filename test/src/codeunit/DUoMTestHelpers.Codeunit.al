@@ -75,4 +75,21 @@ codeunit 50208 "DUoM Test Helpers"
         if DUoMVariantSetup.Get(ItemNo, VariantCode) then
             DUoMVariantSetup.Delete(false);
     end;
+
+    /// <summary>
+    /// Crea una variante de artículo con el código específico indicado.
+    /// Usa Library - Inventory.CreateItemVariant internamente (norma del proyecto)
+    /// y después renombra al código deseado para mantener semántica de negocio
+    /// determinista en los tests DUoM (p.ej. 'ROMANA', 'ICEBERG', 'GRANEL').
+    /// Se justifica un helper propio porque LibraryInventory.CreateItemVariant genera
+    /// un código aleatorio, pero los tests de variantes DUoM requieren códigos
+    /// específicos con semántica funcional.
+    /// </summary>
+    procedure CreateItemVariantWithCode(ItemNo: Code[20]; VariantCode: Code[10]; var ItemVariant: Record "Item Variant")
+    var
+        LibraryInventory: Codeunit "Library - Inventory";
+    begin
+        LibraryInventory.CreateItemVariant(ItemVariant, ItemNo);
+        ItemVariant.Rename(ItemNo, VariantCode);
+    end;
 }

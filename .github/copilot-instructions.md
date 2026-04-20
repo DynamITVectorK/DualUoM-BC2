@@ -247,20 +247,39 @@ An issue is **not considered done** without this explicit declaration.
 
 ## AL Test Data Creation — Mandatory Standard
 
-Never use manual `Init()` + `Insert(false)` to create test records.
-Always use Microsoft's standard AL test libraries (from the `Tests-TestLibraries` app,
-ID `5d86850b-0d76-4eca-bd7b-951ad998e997`):
+En el código de tests, **si existe un helper estándar de Microsoft `Library - *` que cubra
+razonablemente el caso, debe usarse ese helper** en lugar de implementar lógica manual.
 
-| Entity            | Library call                                      |
-|-------------------|---------------------------------------------------|
-| Item              | `LibraryInventory.CreateItem(Item)`               |
-| Vendor            | `LibraryPurchase.CreateVendor(Vendor)`            |
-| Customer          | `LibrarySales.CreateCustomer(Customer)`           |
-| Purchase Header   | `LibraryPurchase.CreatePurchaseHeader(...)`       |
-| Purchase Line     | `LibraryPurchase.CreatePurchaseLine(...)`         |
-| Sales Header      | `LibrarySales.CreateSalesHeader(...)`             |
-| Sales Line        | `LibrarySales.CreateSalesLine(...)`               |
-| Item Journal Line | `LibraryInventory.CreateItemJournalLine(...)`     |
+### Jerarquía de decisión
+
+1. **Primero**: usar helper estándar `Library - *`.
+2. **Si no existe helper estándar suficiente**: usar helper propio reutilizable del proyecto (`DUoM Test Helpers`).
+3. **Si tampoco existe helper propio**: crear uno nuevo en la capa de tests, nunca en la app productiva.
+4. **Toda excepción** debe quedar justificada en comentario en el propio código.
+
+### Creadores estándar disponibles
+
+Las `Library - *` provienen de `Tests-TestLibraries` (ID `5d86850b-0d76-4eca-bd7b-951ad998e997`):
+
+| Entity              | Library call                                                  |
+|---------------------|---------------------------------------------------------------|
+| Item                | `LibraryInventory.CreateItem(Item)`                          |
+| Item Variant (auto) | `LibraryInventory.CreateItemVariant(ItemVariant, ItemNo)`    |
+| Item Variant (code) | `DUoMTestHelpers.CreateItemVariantWithCode(ItemNo, Code, ItemVariant)` |
+| Vendor              | `LibraryPurchase.CreateVendor(Vendor)`                       |
+| Customer            | `LibrarySales.CreateCustomer(Customer)`                      |
+| Purchase Header     | `LibraryPurchase.CreatePurchaseHeader(...)`                  |
+| Purchase Line       | `LibraryPurchase.CreatePurchaseLine(...)`                    |
+| Sales Header        | `LibrarySales.CreateSalesHeader(...)`                        |
+| Sales Line          | `LibrarySales.CreateSalesLine(...)`                          |
+| Item Journal Line   | `LibraryInventory.CreateItemJournalLine(...)`                |
+
+> **Nota sobre Item Variant con código específico:** `LibraryInventory.CreateItemVariant` genera
+> un código aleatorio. Cuando el test requiere un código con semántica de negocio determinista
+> (p.ej. `'ROMANA'`, `'ICEBERG'`, `'GRANEL'`), usar `DUoMTestHelpers.CreateItemVariantWithCode`,
+> que usa `LibraryInventory.CreateItemVariant` internamente y después renombra al código indicado.
+> Esta excepción está documentada y justificada: un código aleatorio perjudicaría la legibilidad
+> y la semántica funcional de los tests DUoM.
 
 Declare the library codeunit variables as:
 ```al

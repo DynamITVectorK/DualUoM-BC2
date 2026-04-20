@@ -66,10 +66,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
 
         // [GIVEN] An item variant ROMANA with DUoM override: Variable mode, ratio 1.2, KG
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ROMANA';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ROMANA', 'KG', "DUoM Conversion Mode"::Variable, 1.2);
 
         // [WHEN] Resolver is called with variant code ROMANA
@@ -112,10 +109,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
 
         // [GIVEN] An item variant ICEBERG with no DUoM override
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ICEBERG';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ICEBERG', ItemVariant);
 
         // [WHEN] Resolver is called with variant code ICEBERG (no variant setup exists)
         Result := DUoMSetupResolver.GetEffectiveSetup(Item."No.", 'ICEBERG', SecondUoMCode, ConversionMode, FixedRatio);
@@ -212,10 +206,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
 
         // [GIVEN] Variant ROMANA with override: Fixed mode, ratio 1.5
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ROMANA';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ROMANA', 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
 
         // [GIVEN] A purchase line for the item with variant ROMANA
@@ -265,10 +256,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
 
         // [GIVEN] Variant ROMANA with override: Fixed mode, ratio 1.5
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ROMANA';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ROMANA', 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
 
         // [GIVEN] A purchase line for the item with Quantity = 10 (item setup ratio 0.8 → SecondQty = 8)
@@ -319,10 +307,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG', "DUoM Conversion Mode"::Fixed, 1.25);
 
         // [GIVEN] Variant ICEBERG with override: Fixed mode, ratio 0.9
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ICEBERG';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ICEBERG', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ICEBERG', 'KG', "DUoM Conversion Mode"::Fixed, 0.9);
 
         // [GIVEN] A sales line for the item with variant ICEBERG
@@ -372,10 +357,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG', "DUoM Conversion Mode"::Fixed, 1.25);
 
         // [GIVEN] Variant ICEBERG with override: Fixed mode, ratio 0.9
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ICEBERG';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ICEBERG', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ICEBERG', 'KG', "DUoM Conversion Mode"::Fixed, 0.9);
 
         // [GIVEN] A sales line with Quantity = 8 (item ratio 1.25 → SecondQty = 10)
@@ -421,10 +403,7 @@ codeunit 50211 "DUoM Variant Tests"
         // [GIVEN] An item with a variant ROMANA and a DUoM variant setup
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ROMANA';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ROMANA', 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
 
         // [WHEN] The variant is deleted
@@ -461,10 +440,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
 
         // [GIVEN] Variant FRESCA with AlwaysVariable override (no default ratio)
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'FRESCA';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'FRESCA', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'FRESCA', 'PCS', "DUoM Conversion Mode"::AlwaysVariable, 0);
 
         // [GIVEN] A purchase line for the item with variant FRESCA
@@ -515,17 +491,11 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1.0);
 
         // [GIVEN] Variant ROMANA with ratio 1.5
-        ItemVariantRomana.Init();
-        ItemVariantRomana."Item No." := Item."No.";
-        ItemVariantRomana.Code := 'ROMANA';
-        ItemVariantRomana.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariantRomana);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ROMANA', 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
 
         // [GIVEN] Variant ICEBERG with ratio 0.9
-        ItemVariantIceberg.Init();
-        ItemVariantIceberg."Item No." := Item."No.";
-        ItemVariantIceberg.Code := 'ICEBERG';
-        ItemVariantIceberg.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ICEBERG', ItemVariantIceberg);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ICEBERG', 'PCS', "DUoM Conversion Mode"::Fixed, 0.9);
 
         // [GIVEN] A purchase line with variant ROMANA, Quantity = 10 → SecondQty = 15
@@ -579,10 +549,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
 
         // [GIVEN] Variant ROMANA with override ratio 1.5
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'ROMANA';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'ROMANA', 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
 
         // [GIVEN] A purchase line with variant ROMANA, Quantity = 10 → SecondQty = 15
@@ -677,10 +644,7 @@ codeunit 50211 "DUoM Variant Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG', "DUoM Conversion Mode"::Fixed, 1.25);
 
         // [GIVEN] Variant GRANEL with AlwaysVariable override
-        ItemVariant.Init();
-        ItemVariant."Item No." := Item."No.";
-        ItemVariant.Code := 'GRANEL';
-        ItemVariant.Insert(false);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'GRANEL', ItemVariant);
         DUoMTestHelpers.CreateVariantSetup(Item."No.", 'GRANEL', 'KG', "DUoM Conversion Mode"::AlwaysVariable, 0);
 
         // [GIVEN] A sales line for the item with variant GRANEL

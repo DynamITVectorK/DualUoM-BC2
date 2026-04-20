@@ -218,6 +218,38 @@ Un PR sin esta declaración explícita no cumple la definición de trabajo compl
 - Librería de aserciones: `Library Assert` (Microsoft).
 - Ningún test puede desactivarse para que pase el CI.
 
+### Norma de creación de datos de test (obligatoria)
+
+En el código de tests, **si existe un helper estándar de Microsoft `Library - *` que cubra
+razonablemente el caso, debe usarse ese helper** en lugar de implementar lógica manual o un
+helper propio equivalente. Se aplica la siguiente jerarquía de decisión:
+
+1. **Primero**: usar helper estándar `Library - *` (p.ej. `LibraryInventory.CreateItem`, `LibraryPurchase.CreateVendor`).
+2. **Si no existe helper estándar suficiente**: usar helper propio reutilizable del proyecto (`DUoM Test Helpers`).
+3. **Si tampoco existe helper propio**: crear uno nuevo en la capa de tests, nunca en la app productiva.
+4. **Toda excepción** a la jerarquía debe quedar justificada en comentario en el propio código.
+
+Ejemplos de creadores estándar disponibles:
+
+| Entity              | Library call                                                  |
+|---------------------|---------------------------------------------------------------|
+| Item                | `LibraryInventory.CreateItem(Item)`                          |
+| Item Variant (auto) | `LibraryInventory.CreateItemVariant(ItemVariant, ItemNo)`    |
+| Item Variant (code) | `DUoMTestHelpers.CreateItemVariantWithCode(ItemNo, Code, ItemVariant)` |
+| Vendor              | `LibraryPurchase.CreateVendor(Vendor)`                       |
+| Customer            | `LibrarySales.CreateCustomer(Customer)`                      |
+| Purchase Header     | `LibraryPurchase.CreatePurchaseHeader(...)`                  |
+| Purchase Line       | `LibraryPurchase.CreatePurchaseLine(...)`                    |
+| Sales Header        | `LibrarySales.CreateSalesHeader(...)`                        |
+| Sales Line          | `LibrarySales.CreateSalesLine(...)`                          |
+| Item Journal Line   | `LibraryInventory.CreateItemJournalLine(...)`                |
+
+> `Init()` sin `Insert()` sigue siendo válido para registros puramente en memoria (p.ej.
+> testing de validación de campos en aislamiento).
+
+Ver detalles y excepciones justificadas en `.github/copilot-instructions.md`, sección
+"AL Test Data Creation — Mandatory Standard".
+
 ---
 
 ## Definition of Done (DoD)
@@ -227,6 +259,7 @@ Un issue/PR se considera **terminado** solo cuando se cumple **todo** lo siguien
 - [ ] El código compila sin errores ni warnings (zero-warnings policy).
 - [ ] Todos los tests existentes siguen pasando.
 - [ ] Los nuevos tests cubren la funcionalidad añadida o modificada.
+- [ ] Los tests de nueva creación de datos usan helpers estándar `Library - *` o `DUoM Test Helpers`, no `Init()` + `Insert(false)` manual sobre tablas estándar.
 - [ ] Todos los textos visibles usan Labels/Captions con `Comment`.
 - [ ] `DualUoM-BC.en-US.xlf` actualizado con `state="final"`.
 - [ ] `DualUoM-BC.es-ES.xlf` actualizado con `state="translated"`.
