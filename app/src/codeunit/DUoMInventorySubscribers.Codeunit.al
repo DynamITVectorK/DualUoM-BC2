@@ -232,12 +232,11 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// Evento elegido porque inicializa el Value Entry desde el Item Journal Line
     /// en el mismo flujo de contabilización que OnAfterInitItemLedgEntry.
     /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al):
-    ///   OnAfterInitValueEntry(var ValueEntry; var ItemJnlLine; var ValueEntryNo).
-    ///   El evento tiene TRES parámetros — NO incluye ItemLedgerEntry.
+    ///   OnAfterInitValueEntry(var ValueEntry; var ItemJnlLine; var ValueEntryNo; var ItemLedgEntry).
     /// Patrón SaaS: OnAfterInit* + asignación directa (sin Modify sobre tabla base).
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
-    local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer)
+    local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
     begin
         if ItemJournalLine."DUoM Second Qty" = 0 then
             exit;
