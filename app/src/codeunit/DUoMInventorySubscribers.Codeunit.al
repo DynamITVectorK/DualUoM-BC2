@@ -36,11 +36,11 @@
 ///   OnAfterInitItemLedgEntry then copies the DUoM fields from the Item Journal Line
 ///   to the new ILE before Insert() — no Modify() call is needed.
 ///
-/// Propagation strategy for Value Entry:
-///   OnAfterInitValueEntry on Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
-///   copies DUoM Second Qty from the Item Journal Line to the new Value Entry
-///   before Insert() — no Modify() call is needed.
-///   Signature verified: (var ValueEntry; var ItemJournalLine; var ValueEntryNo; ItemLedgerEntry).
+/// Estrategia de propagación para Value Entry:
+///   OnAfterInitValueEntry en Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
+///   copia DUoM Second Qty desde la Item Journal Line al nuevo Value Entry
+///   antes de Insert() — no se necesita ninguna llamada a Modify().
+///   Firma verificada: (var ValueEntry; var ItemJournalLine; var ValueEntryNo; ItemLedgerEntry).
 /// </summary>
 codeunit 50104 "DUoM Inventory Subscribers"
 {

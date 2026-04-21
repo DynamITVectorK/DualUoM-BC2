@@ -10,8 +10,8 @@
 /// Purch. Inv. Line, Purch. Cr. Memo Line, Sales Invoice Line, Sales Cr.Memo Line),
 /// necesario para que los tests E2E con TestPermissions = Restrictive no fallen
 /// por falta de permiso Modify en las tablas base de BC.
-/// Incluye también Value Entry para que los tests E2E de DUoM Second Qty en
-/// Value Entry puedan verificar los campos escritos por el suscriptor.
+/// Incluye lectura sobre Value Entry para que los tests E2E puedan verificar
+/// el campo DUoM Second Qty escrito por el suscriptor antes del Insert() estándar.
 /// </summary>
 permissionset 50200 "DUoM - Test All"
 {
@@ -27,5 +27,5 @@ permissionset 50200 "DUoM - Test All"
         tabledata "Purch. Cr. Memo Line" = RIMD,
         tabledata "Sales Invoice Line" = RIMD,
         tabledata "Sales Cr.Memo Line" = RIMD,
-        tabledata "Value Entry" = RIMD;
+        tabledata "Value Entry" = R;
 }

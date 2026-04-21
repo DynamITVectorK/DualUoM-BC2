@@ -1,13 +1,13 @@
 /// <summary>
-/// Extends the Purchase Line table with Dual Unit of Measure fields.
-/// DUoM Second Qty holds the computed or user-entered secondary quantity.
-/// DUoM Ratio holds the conversion ratio used on this specific line, which may
-/// differ from the item-level default in Variable conversion mode.
-/// DUoM Unit Cost holds the unit cost expressed in the second unit of measure.
-/// The OnValidate trigger on DUoM Ratio recomputes the secondary quantity immediately,
-/// using the effective DUoM setup resolved through the Item → Variant hierarchy.
-/// The OnValidate trigger on DUoM Unit Cost derives Direct Unit Cost when ratio ≠ 0.
-/// The OnAfterValidate trigger on Direct Unit Cost recalculates DUoM Unit Cost.
+/// Extiende la tabla Purchase Line con campos de Unidad de Medida Dual.
+/// DUoM Second Qty almacena la cantidad secundaria calculada o introducida por el usuario.
+/// DUoM Ratio almacena la proporción de conversión utilizada en esta línea concreta,
+/// que puede diferir del valor predeterminado del artículo en modo Variable.
+/// DUoM Unit Cost almacena el coste unitario expresado en la segunda unidad de medida.
+/// El trigger OnValidate de DUoM Ratio recalcula inmediatamente la cantidad secundaria,
+/// usando la configuración efectiva de DUoM resuelta mediante la jerarquía Item → Variante.
+/// El trigger OnValidate de DUoM Unit Cost deriva Direct Unit Cost cuando la proporción ≠ 0.
+/// El trigger OnAfterValidate de Direct Unit Cost recalcula DUoM Unit Cost.
 /// </summary>
 tableextension 50110 "DUoM Purchase Line Ext" extends "Purchase Line"
 {

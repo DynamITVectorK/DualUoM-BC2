@@ -1,12 +1,12 @@
 /// <summary>
-/// Extends the Sales Line table with Dual Unit of Measure fields.
-/// DUoM Second Qty holds the computed or user-entered secondary quantity.
-/// DUoM Ratio holds the conversion ratio used on this specific line.
-/// DUoM Unit Price holds the unit price expressed in the second unit of measure.
-/// The OnValidate trigger on DUoM Ratio recomputes the secondary quantity immediately,
-/// using the effective DUoM setup resolved through the Item → Variant hierarchy.
-/// The OnValidate trigger on DUoM Unit Price derives Unit Price when ratio ≠ 0.
-/// The OnAfterValidate trigger on Unit Price recalculates DUoM Unit Price.
+/// Extiende la tabla Sales Line con campos de Unidad de Medida Dual.
+/// DUoM Second Qty almacena la cantidad secundaria calculada o introducida por el usuario.
+/// DUoM Ratio almacena la proporción de conversión utilizada en esta línea concreta.
+/// DUoM Unit Price almacena el precio unitario expresado en la segunda unidad de medida.
+/// El trigger OnValidate de DUoM Ratio recalcula inmediatamente la cantidad secundaria,
+/// usando la configuración efectiva de DUoM resuelta mediante la jerarquía Item → Variante.
+/// El trigger OnValidate de DUoM Unit Price deriva Unit Price cuando la proporción ≠ 0.
+/// El trigger OnAfterValidate de Unit Price recalcula DUoM Unit Price.
 /// </summary>
 tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
 {
