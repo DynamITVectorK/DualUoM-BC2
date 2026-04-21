@@ -1,6 +1,6 @@
 /// <summary>
 /// Amplía la tabla Sales Shipment Line con campos de Dual Unit of Measure.
-/// Estos campos capturan DUoM Second Qty y Ratio desde la
+/// Estos campos capturan DUoM Second Qty, DUoM Ratio y DUoM Unit Price desde la
 /// Sales Line de origen en el momento del registro. Los valores son inmutables tras el registro.
 /// La propagación la realiza DUoM Inventory Subscribers mediante el evento estándar
 /// OnAfterInitFromSalesLine de la tabla "Sales Shipment Line" (BC 27 / runtime 15),
@@ -22,6 +22,12 @@ tableextension 50115 "DUoM Sales Shipment Line Ext" extends "Sales Shipment Line
         {
             Caption = 'DUoM Ratio', Comment = 'Caption for DUoM Ratio field; no placeholders.';
             DecimalPlaces = 0 : 5;
+            DataClassification = CustomerContent;
+        }
+        field(50102; "DUoM Unit Price"; Decimal)
+        {
+            Caption = 'DUoM Unit Price', Comment = 'Caption for DUoM Unit Price field; no placeholders.';
+            DecimalPlaces = 2 : 5;
             DataClassification = CustomerContent;
         }
     }

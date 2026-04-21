@@ -7,6 +7,9 @@
 /// durante la contabilización (Purch. Rcpt. Line, Sales Shipment Line,
 /// Purch. Inv. Line, Purch. Cr. Memo Line, Sales Invoice Line, Sales Cr.Memo Line),
 /// evitando el error "Su licencia no le concede Modify en TableData NNN".
+/// Incluye lectura sobre Value Entry para que las páginas e informes DUoM
+/// puedan mostrar el campo DUoM Second Qty. El suscriptor OnAfterInitValueEntry
+/// asigna el campo antes del Insert() estándar de BC, sin llamar a Modify().
 /// </summary>
 permissionset 50100 "DUoM - All"
 {
@@ -21,5 +24,6 @@ permissionset 50100 "DUoM - All"
         tabledata "Purch. Inv. Line" = RIMD,
         tabledata "Purch. Cr. Memo Line" = RIMD,
         tabledata "Sales Invoice Line" = RIMD,
-        tabledata "Sales Cr.Memo Line" = RIMD;
+        tabledata "Sales Cr.Memo Line" = RIMD,
+        tabledata "Value Entry" = R;
 }

@@ -1,8 +1,8 @@
 /// <summary>
 /// Extiende la página Posted Sales Cr. Memo Subform para mostrar los campos de
-/// Dual Unit of Measure (DUoM Second Qty y DUoM Ratio) en cada línea de abono
+/// Dual Unit of Measure (DUoM Second Qty, DUoM Ratio y DUoM Unit Price) en cada línea de abono
 /// de venta registrado.
-/// Ambos campos son de solo lectura; los documentos registrados son inmutables.
+/// Todos los campos son de solo lectura; los documentos registrados son inmutables.
 /// DUoM Second Qty muestra el código de la segunda unidad de medida como caption
 /// de la columna cuando está disponible.
 /// </summary>
@@ -24,6 +24,12 @@ pageextension 50109 "DUoM Pstd Sales CrM Subform" extends "Posted Sales Cr. Memo
                 ApplicationArea = All;
                 Editable = false;
                 ToolTip = 'Specifies the conversion ratio used for this posted sales credit memo line.', Comment = 'ToolTip for DUoM Ratio field on Posted Sales Credit Memo Subform; no placeholders.';
+            }
+            field("DUoM Unit Price"; Rec."DUoM Unit Price")
+            {
+                ApplicationArea = All;
+                Editable = false;
+                ToolTip = 'Specifies the unit price in the second unit of measure for this posted sales credit memo line.', Comment = 'ToolTip for DUoM Unit Price field on Posted Sales Credit Memo Subform; no placeholders.';
             }
         }
     }

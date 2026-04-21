@@ -35,6 +35,12 @@
 ///     DUoM fields when Quantity is validated through the UI.
 ///   OnAfterInitItemLedgEntry then copies the DUoM fields from the Item Journal Line
 ///   to the new ILE before Insert() — no Modify() call is needed.
+///
+/// Estrategia de propagación para Value Entry:
+///   OnAfterInitValueEntry en Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
+///   copia DUoM Second Qty desde la Item Journal Line al nuevo Value Entry
+///   antes de Insert() — no se necesita ninguna llamada a Modify().
+///   Firma verificada: (var ValueEntry; var ItemJournalLine; var ValueEntryNo; ItemLedgerEntry).
 /// </summary>
 codeunit 50104 "DUoM Inventory Subscribers"
 {
@@ -217,5 +223,23 @@ codeunit 50104 "DUoM Inventory Subscribers"
             exit;
         NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
         NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
+    end;
+
+    /// <summary>
+    /// Propaga DUoM Second Qty desde el Item Journal Line al nuevo Value Entry
+    /// antes de que se inserte — sin llamada a Modify().
+    /// Publisher: Codeunit "Item Jnl.-Post Line", evento OnAfterInitValueEntry.
+    /// Evento elegido porque inicializa el Value Entry desde el Item Journal Line
+    /// en el mismo flujo de contabilización que OnAfterInitItemLedgEntry.
+    /// Firma verificada en BC 27 / runtime 15:
+    ///   OnAfterInitValueEntry(var ValueEntry; var ItemJnlLine; var ValueEntryNo; ItemLedgerEntry).
+    /// Patrón SaaS: OnAfterInit* + asignación directa (sin Modify sobre tabla base).
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
+    local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; ItemLedgerEntry: Record "Item Ledger Entry")
+    begin
+        if ItemJournalLine."DUoM Second Qty" = 0 then
+            exit;
+        ValueEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
     end;
 }

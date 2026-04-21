@@ -1,10 +1,11 @@
 /// <summary>
 /// Extends the Sales Order Subform page to display the Dual Unit of Measure fields
-/// (DUoM Second Qty and DUoM Ratio) on each sales line.
+/// (DUoM Second Qty, DUoM Ratio and DUoM Unit Price) on each sales line.
 /// DUoM Second Qty is read-only in Fixed and Variable modes (computed automatically by the
 /// subscriber on Quantity validation); it becomes editable only in AlwaysVariable mode,
 /// where the user must enter the secondary quantity manually.
 /// DUoM Ratio is always editable to allow per-line override in Variable mode.
+/// DUoM Unit Price is always editable; entering it derives Unit Price automatically.
 /// </summary>
 pageextension 50102 "DUoM Sales Order Subform" extends "Sales Order Subform"
 {
@@ -23,6 +24,11 @@ pageextension 50102 "DUoM Sales Order Subform" extends "Sales Order Subform"
             {
                 ApplicationArea = All;
                 ToolTip = 'Specifies the conversion ratio for this sales line. Overrides the item default when the item uses Variable conversion mode.', Comment = 'ToolTip for DUoM Ratio field on Sales Order Subform; no placeholders.';
+            }
+            field("DUoM Unit Price"; Rec."DUoM Unit Price")
+            {
+                ApplicationArea = All;
+                ToolTip = 'Specifies the unit price in the second unit of measure. Derives Unit Price automatically when the ratio is available.', Comment = 'ToolTip for DUoM Unit Price field on Sales Order Subform; no placeholders.';
             }
         }
     }

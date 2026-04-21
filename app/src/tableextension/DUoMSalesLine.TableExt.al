@@ -1,9 +1,12 @@
 /// <summary>
-/// Extends the Sales Line table with Dual Unit of Measure fields.
-/// DUoM Second Qty holds the computed or user-entered secondary quantity.
-/// DUoM Ratio holds the conversion ratio used on this specific line.
-/// The OnValidate trigger on DUoM Ratio recomputes the secondary quantity immediately,
-/// using the effective DUoM setup resolved through the Item → Variant hierarchy.
+/// Extiende la tabla Sales Line con campos de Unidad de Medida Dual.
+/// DUoM Second Qty almacena la cantidad secundaria calculada o introducida por el usuario.
+/// DUoM Ratio almacena la proporción de conversión utilizada en esta línea concreta.
+/// DUoM Unit Price almacena el precio unitario expresado en la segunda unidad de medida.
+/// El trigger OnValidate de DUoM Ratio recalcula inmediatamente la cantidad secundaria,
+/// usando la configuración efectiva de DUoM resuelta mediante la jerarquía Item → Variante.
+/// El trigger OnValidate de DUoM Unit Price deriva Unit Price cuando la proporción ≠ 0.
+/// El trigger OnAfterValidate de Unit Price recalcula DUoM Unit Price.
 /// </summary>
 tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
 {
@@ -57,6 +60,32 @@ tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
                 "DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
                     Rec.Quantity, "DUoM Ratio", Mode,
                     DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode));
+            end;
+        }
+        field(50102; "DUoM Unit Price"; Decimal)
+        {
+            Caption = 'DUoM Unit Price', Comment = 'Caption for DUoM Unit Price field; no placeholders.';
+            DecimalPlaces = 2 : 5;
+            DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            begin
+                if Rec.Type <> Rec.Type::Item then
+                    exit;
+                if "DUoM Ratio" = 0 then
+                    exit;
+                Rec.Validate("Unit Price", "DUoM Unit Price" / "DUoM Ratio");
+            end;
+        }
+        modify("Unit Price")
+        {
+            trigger OnAfterValidate()
+            begin
+                if Rec.Type <> Rec.Type::Item then
+                    exit;
+                if "DUoM Ratio" = 0 then
+                    exit;
+                "DUoM Unit Price" := Rec."Unit Price" * "DUoM Ratio";
             end;
         }
     }

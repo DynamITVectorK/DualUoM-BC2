@@ -607,6 +607,117 @@
           <note from="Developer" annotates="general" priority="2"></note>
           <note from="Xliff Generator" annotates="general" priority="3">PermissionSet DUoM - All - Property Caption</note>
         </trans-unit>
+        <!-- TableExtension 50114 — DUoM Purch. Rcpt. Line Ext — campo DUoM Unit Cost -->
+        <trans-unit id="TableExtension 1207475111 - Field 3901234561 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Unit Cost</source>
+          <target state="translated">DUoM Coste Unitario</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Cost field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Rcpt. Line Ext - Field DUoM Unit Cost - Property Caption</note>
+        </trans-unit>
+
+        <!-- TableExtension 50115 — DUoM Sales Shipment Line Ext — campo DUoM Unit Price -->
+        <trans-unit id="TableExtension 1465029608 - Field 3901234562 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Unit Price</source>
+          <target state="translated">DUoM Precio Unitario</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Price field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Shipment Line Ext - Field DUoM Unit Price - Property Caption</note>
+        </trans-unit>
+
+        <!-- TableExtension 50116 — DUoM Purch. Inv. Line Ext — campo DUoM Unit Cost -->
+        <trans-unit id="TableExtension 3840538363 - Field 3901234561 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Unit Cost</source>
+          <target state="translated">DUoM Coste Unitario</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Cost field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Inv. Line Ext - Field DUoM Unit Cost - Property Caption</note>
+        </trans-unit>
+
+        <!-- TableExtension 50117 — DUoM Purch. Cr. Memo Line Ext — campo DUoM Unit Cost -->
+        <trans-unit id="TableExtension 1442553621 - Field 3901234561 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Unit Cost</source>
+          <target state="translated">DUoM Coste Unitario</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Cost field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purch. Cr. Memo Line Ext - Field DUoM Unit Cost - Property Caption</note>
+        </trans-unit>
+
+        <!-- TableExtension 50118 — DUoM Sales Inv. Line Ext — campo DUoM Unit Price -->
+        <trans-unit id="TableExtension 1720742181 - Field 3901234562 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Unit Price</source>
+          <target state="translated">DUoM Precio Unitario</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Price field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Inv. Line Ext - Field DUoM Unit Price - Property Caption</note>
+        </trans-unit>
+
+        <!-- TableExtension 50119 — DUoM Sales Cr.Memo Line Ext — campo DUoM Unit Price -->
+        <trans-unit id="TableExtension 2025579891 - Field 3901234562 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Unit Price</source>
+          <target state="translated">DUoM Precio Unitario</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Price field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Cr.Memo Line Ext - Field DUoM Unit Price - Property Caption</note>
+        </trans-unit>
+
+        <!-- PageExtension 50101 — DUoM Purchase Order Subform — DUoM Unit Cost ToolTip -->
+        <trans-unit id="PageExtension 1390132160 - Control 3901234561 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit cost in the second unit of measure. Derives Direct Unit Cost automatically when the ratio is available.</source>
+          <target state="translated">Especifica el coste unitario en la segunda unidad de medida. Calcula el Coste Directo Unitario automáticamente cuando el ratio está disponible.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Cost field on Purchase Order Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - Control DUoM Unit Cost - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- PageExtension 50102 — DUoM Sales Order Subform — DUoM Unit Price ToolTip -->
+        <trans-unit id="PageExtension 2666451105 - Control 3901234562 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit price in the second unit of measure. Derives Unit Price automatically when the ratio is available.</source>
+          <target state="translated">Especifica el precio unitario en la segunda unidad de medida. Calcula el Precio Unitario automáticamente cuando el ratio está disponible.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Price field on Sales Order Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Sales Order Subform - Control DUoM Unit Price - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- PageExtension 50104 — DUoM Posted Rcpt. Subform — DUoM Unit Cost ToolTip -->
+        <trans-unit id="PageExtension 628704875 - Control 3901234561 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit cost in the second unit of measure for this posted receipt line.</source>
+          <target state="translated">Especifica el coste unitario en la segunda unidad de medida para esta línea de recepción registrada.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Cost field on Posted Purchase Receipt Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Rcpt. Subform - Control DUoM Unit Cost - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- PageExtension 50105 — DUoM Posted Ship. Subform — DUoM Unit Price ToolTip -->
+        <trans-unit id="PageExtension 1106707672 - Control 3901234562 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit price in the second unit of measure for this posted shipment line.</source>
+          <target state="translated">Especifica el precio unitario en la segunda unidad de medida para esta línea de envío registrada.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Price field on Posted Sales Shipment Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Ship. Subform - Control DUoM Unit Price - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- PageExtension 50106 — DUoM Pstd Purch Inv Subform — DUoM Unit Cost ToolTip -->
+        <trans-unit id="PageExtension 2198064801 - Control 3901234561 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit cost in the second unit of measure for this posted purchase invoice line.</source>
+          <target state="translated">Especifica el coste unitario en la segunda unidad de medida para esta línea de factura de compra registrada.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Cost field on Posted Purchase Invoice Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch Inv Subform - Control DUoM Unit Cost - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- PageExtension 50107 — DUoM Pstd Purch CrM Subform — DUoM Unit Cost ToolTip -->
+        <trans-unit id="PageExtension 887098518 - Control 3901234561 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit cost in the second unit of measure for this posted purchase credit memo line.</source>
+          <target state="translated">Especifica el coste unitario en la segunda unidad de medida para esta línea de abono de compra registrado.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Cost field on Posted Purchase Credit Memo Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Purch CrM Subform - Control DUoM Unit Cost - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- PageExtension 50108 — DUoM Pstd Sales Inv Subform — DUoM Unit Price ToolTip -->
+        <trans-unit id="PageExtension 2569275541 - Control 3901234562 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit price in the second unit of measure for this posted sales invoice line.</source>
+          <target state="translated">Especifica el precio unitario en la segunda unidad de medida para esta línea de factura de venta registrada.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Price field on Posted Sales Invoice Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales Inv Subform - Control DUoM Unit Price - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- PageExtension 50109 — DUoM Pstd Sales CrM Subform — DUoM Unit Price ToolTip -->
+        <trans-unit id="PageExtension 3166159682 - Control 3901234562 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the unit price in the second unit of measure for this posted sales credit memo line.</source>
+          <target state="translated">Especifica el precio unitario en la segunda unidad de medida para esta línea de abono de venta registrado.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Unit Price field on Posted Sales Credit Memo Subform; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales CrM Subform - Control DUoM Unit Price - Property ToolTip</note>
+        </trans-unit>
 
       </group>
     </body>

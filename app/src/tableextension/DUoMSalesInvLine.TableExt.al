@@ -1,6 +1,6 @@
 /// <summary>
 /// Extiende la tabla Sales Invoice Line con campos de Unidad de Medida Dual.
-/// Estos campos capturan DUoM Second Qty y DUoM Ratio desde la Sales Line
+/// Estos campos capturan DUoM Second Qty, DUoM Ratio y DUoM Unit Price desde la Sales Line
 /// de origen en el momento del registro de la factura de venta. Los valores son
 /// inmutables tras el registro.
 /// La propagación la realiza DUoM Inventory Subscribers mediante el evento estándar
@@ -23,6 +23,12 @@ tableextension 50118 "DUoM Sales Inv. Line Ext" extends "Sales Invoice Line"
         {
             Caption = 'DUoM Ratio', Comment = 'Caption for DUoM Ratio field; no placeholders.';
             DecimalPlaces = 0 : 5;
+            DataClassification = CustomerContent;
+        }
+        field(50102; "DUoM Unit Price"; Decimal)
+        {
+            Caption = 'DUoM Unit Price', Comment = 'Caption for DUoM Unit Price field; no placeholders.';
+            DecimalPlaces = 2 : 5;
             DataClassification = CustomerContent;
         }
     }

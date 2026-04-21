@@ -1,7 +1,7 @@
 /// <summary>
 /// Extiende la página Posted Purchase Rcpt. Subform para mostrar los campos de Dual Unit of Measure
-/// (DUoM Second Qty y DUoM Ratio) en cada línea de recepción registrada.
-/// Ambos campos son de solo lectura; los documentos registrados son inmutables.
+/// (DUoM Second Qty, DUoM Ratio y DUoM Unit Cost) en cada línea de recepción registrada.
+/// Todos los campos son de solo lectura; los documentos registrados son inmutables.
 /// DUoM Second Qty muestra el código de la segunda unidad de medida como caption de la columna cuando está disponible.
 /// </summary>
 pageextension 50104 "DUoM Posted Rcpt. Subform" extends "Posted Purchase Rcpt. Subform"
@@ -22,6 +22,12 @@ pageextension 50104 "DUoM Posted Rcpt. Subform" extends "Posted Purchase Rcpt. S
                 ApplicationArea = All;
                 Editable = false;
                 ToolTip = 'Specifies the conversion ratio used for this posted receipt line.', Comment = 'ToolTip for DUoM Ratio field on Posted Purchase Receipt Subform; no placeholders.';
+            }
+            field("DUoM Unit Cost"; Rec."DUoM Unit Cost")
+            {
+                ApplicationArea = All;
+                Editable = false;
+                ToolTip = 'Specifies the unit cost in the second unit of measure for this posted receipt line.', Comment = 'ToolTip for DUoM Unit Cost field on Posted Purchase Receipt Subform; no placeholders.';
             }
         }
     }
