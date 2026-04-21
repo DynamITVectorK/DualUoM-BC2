@@ -40,7 +40,7 @@
 ///   OnAfterInitValueEntry en Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
 ///   copia DUoM Second Qty desde la Item Journal Line al nuevo Value Entry
 ///   antes de Insert() — no se necesita ninguna llamada a Modify().
-///   Firma verificada: (var ValueEntry; var ItemJournalLine; var ValueEntryNo; ItemLedgerEntry).
+///   Firma verificada: (var ValueEntry; var ItemJournalLine; var ValueEntryNo; var ItemLedgEntry).
 /// </summary>
 codeunit 50104 "DUoM Inventory Subscribers"
 {
@@ -237,9 +237,15 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
     local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
+    var
+        SecondQty: Decimal;
     begin
         if ItemJournalLine."DUoM Second Qty" = 0 then
             exit;
-        ValueEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+        // Apply the same sign as the ILE Quantity: negative for outbound transactions (e.g. sales).
+        SecondQty := Abs(ItemJournalLine."DUoM Second Qty");
+        if ItemLedgEntry.Quantity < 0 then
+            SecondQty := -SecondQty;
+        ValueEntry."DUoM Second Qty" := SecondQty;
     end;
 }

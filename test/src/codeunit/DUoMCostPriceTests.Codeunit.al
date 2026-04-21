@@ -311,7 +311,7 @@ codeunit 50216 "DUoM Cost Price Tests"
         LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un ILE para la compra contabilizada');
         ValueEntry.SetRange("Item Ledger Entry No.", ILE."Entry No.");
         LibraryAssert.IsTrue(ValueEntry.FindFirst(), 'Se esperaba un Value Entry para el ILE de compra');
-        LibraryAssert.AreEqual(8, ValueEntry."DUoM Second Qty",
+        LibraryAssert.AreEqual(8.0, ValueEntry."DUoM Second Qty",
             'Value Entry DUoM Second Qty debe ser 10 × 0.8 = 8 tras la contabilización de compra');
     end;
 
@@ -368,7 +368,7 @@ codeunit 50216 "DUoM Cost Price Tests"
         LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un ILE para la venta contabilizada');
         ValueEntry.SetRange("Item Ledger Entry No.", ILE."Entry No.");
         LibraryAssert.IsTrue(ValueEntry.FindFirst(), 'Se esperaba un Value Entry para el ILE de venta');
-        LibraryAssert.AreEqual(-4, ValueEntry."DUoM Second Qty",
+        LibraryAssert.AreEqual(-4.0, ValueEntry."DUoM Second Qty",
             'Value Entry DUoM Second Qty debe ser -(5 × 0.8) = -4 tras la contabilización de venta');
     end;
 }
