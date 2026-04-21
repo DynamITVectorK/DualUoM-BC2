@@ -607,37 +607,6 @@
           <note from="Developer" annotates="general" priority="2"></note>
           <note from="Xliff Generator" annotates="general" priority="3">PermissionSet DUoM - All - Property Caption</note>
         </trans-unit>
-
-        <!-- ═══════════════════════════════════════════
-             Issue 12 — DUoM Unit Cost / DUoM Unit Price / DUoM Second Qty en Value Entry
-             Los IDs de campo se generan por el compilador AL. Actualizar desde el .g.xlf
-             en la primera ejecución de CI para enlazar correctamente las traducciones.
-             ═══════════════════════════════════════════ -->
-
-        <!-- TableExtension 50110 — DUoM Purchase Line Ext — campo DUoM Unit Cost -->
-        <trans-unit id="TableExtension 3673465353 - Field 3901234561 - Property 2879900210" translate="yes" xml:space="preserve">
-          <source>DUoM Unit Cost</source>
-          <target state="final">DUoM Unit Cost</target>
-          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Cost field; no placeholders.</note>
-          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Purchase Line Ext - Field DUoM Unit Cost - Property Caption</note>
-        </trans-unit>
-
-        <!-- TableExtension 50111 — DUoM Sales Line Ext — campo DUoM Unit Price -->
-        <trans-unit id="TableExtension 2573725072 - Field 3901234562 - Property 2879900210" translate="yes" xml:space="preserve">
-          <source>DUoM Unit Price</source>
-          <target state="final">DUoM Unit Price</target>
-          <note from="Developer" annotates="general" priority="2">Caption for DUoM Unit Price field; no placeholders.</note>
-          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Sales Line Ext - Field DUoM Unit Price - Property Caption</note>
-        </trans-unit>
-
-        <!-- TableExtension 50121 — DUoM Value Entry Ext -->
-        <trans-unit id="TableExtension 3901234570 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
-          <source>DUoM Second Qty</source>
-          <target state="final">DUoM Second Qty</target>
-          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
-          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Value Entry Ext - Field DUoM Second Qty - Property Caption</note>
-        </trans-unit>
-
         <!-- TableExtension 50114 — DUoM Purch. Rcpt. Line Ext — campo DUoM Unit Cost -->
         <trans-unit id="TableExtension 1207475111 - Field 3901234561 - Property 2879900210" translate="yes" xml:space="preserve">
           <source>DUoM Unit Cost</source>
