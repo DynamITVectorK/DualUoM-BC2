@@ -609,10 +609,10 @@
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════
-             Issue 12 — Nuevos campos DUoM Unit Cost / DUoM Unit Price / DUoM Second Qty en Value Entry
-             NOTA: Los IDs de objeto/campo marcados con PLACEHOLDER son temporales.
-             Deben actualizarse con los IDs generados por el compilador AL (archivo .g.xlf)
-             en la primera ejecución de CI tras fusionar este PR.
+             Issue 12 — New DUoM Unit Cost / DUoM Unit Price / DUoM Second Qty fields in Value Entry
+             NOTE: Object/field IDs marked PLACEHOLDER are temporary.
+             They must be replaced with the compiler-generated IDs (from the .g.xlf file)
+             on the first CI run after merging this PR.
              ═══════════════════════════════════════════ -->
 
         <!-- TableExtension 50110 — DUoM Purchase Line Ext — campo DUoM Unit Cost (PLACEHOLDER) -->
