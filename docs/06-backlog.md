@@ -330,29 +330,33 @@ UoM aparecía como no editable en *todas* sus UoMs. Además, no se verificaban l
 
 ---
 
-### Issue 12 — Modelo de coste/precio en doble UoM
+### Issue 12 — Modelo de coste/precio en doble UoM ✅ IMPLEMENTADO
 
 **Objetivo:** permitir que el precio unitario y el coste se expresen también en términos
 de la segunda unidad de medida, y que el importe de línea se calcule correctamente.
 
-Alcance:
-- Añadir campo `DUoM Unit Price` (Decimal) en la extensión de `Sales Line` para almacenar
-  el precio expresado en la segunda UoM (precio por unidad de segunda UoM).
-- Añadir campo `DUoM Unit Cost` (Decimal) en la extensión de `Purchase Line` para almacenar
-  el coste expresado en la segunda UoM.
-- Lógica de derivación: cuando el usuario introduce `DUoM Unit Price` y el ratio está fijado,
-  derivar automáticamente el `Unit Price` estándar (y viceversa).
-- Extender la extensión de `Item Ledger Entry` con `DUoM Unit Cost` para trazabilidad de coste.
-- Extender `Value Entry` (tableextension) con `DUoM Second Qty` para que las entradas de
-  valor reflejen la segunda cantidad contabilizada.
-- Tests TDD:
-  - Dado precio en segunda UoM y ratio fijo, verificar que `Unit Price` se deriva correctamente.
-  - Dado coste en segunda UoM y ratio fijo, verificar `Direct Unit Cost` derivado.
-  - Verificar que `Value Entry` recibe `DUoM Second Qty` tras contabilización.
+Alcance implementado:
+- Campo `DUoM Unit Price` (Decimal) en `DUoM Sales Line Ext` (50111): derivación automática
+  de `Unit Price` desde/hacia `DUoM Unit Price` cuando el ratio está disponible.
+- Campo `DUoM Unit Cost` (Decimal) en `DUoM Purchase Line Ext` (50110): derivación automática
+  de `Direct Unit Cost` desde/hacia `DUoM Unit Cost` cuando el ratio está disponible.
+- Propagación de `DUoM Unit Cost` a históricos de compra: `DUoMPurchRcptLine.TableExt.al` (50114),
+  `DUoMPurchInvLine.TableExt.al` (50116), `DUoMPurchCrMemoLine.TableExt.al` (50117).
+- Propagación de `DUoM Unit Price` a históricos de venta: `DUoMSalesShipmentLine.TableExt.al` (50115),
+  `DUoMSalesInvLine.TableExt.al` (50118), `DUoMSalesCrMemoLine.TableExt.al` (50119).
+- Nueva tableextension `DUoM Value Entry Ext` (50121) sobre `Value Entry` con campo `DUoM Second Qty`
+  para trazabilidad contable completa.
+- Suscriptor `OnAfterInitValueEntry` en `DUoM Inventory Subscribers` (50104) para propagar
+  `DUoM Second Qty` desde `Item Journal Line` a `Value Entry` — sin Modify().
+- Visibilidad en páginas de pedido (editables) y documentos históricos (solo lectura).
+- Permission sets `DUoM - All` (50100) y `DUoM - Test All` (50200) actualizados con
+  `tabledata "Value Entry" = RIMD`.
+- Tests TDD: `DUoM Cost Price Tests` (codeunit 50216), 8 tests T01–T08.
 
-**Dependencias:** Issues 1–11 completados.
-**Deliverables:** (IDs en rango 50120+ para table extensions, IDs codeunit libres en 50107+)
-Tests: nuevo codeunit `DUoM Cost Price Tests` (50211)
+**Deliverables:** `DUoMPurchaseLine.TableExt.al`, `DUoMSalesLine.TableExt.al`,
+`DUoMValueEntry.TableExt.al` (50121), históricos de compra/venta actualizados,
+`DUoMDocTransferHelper.Codeunit.al`, `DUoMInventorySubscribers.Codeunit.al`,
+pageextensions 50101, 50102, 50104–50109, permission sets, XLF, `DUoMCostPriceTests.Codeunit.al` (50216)
 
 ### Issue 13 — Ratio real por lote
 

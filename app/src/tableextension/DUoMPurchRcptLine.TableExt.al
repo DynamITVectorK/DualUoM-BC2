@@ -1,6 +1,6 @@
 /// <summary>
 /// Extiende la tabla Purch. Rcpt. Line con campos de Unidad de Medida Dual.
-/// Estos campos capturan DUoM Second Qty y DUoM Ratio desde la
+/// Estos campos capturan DUoM Second Qty, DUoM Ratio y DUoM Unit Cost desde la
 /// Purchase Line de origen en el momento del registro. Los valores son inmutables tras el registro.
 /// La propagación la realiza DUoM Inventory Subscribers mediante el evento estándar
 /// OnAfterInitFromPurchLine de la tabla "Purch. Rcpt. Line" (BC 27 / runtime 15),
@@ -22,6 +22,12 @@ tableextension 50114 "DUoM Purch. Rcpt. Line Ext" extends "Purch. Rcpt. Line"
         {
             Caption = 'DUoM Ratio', Comment = 'Caption for DUoM Ratio field; no placeholders.';
             DecimalPlaces = 0 : 5;
+            DataClassification = CustomerContent;
+        }
+        field(50102; "DUoM Unit Cost"; Decimal)
+        {
+            Caption = 'DUoM Unit Cost', Comment = 'Caption for DUoM Unit Cost field; no placeholders.';
+            DecimalPlaces = 2 : 5;
             DataClassification = CustomerContent;
         }
     }

@@ -223,3 +223,52 @@ This is a Phase 2 feature. In MVP, the ratio is stored on the document line only
 - Warehouse receipt and shipment lines get `Second Qty`
 - Directed pick/put-away lines get `Second Qty` for double-checking
 - Warehouse entries record second qty
+
+---
+
+## Precio/Coste en la Segunda Unidad de Medida (Issue 12)
+
+### Motivación
+
+En negocios donde la facturación se realiza en la segunda UdM (p. ej., se factura por kg
+cuando la unidad de compra es una caja), el usuario necesita introducir el precio en la
+segunda UdM y que el sistema derive automáticamente el precio estándar de BC.
+
+### Campo `DUoM Unit Price` en líneas de venta
+
+El campo `DUoM Unit Price` almacena el precio unitario expresado en la segunda unidad de medida.
+
+**Derivación bidireccional:**
+- Usuario introduce `DUoM Unit Price` con `DUoM Ratio ≠ 0` → el sistema calcula:
+  `Unit Price = DUoM Unit Price / DUoM Ratio`
+- Usuario cambia `Unit Price` estándar con `DUoM Ratio ≠ 0` → el sistema recalcula:
+  `DUoM Unit Price = Unit Price × DUoM Ratio`
+- Si `DUoM Ratio = 0` (modo AlwaysVariable sin ratio establecido), no se produce derivación.
+
+### Campo `DUoM Unit Cost` en líneas de compra
+
+El campo `DUoM Unit Cost` almacena el coste unitario expresado en la segunda unidad de medida.
+
+**Derivación bidireccional:**
+- Usuario introduce `DUoM Unit Cost` con `DUoM Ratio ≠ 0` → el sistema calcula:
+  `Direct Unit Cost = DUoM Unit Cost / DUoM Ratio`
+- Usuario cambia `Direct Unit Cost` estándar con `DUoM Ratio ≠ 0` → el sistema recalcula:
+  `DUoM Unit Cost = Direct Unit Cost × DUoM Ratio`
+
+### Propagación a documentos históricos
+
+Los campos `DUoM Unit Price` y `DUoM Unit Cost` se propagan automáticamente a los
+documentos históricos correspondientes en el momento del registro:
+- Compras: `Purch. Rcpt. Line`, `Purch. Inv. Line`, `Purch. Cr. Memo Line`
+- Ventas: `Sales Shipment Line`, `Sales Invoice Line`, `Sales Cr.Memo Line`
+
+Los valores en documentos registrados son inmutables.
+
+### `DUoM Second Qty` en `Value Entry`
+
+La tableextension `DUoM Value Entry Ext` (50121) añade el campo `DUoM Second Qty`
+a la tabla `Value Entry` de BC. Este campo se propaga desde el `Item Journal Line`
+en el evento `OnAfterInitValueEntry` de `Codeunit "Item Jnl.-Post Line"` — sin Modify().
+
+Esto permite la trazabilidad contable completa: para cada entrada de valor generada
+durante la contabilización, se registra también la cantidad en la segunda unidad de medida.

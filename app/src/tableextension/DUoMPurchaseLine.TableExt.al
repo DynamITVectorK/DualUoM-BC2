@@ -3,8 +3,11 @@
 /// DUoM Second Qty holds the computed or user-entered secondary quantity.
 /// DUoM Ratio holds the conversion ratio used on this specific line, which may
 /// differ from the item-level default in Variable conversion mode.
+/// DUoM Unit Cost holds the unit cost expressed in the second unit of measure.
 /// The OnValidate trigger on DUoM Ratio recomputes the secondary quantity immediately,
 /// using the effective DUoM setup resolved through the Item → Variant hierarchy.
+/// The OnValidate trigger on DUoM Unit Cost derives Direct Unit Cost when ratio ≠ 0.
+/// The OnAfterValidate trigger on Direct Unit Cost recalculates DUoM Unit Cost.
 /// </summary>
 tableextension 50110 "DUoM Purchase Line Ext" extends "Purchase Line"
 {
@@ -58,6 +61,32 @@ tableextension 50110 "DUoM Purchase Line Ext" extends "Purchase Line"
                 "DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
                     Rec.Quantity, "DUoM Ratio", Mode,
                     DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode));
+            end;
+        }
+        field(50102; "DUoM Unit Cost"; Decimal)
+        {
+            Caption = 'DUoM Unit Cost', Comment = 'Caption for DUoM Unit Cost field; no placeholders.';
+            DecimalPlaces = 2 : 5;
+            DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            begin
+                if Rec.Type <> Rec.Type::Item then
+                    exit;
+                if "DUoM Ratio" = 0 then
+                    exit;
+                Rec.Validate("Direct Unit Cost", "DUoM Unit Cost" / "DUoM Ratio");
+            end;
+        }
+        modify("Direct Unit Cost")
+        {
+            trigger OnAfterValidate()
+            begin
+                if Rec.Type <> Rec.Type::Item then
+                    exit;
+                if "DUoM Ratio" = 0 then
+                    exit;
+                "DUoM Unit Cost" := Rec."Direct Unit Cost" * "DUoM Ratio";
             end;
         }
     }

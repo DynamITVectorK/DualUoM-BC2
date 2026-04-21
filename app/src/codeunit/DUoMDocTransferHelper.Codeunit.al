@@ -31,6 +31,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit;
         SalesShptLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         SalesShptLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        SalesShptLine."DUoM Unit Price" := SalesLine."DUoM Unit Price";
     end;
 
     /// <summary>
@@ -45,6 +46,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit;
         PurchRcptLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
         PurchRcptLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+        PurchRcptLine."DUoM Unit Cost" := PurchaseLine."DUoM Unit Cost";
     end;
 
     /// <summary>
@@ -58,6 +60,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit;
         PurchInvLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
         PurchInvLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+        PurchInvLine."DUoM Unit Cost" := PurchaseLine."DUoM Unit Cost";
     end;
 
     /// <summary>
@@ -71,6 +74,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit;
         PurchCrMemoLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
         PurchCrMemoLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+        PurchCrMemoLine."DUoM Unit Cost" := PurchaseLine."DUoM Unit Cost";
     end;
 
     /// <summary>
@@ -84,6 +88,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit;
         SalesInvLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         SalesInvLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        SalesInvLine."DUoM Unit Price" := SalesLine."DUoM Unit Price";
     end;
 
     /// <summary>
@@ -97,5 +102,6 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit;
         SalesCrMemoLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         SalesCrMemoLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        SalesCrMemoLine."DUoM Unit Price" := SalesLine."DUoM Unit Price";
     end;
 }

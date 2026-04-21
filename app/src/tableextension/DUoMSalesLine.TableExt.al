@@ -2,8 +2,11 @@
 /// Extends the Sales Line table with Dual Unit of Measure fields.
 /// DUoM Second Qty holds the computed or user-entered secondary quantity.
 /// DUoM Ratio holds the conversion ratio used on this specific line.
+/// DUoM Unit Price holds the unit price expressed in the second unit of measure.
 /// The OnValidate trigger on DUoM Ratio recomputes the secondary quantity immediately,
 /// using the effective DUoM setup resolved through the Item → Variant hierarchy.
+/// The OnValidate trigger on DUoM Unit Price derives Unit Price when ratio ≠ 0.
+/// The OnAfterValidate trigger on Unit Price recalculates DUoM Unit Price.
 /// </summary>
 tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
 {
@@ -57,6 +60,32 @@ tableextension 50111 "DUoM Sales Line Ext" extends "Sales Line"
                 "DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
                     Rec.Quantity, "DUoM Ratio", Mode,
                     DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode));
+            end;
+        }
+        field(50102; "DUoM Unit Price"; Decimal)
+        {
+            Caption = 'DUoM Unit Price', Comment = 'Caption for DUoM Unit Price field; no placeholders.';
+            DecimalPlaces = 2 : 5;
+            DataClassification = CustomerContent;
+
+            trigger OnValidate()
+            begin
+                if Rec.Type <> Rec.Type::Item then
+                    exit;
+                if "DUoM Ratio" = 0 then
+                    exit;
+                Rec.Validate("Unit Price", "DUoM Unit Price" / "DUoM Ratio");
+            end;
+        }
+        modify("Unit Price")
+        {
+            trigger OnAfterValidate()
+            begin
+                if Rec.Type <> Rec.Type::Item then
+                    exit;
+                if "DUoM Ratio" = 0 then
+                    exit;
+                "DUoM Unit Price" := Rec."Unit Price" * "DUoM Ratio";
             end;
         }
     }

@@ -62,32 +62,33 @@ already covers the need:
 | Objeto | ID | Tabla extendida | Propósito |
 |---|---|---|---|
 | `Item.TableExt` | 50100 | `Item` | Cascade-delete del registro DUoM Item Setup al borrar el artículo |
-| `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Campos Second Qty y Ratio |
-| `DUoM Sales Line Ext` | 50111 | `Sales Line` | Campos Second Qty y Ratio |
+| `DUoM Purchase Line Ext` | 50110 | `Purchase Line` | Campos Second Qty, Ratio y Unit Cost |
+| `DUoM Sales Line Ext` | 50111 | `Sales Line` | Campos Second Qty, Ratio y Unit Price |
 | `DUoM Item Journal Line Ext` | 50112 | `Item Journal Line` | Campos Second Qty y Ratio |
 | `DUoM Item Ledger Entry Ext` | 50113 | `Item Ledger Entry` | Second Qty y Ratio (contabilizados, inmutables) |
-| `DUoM Purch. Rcpt. Line Ext` | 50114 | `Purch. Rcpt. Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar |
-| `DUoM Sales Shipment Line Ext` | 50115 | `Sales Shipment Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar |
-| `DUoM Purch. Inv. Line Ext` | 50116 | `Purch. Inv. Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar factura |
-| `DUoM Purch. Cr. Memo Line Ext` | 50117 | `Purch. Cr. Memo Line` | Second Qty y Ratio propagados desde `Purchase Line` al contabilizar abono |
-| `DUoM Sales Inv. Line Ext` | 50118 | `Sales Invoice Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar factura |
-| `DUoM Sales Cr.Memo Line Ext` | 50119 | `Sales Cr.Memo Line` | Second Qty y Ratio propagados desde `Sales Line` al contabilizar abono |
+| `DUoM Purch. Rcpt. Line Ext` | 50114 | `Purch. Rcpt. Line` | Second Qty, Ratio y Unit Cost propagados desde `Purchase Line` al contabilizar |
+| `DUoM Sales Shipment Line Ext` | 50115 | `Sales Shipment Line` | Second Qty, Ratio y Unit Price propagados desde `Sales Line` al contabilizar |
+| `DUoM Purch. Inv. Line Ext` | 50116 | `Purch. Inv. Line` | Second Qty, Ratio y Unit Cost propagados desde `Purchase Line` al contabilizar factura |
+| `DUoM Purch. Cr. Memo Line Ext` | 50117 | `Purch. Cr. Memo Line` | Second Qty, Ratio y Unit Cost propagados desde `Purchase Line` al contabilizar abono |
+| `DUoM Sales Inv. Line Ext` | 50118 | `Sales Invoice Line` | Second Qty, Ratio y Unit Price propagados desde `Sales Line` al contabilizar factura |
+| `DUoM Sales Cr.Memo Line Ext` | 50119 | `Sales Cr.Memo Line` | Second Qty, Ratio y Unit Price propagados desde `Sales Line` al contabilizar abono |
 | `DUoM Item Variant Ext` | 50120 | `Item Variant` | Cascade-delete del override DUoM de la variante al borrarla |
+| `DUoM Value Entry Ext` | 50121 | `Value Entry` | DUoM Second Qty para trazabilidad contable completa (Issue 12) |
 
 ### Page Extensions
 
 | Objeto | ID | Página extendida | Propósito |
 |---|---|---|---|
 | `DUoM Item Card Ext` | 50100 | `Item Card` | Acciones de navegación: DUoM Setup y DUoM Variant Overrides |
-| `DUoM Purchase Order Subform` | 50101 | `Purchase Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de compra |
-| `DUoM Sales Order Subform` | 50102 | `Sales Order Subform` | Muestra Second Qty y Ratio en líneas de pedido de venta |
+| `DUoM Purchase Order Subform` | 50101 | `Purchase Order Subform` | Muestra Second Qty, Ratio y Unit Cost en líneas de pedido de compra |
+| `DUoM Sales Order Subform` | 50102 | `Sales Order Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de pedido de venta |
 | `DUoM Item Journal Ext` | 50103 | `Item Journal` | Muestra Second Qty y Ratio en líneas del diario de productos |
-| `DUoM Posted Rcpt. Subform` | 50104 | `Posted Purchase Rcpt. Subform` | Muestra Second Qty y Ratio en líneas de recepción registrada (solo lectura) |
-| `DUoM Posted Ship. Subform` | 50105 | `Posted Sales Shpt. Subform` | Muestra Second Qty y Ratio en líneas de envío registrado (solo lectura) |
-| `DUoM Pstd Purch Inv Subform` | 50106 | `Posted Purch. Invoice Subform` | Muestra Second Qty y Ratio en líneas de factura de compra registrada (solo lectura) |
-| `DUoM Pstd Purch CrM Subform` | 50107 | `Posted Purch. Cr. Memo Subform` | Muestra Second Qty y Ratio en líneas de abono de compra registrado (solo lectura) |
-| `DUoM Pstd Sales Inv Subform` | 50108 | `Posted Sales Invoice Subform` | Muestra Second Qty y Ratio en líneas de factura de venta registrada (solo lectura) |
-| `DUoM Pstd Sales CrM Subform` | 50109 | `Posted Sales Cr. Memo Subform` | Muestra Second Qty y Ratio en líneas de abono de venta registrado (solo lectura) |
+| `DUoM Posted Rcpt. Subform` | 50104 | `Posted Purchase Rcpt. Subform` | Muestra Second Qty, Ratio y Unit Cost en líneas de recepción registrada (solo lectura) |
+| `DUoM Posted Ship. Subform` | 50105 | `Posted Sales Shpt. Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de envío registrado (solo lectura) |
+| `DUoM Pstd Purch Inv Subform` | 50106 | `Posted Purch. Invoice Subform` | Muestra Second Qty, Ratio y Unit Cost en líneas de factura de compra registrada (solo lectura) |
+| `DUoM Pstd Purch CrM Subform` | 50107 | `Posted Purch. Cr. Memo Subform` | Muestra Second Qty, Ratio y Unit Cost en líneas de abono de compra registrado (solo lectura) |
+| `DUoM Pstd Sales Inv Subform` | 50108 | `Posted Sales Invoice Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de factura de venta registrada (solo lectura) |
+| `DUoM Pstd Sales CrM Subform` | 50109 | `Posted Sales Cr. Memo Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de abono de venta registrado (solo lectura) |
 | `DUoM Item UoM Subform` | 50110 | `Item Units of Measure` | Añade `Qty. Rounding Precision` al repeater; editable solo si no existen ILE ni Warehouse Entry para esa UdM |
 
 ### Codeunits
