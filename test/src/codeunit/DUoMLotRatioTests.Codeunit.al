@@ -272,12 +272,12 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         DUoMLotRatio."Lot No." := 'LOT005';
 
         // [WHEN] / [THEN] Validating Actual Ratio = 0 raises an error
-        LibraryAssert.IsTrue(
+        LibraryAssert.IsFalse(
             TryValidateActualRatioZero(DUoMLotRatio),
             'Validating Actual Ratio = 0 must raise an error');
 
         // [WHEN] / [THEN] Validating Actual Ratio = -1 also raises an error
-        LibraryAssert.IsTrue(
+        LibraryAssert.IsFalse(
             TryValidateActualRatioNegative(DUoMLotRatio),
             'Validating Actual Ratio = -1 must raise an error');
     end;
