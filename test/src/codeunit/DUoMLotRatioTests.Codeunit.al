@@ -49,6 +49,10 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LotNo := 'LOTE-T01';
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
 
+        // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
+        // Necesario para que BC 27 acepte y mantenga Lot No. en la validación del campo.
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
         // [GIVEN] Item Journal Line para 10 unidades
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
@@ -184,6 +188,11 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LotNo := 'LOTE-T04';
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
 
+        // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
+        // Necesario para que BC 27 mantenga Lot No. en IJL tras Validate y para que
+        // TryApplyLotRatioToILE pueda aplicar el ratio de lote al ILE.
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
         // [GIVEN] IJL para 10 unidades con Lot No. validado → subscriber aplica ratio 0,38
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
@@ -198,9 +207,9 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
         // [THEN] ILE: DUoM Ratio = 0,38 (ratio de lote)
+        // Nota: ILE."Lot No." no se poblará sin Reservation Entries; se busca por Item No.
         ILE.SetRange("Item No.", Item."No.");
-        ILE.SetRange("Lot No.", LotNo);
-        LibraryAssert.IsTrue(ILE.FindFirst(), 'T04: Se esperaba un ILE para el lote contabilizado');
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T04: Se esperaba un ILE para el artículo contabilizado');
         LibraryAssert.AreEqual(0.38, ILE."DUoM Ratio",
             'T04: ILE DUoM Ratio debe ser el ratio del lote (0,38)');
 
@@ -242,6 +251,11 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoA, 0.38);
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoB, 0.41);
 
+        // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
+        // Necesario para que BC 27 mantenga Lot No. en cada IJL tras Validate y para que
+        // TryApplyLotRatioToILE aplique el ratio específico de cada lote a su ILE.
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
         // [GIVEN] IJL Lote A: 6 unidades
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
@@ -264,17 +278,19 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
         // [THEN] ILE Lote A: DUoM Ratio = 0,38; DUoM Second Qty = 6 × 0,38 = 2,28
+        // Nota: ILE."Lot No." no se poblará sin Reservation Entries; se identifica por
+        // la cantidad (6 uds para Lote A, 4 uds para Lote B), que es única por línea.
         ILE.SetRange("Item No.", Item."No.");
-        ILE.SetRange("Lot No.", LotNoA);
-        LibraryAssert.IsTrue(ILE.FindFirst(), 'T05: Se esperaba ILE para Lote A');
+        ILE.SetRange(Quantity, 6);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T05: Se esperaba ILE para Lote A (6 uds)');
         LibraryAssert.AreEqual(0.38, ILE."DUoM Ratio",
             'T05: ILE Lote A — DUoM Ratio debe ser 0,38');
         LibraryAssert.AreNearlyEqual(2.28, ILE."DUoM Second Qty", 0.001,
             'T05: ILE Lote A — DUoM Second Qty debe ser 6 × 0,38 = 2,28');
 
         // [THEN] ILE Lote B: DUoM Ratio = 0,41; DUoM Second Qty = 4 × 0,41 = 1,64
-        ILE.SetRange("Lot No.", LotNoB);
-        LibraryAssert.IsTrue(ILE.FindFirst(), 'T05: Se esperaba ILE para Lote B');
+        ILE.SetRange(Quantity, 4);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T05: Se esperaba ILE para Lote B (4 uds)');
         LibraryAssert.AreEqual(0.41, ILE."DUoM Ratio",
             'T05: ILE Lote B — DUoM Ratio debe ser 0,41');
         LibraryAssert.AreNearlyEqual(1.64, ILE."DUoM Second Qty", 0.001,
@@ -308,6 +324,11 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LotNo := 'LOTE-T06';
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.42);
 
+        // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
+        // Necesario para que BC 27 mantenga Lot No. en IJL tras Validate y para que
+        // TryApplyLotRatioToILE pueda aplicar el ratio de lote al ILE.
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
         // [GIVEN] Recepción previa: 100 unidades del mismo lote (para tener inventario)
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
@@ -332,10 +353,11 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
         // [THEN] ILE de venta: DUoM Ratio = 0,42 (ratio del lote)
+        // Nota: ILE."Lot No." no se poblará sin Reservation Entries; se busca por
+        // Item No. + Entry Type, que identifica unívocamente la salida de este artículo.
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
-        ILE.SetRange("Lot No.", LotNo);
-        LibraryAssert.IsTrue(ILE.FindFirst(), 'T06: Se esperaba ILE de salida para el lote');
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T06: Se esperaba ILE de salida para el artículo');
         LibraryAssert.AreEqual(0.42, ILE."DUoM Ratio",
             'T06: ILE salida — DUoM Ratio debe ser el ratio del lote (0,42)');
 

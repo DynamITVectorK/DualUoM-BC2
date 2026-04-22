@@ -108,6 +108,30 @@ codeunit 50208 "DUoM Test Helpers"
     end;
 
     /// <summary>
+    /// Asigna un Item Tracking Code con seguimiento de lotes al artículo indicado.
+    /// Crea el código 'DUoM-LOT' si no existe ya en la base de datos de prueba.
+    /// Necesario para que BC 27 acepte y mantenga Lot No. en Item Journal Line
+    /// durante la validación del campo (Validate("Lot No.", ...)), lo que permite
+    /// al subscriber de lotes (50108) aplicar el ratio de lote sobre DUoM Ratio y
+    /// DUoM Second Qty. Sin este código de seguimiento, BC puede limpiar el campo
+    /// Lot No. durante la validación, dejando el subscriber sin efecto.
+    /// </summary>
+    procedure EnableLotTrackingOnItem(var Item: Record Item)
+    var
+        ItemTrackingCode: Record "Item Tracking Code";
+    begin
+        if not ItemTrackingCode.Get('DUoM-LOT') then begin
+            ItemTrackingCode.Init();
+            ItemTrackingCode.Code := 'DUoM-LOT';
+            ItemTrackingCode.Description := 'DUoM Lot Tracking';
+            ItemTrackingCode."Lot Specific Tracking" := true;
+            ItemTrackingCode.Insert(false);
+        end;
+        Item.Validate("Item Tracking Code", ItemTrackingCode.Code);
+        Item.Modify(true);
+    end;
+
+    /// <summary>
     /// Crea una variante de artículo con el código específico indicado.
     /// Usa Library - Inventory.CreateItemVariant internamente (norma del proyecto)
     /// y después renombra al código deseado para mantener semántica de negocio
