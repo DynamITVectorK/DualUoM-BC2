@@ -349,7 +349,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     // -------------------------------------------------------------------------
 
     [Test]
-    procedure LotRatio_ZeroActualRatio_ValidationError()
+    procedure LotRatioValidation_ZeroActualRatio_Error()
     var
         DUoMLotRatio: Record "DUoM Lot Ratio";
     begin
@@ -364,7 +364,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     end;
 
     [Test]
-    procedure LotRatio_NegativeActualRatio_ValidationError()
+    procedure LotRatioValidation_NegativeActualRatio_Error()
     var
         DUoMLotRatio: Record "DUoM Lot Ratio";
     begin
