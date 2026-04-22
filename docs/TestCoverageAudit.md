@@ -105,6 +105,10 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 
 ## Gaps Identificados
 
+> Los gaps P0 y P1-01 han sido **cerrados** en PRs anteriores. Se documentan aquí
+> para referencia histórica y como verificación de que los codeunits de test existen
+> en el repositorio. El único gap abierto es P1-02 (reclasificado a P2).
+
 ### P0 — MVP Crítico (CERRADOS)
 
 #### GAP-P0-01: DUoM UoM Helper sin tests unitarios directos ✅ CERRADO

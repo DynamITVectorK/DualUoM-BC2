@@ -3,7 +3,7 @@ _Generado: 2026-04-22_
 
 ## Resumen
 
-Auditoría completa del repositorio DualUoM-BC2. Se inventariaron todos los objetos AL
+Auditoría completa del repositorio DualUoM-BC. Se inventariaron todos los objetos AL
 (`app/src/` y `test/src/`) y se compararon con el contenido de todos los archivos `.md`.
 Los cambios se agrupan por archivo y tipo de discrepancia.
 
