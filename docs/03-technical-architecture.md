@@ -104,7 +104,7 @@ already covers the need:
 | `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
 | `DUoM UoM Helper` | 50106 | Helper de UoM: `GetSecondUoMRoundingPrecision(ItemNo)` y `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` para obtener `Qty. Rounding Precision` de la tabla `Item Unit of Measure` |
 | `DUoM Setup Resolver` | 50107 | Centraliza la resolución jerárquica Item → Variante de la configuración DUoM efectiva. Todos los suscriptores y triggers deben llamar a `GetEffectiveSetup(ItemNo, VariantCode, ...)` |
-| `DUoM Lot Subscribers` | 50108 | **[PHASE 2 — PENDIENTE]** Subscribers para integración con Item Tracking Lines. No implementado en MVP. |
+| `DUoM Lot Subscribers` | 50108 | Subscribers para integración DUoM con lotes. `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` (Lot No. es campo directo en tabla 83). Método público `TryApplyLotRatioToILE` llamado desde `DUoM Inventory Subscribers` (50104) en `OnAfterInitItemLedgEntry`. |
 
 ---
 

@@ -212,17 +212,47 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// Covers both Purchase/Sales posting paths (fields propagated via
     /// OnPostItemJnlLineOnAfterCopyDocumentFields) and manual Item Journal postings
     /// (fields populated by OnAfterValidateItemJnlLineQty).
+    ///
+    /// Corrección multi-lote (Issue 13):
+    ///   El comportamiento anterior copiaba DUoM Second Qty total desde la línea de documento.
+    ///   Con múltiples lotes, cada ILE recibía la segunda cantidad total en lugar de la parte
+    ///   proporcional al lote. El nuevo comportamiento recalcula proporcionalmente.
+    ///
+    /// Nuevo comportamiento:
+    ///   1. Copia DUoM Ratio desde IJL.
+    ///   2. Si DUoM Ratio ≠ 0: recalcula DUoM Second Qty = Abs(ILE.Quantity) × DUoM Ratio.
+    ///      Esto garantiza el valor correcto cuando el ILE solo tiene una fracción de la
+    ///      cantidad total de la línea (multi-lote).
+    ///   3. Si DUoM Ratio = 0 (AlwaysVariable sin ratio): copia DUoM Second Qty directamente
+    ///      desde IJL (comportamiento anterior preservado para este caso).
+    ///   4. Llama a DUoM Lot Subscribers.TryApplyLotRatioToILE para sobrescribir con el ratio
+    ///      real del lote específico cuando existe registro en DUoM Lot Ratio (50102).
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitItemLedgEntry', '', false, false)]
     local procedure OnAfterInitItemLedgEntry(var NewItemLedgEntry: Record "Item Ledger Entry"; var ItemJournalLine: Record "Item Journal Line"; var ItemLedgEntryNo: Integer)
+    var
+        DUoMLotSubscribers: Codeunit "DUoM Lot Subscribers";
     begin
         // Exit only when BOTH fields are zero — cases where one field is zero
         // (e.g., AlwaysVariable with no ratio, or Fixed mode with zero posted quantity
         // but a valid ratio) are correctly propagated.
         if (ItemJournalLine."DUoM Second Qty" = 0) and (ItemJournalLine."DUoM Ratio" = 0) then
             exit;
-        NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+
+        // 1. Copiar DUoM Ratio desde IJL
         NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
+
+        // 2. Calcular DUoM Second Qty proporcional a la cantidad del ILE (correcto multi-lote).
+        //    Abs(ILE.Quantity) garantiza valor positivo; para lotes únicos produce el mismo
+        //    resultado que la copia directa anterior.
+        if ItemJournalLine."DUoM Ratio" <> 0 then
+            NewItemLedgEntry."DUoM Second Qty" := Abs(NewItemLedgEntry.Quantity) * ItemJournalLine."DUoM Ratio"
+        else
+            // AlwaysVariable sin ratio de lote: copia directa (comportamiento previo preservado)
+            NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+
+        // 3. Override con ratio de lote si corresponde (Variable/AlwaysVariable, lote con ratio)
+        DUoMLotSubscribers.TryApplyLotRatioToILE(NewItemLedgEntry, ItemJournalLine);
     end;
 
     /// <summary>
