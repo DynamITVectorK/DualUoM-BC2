@@ -115,6 +115,15 @@ codeunit 50208 "DUoM Test Helpers"
     /// al subscriber de lotes (50108) aplicar el ratio de lote sobre DUoM Ratio y
     /// DUoM Second Qty. Sin este código de seguimiento, BC puede limpiar el campo
     /// Lot No. durante la validación, dejando el subscriber sin efecto.
+    ///
+    /// Excepción justificada (Init + Insert sin helper estándar):
+    ///   Library - Inventory no ofrece ningún método de creación de Item Tracking Code.
+    ///   En BC 27 existe Library - Item Tracking en Tests-TestLibraries, pero no está
+    ///   verificada su disponibilidad exacta ni su nombre de método en este entorno
+    ///   (no tiene ningún uso previo en el proyecto). Para evitar una dependencia no
+    ///   verificada, se crea el registro directamente con Init() + Insert(false), que
+    ///   es el patrón admitido en el proyecto cuando no existe helper estándar aplicable.
+    ///   Ver regla "AL Test Data Creation" en docs/05-testing-strategy.md.
     /// </summary>
     procedure EnableLotTrackingOnItem(var Item: Record Item)
     var
