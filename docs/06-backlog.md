@@ -358,40 +358,25 @@ Alcance implementado:
 `DUoMDocTransferHelper.Codeunit.al`, `DUoMInventorySubscribers.Codeunit.al`,
 pageextensions 50101, 50102, 50104–50109, permission sets, XLF, `DUoMCostPriceTests.Codeunit.al` (50216)
 
-### Issue 13 — Ratio real por lote con Item Tracking (Phase 2 — Pendiente)
+### Issue 13 — Ratio real por lote con Item Tracking ✅ IMPLEMENTADO
 
 **Objetivo:** almacenar y recuperar el ratio de conversión real (medido al pesaje o recepción)
-asociado a un número de lote específico, integrado con el estándar `Item Tracking Lines` de BC 27.
-Descargar automático del ratio de lote a cada línea de Item Tracking cuando se registra
-un documento con trazabilidad activada.
+asociado a un número de lote específico, integrado con el estándar de Item Tracking de BC 27.
 
-**Hallazgo arquitectónico descubierto (2026-04-22):**
-- En BC 27, una línea de documento de compra/venta puede contener múltiples lotes.
-  Cada lote se gestiona a través de la tabla estándar `Item Tracking Lines`, no mediante
-  un campo directo en la línea de documento.
-- Diseño anterior (MVP) asumía campo `Lot No.` directo en Purchase/Sales Line — **no existe**.
-- Código especulativo (`DUoM Lot Subscribers` codeunit 50108, `DUoMLotRatioTests` codeunit 50217)
-  fue removido de la base de código el 2026-04-22.
+**Hallazgo arquitectónico resuelto (2026-04-22):**
+- En BC 27, `Lot No.` **no es campo directo** en `Purchase Line` (tabla 39) ni en `Sales Line`
+  (tabla 37). Los lotes se gestionan a través de `Item Tracking Lines` / `Reservation Entry`.
+- `Lot No.` **sí es campo directo** en `Item Journal Line` (tabla 83).
+- El override por lote en ILE se implementa en `OnAfterInitItemLedgEntry` (proporcional).
 
-**Alcance para Phase 2 (Issue 13):**
-- Mantener tabla `DUoM Lot Ratio` (50102) con estructura `(Item No., Lot No.)` para almacenar
-  ratios reales medidos.
-- Suscriptores en `Item Tracking Line` (Table 93) para:
-  1. Pre-rellenar `DUoM Ratio` en cada Item Tracking Line al validar `Lot No.`
-  2. Propagar durante posting a través del flujo estándar de Item Tracking (Item Journal Line → ILE)
-- Tabla intermedia opcional (a diseñar en Phase 2) para asociación multi-lote por línea de documento.
-- Discovery de BC 27 Item Tracking infrastructure obligatorio antes de implementar.
+**Deliverables:**
+- `DUoM Lot Subscribers` (codeunit 50108): suscriptor IJL Lot No. + método `TryApplyLotRatioToILE`
+- `DUoM Inventory Subscribers` (50104) modificado: recálculo proporcional en `OnAfterInitItemLedgEntry`
+- `DUoM Lot Ratio Tests` (test codeunit 50217): 7 tests (T01–T07)
+- Documentación actualizada: `docs/02-functional-design.md`, `docs/03-technical-architecture.md`,
+  `docs/04-item-setup-model.md`, `docs/TestCoverageAudit.md`
 
-**Prerequisitos para Issue 13:**
-1. Sesión de discovery de Item Tracking Lines structure en BC 27 (eventos disponibles, tablas relacionadas)
-2. Actualización del diseño en `docs/02-functional-design.md`, `docs/03-technical-architecture.md`
-3. Mockups de comportamiento multi-lote esperado con cliente
-
-**Nota:** Tabla `DUoM Lot Ratio` (50102) y página `DUoM Lot Ratio List` (50102) siguen
-en la base de código como placeholders para Phase 2. Permission sets ya incluyen la entrada
-`tabledata "DUoM Lot Ratio" = RIMD` (agregada en MVP anticipando integración posterior).
-
-**Dependencias:** Issue 12 completado (coste/precio). Issues 14/15 pueden ejecutarse en paralelo.
+**Dependencias:** Issue 12 completado. Issues 14/15 pueden ejecutarse en paralelo.
 
 ### Issue 14 — Warehouse Receipt and Shipment DUoM Fields
 

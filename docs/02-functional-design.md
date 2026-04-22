@@ -109,22 +109,51 @@ tener que introducirlo manualmente cada vez.
 
 La validación `OnValidate` del campo `Actual Ratio` impide valores ≤ 0.
 
-### Nota: Multi-Lote y Item Tracking (Phase 2 — Pendiente)
+### Nota: Multi-Lote y Item Tracking — Diseño implementado (Issue 13, rediseño 2026-04-22)
 
-**Hallazgo arquitectónico:** En Business Central 27, cuando una línea de documento (compra, venta)
-requiere seguimiento de múltiples lotes, éstos se gestionan a través de la tabla estándar
-`Item Tracking Lines`, no como campo directo en la línea de documento.
+**Hallazgo arquitectónico:** En Business Central 27, `Lot No.` **no es un campo directo**
+en `Purchase Line` (tabla 39) ni en `Sales Line` (tabla 37). Los lotes se gestionan a través
+de la infraestructura estándar de trazabilidad:
 
-El diseño actual de `DUoM Lot Ratio` con clave `(Item No., Lot No.)` está clasificado como
-**Pendiente (Phase 2)** e integración real con `Item Tracking Lines` requiere:
+- **`Reservation Entry` (tabla 337):** almacenamiento persistente de asignaciones de lote.
+- **Página `Item Tracking Lines` (6510):** UI donde el usuario asigna N lotes por línea.
+- **Flujo de contabilización:** BC crea un ILE por lote; en `OnAfterInitItemLedgEntry`
+  el `ItemJournalLine` tiene `Lot No.` y `Quantity` específicos del lote.
 
-1. Suscriptor en `Item Tracking Line` para propagar ratio de lote
-2. Tabla intermedia o extensión para asociar ratios medidos a cada línea de Item Tracking
-3. Propagación durante posting a través del flujo estándar de trazabilidad BC
+El único caso donde `Lot No.` **sí** es campo directo es `Item Journal Line` (tabla 83).
 
-Para documentos de compra/venta simples sin trazabilidad multi-lote, `DUoM Ratio` se aplica
-a nivel de línea de documento (campos `DUoM Ratio` en `Purchase Line` y `Sales Line`),
-sin diferenciar por lote.
+### Flujo de integración implementado
+
+```
+Caso A — Item Journal Line (Lot No. campo directo):
+  Usuario valida Lot No. en IJL
+  → OnAfterValidateEvent[Lot No.] en Table "Item Journal Line"
+  → DUoM Lot Subscribers (50108): busca DUoM Lot Ratio(Item No., Lot No.)
+  → Si existe y modo ≠ Fixed: sobreescribe DUoM Ratio + recalcula DUoM Second Qty
+
+Caso B — Purchase/Sales Line (N lotes vía Item Tracking):
+  Usuario asigna N lotes en "Item Tracking Lines" (estándar BC)
+  → Lots persisten en Reservation Entry (flujo estándar, sin intervención DUoM)
+  → Al contabilizar: BC crea un ILE por lote con Lot No. específico en el IJL
+  → OnAfterInitItemLedgEntry(NewILE, ItemJnlLine, ...)
+    - DUoM Ratio: copiado desde IJL (ratio del documento)
+    - DUoM Second Qty: Abs(ILE.Quantity) × DUoM Ratio (proporcional al lote)
+    - TryApplyLotRatioToILE: si lote tiene ratio y modo ≠ Fixed →
+        ILE.DUoM Ratio = LotActualRatio
+        ILE.DUoM Second Qty = Abs(ILE.Quantity) × LotActualRatio
+```
+
+### Comportamiento por modo de conversión
+
+| Modo | Comportamiento al contabilizar con Lot No. |
+|------|---------------------------------------------|
+| Fixed | Ratio de lote NO aplicado. El ratio fijo siempre prevalece. |
+| Variable | Si existe ratio de lote → sobrescribe DUoM Ratio + recalcula DUoM Second Qty |
+| AlwaysVariable | Si existe ratio de lote → sobrescribe DUoM Ratio (como sugerencia) |
+
+Si no hay ratio registrado para el lote:
+- `DUoM Ratio ≠ 0`: recalcula `Abs(ILE.Quantity) × DUoM Ratio` proporcionalmente.
+- `DUoM Ratio = 0` (AlwaysVariable sin ratio): copia `DUoM Second Qty` directamente desde IJL.
 
 ---
 
