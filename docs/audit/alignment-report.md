@@ -36,7 +36,7 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 
 | Archivo doc | Elemento | Notas |
 |-------------|----------|-------|
-| `docs/06-backlog.md` | Issue 13 — Ratio real por lote (`DUoM Lot Ratio` table, `DUoMLotSubscribers`) | No implementado; correcto que figure como pendiente |
+| `docs/06-backlog.md` | Issue 13 — Ratio real por lote (Integración Item Tracking) | Diseño anterior (MVP) fue especulativo; código removido 2026-04-22. Phase 2 requiere discovery de Item Tracking Lines. |
 | `docs/06-backlog.md` | Issue 14 — Warehouse Receipt and Shipment DUoM Fields | No implementado; correcto que figure como pendiente |
 | `docs/06-backlog.md` | Issue 15 — Directed Put-Away and Pick DUoM Fields | No implementado; correcto que figure como pendiente |
 | `docs/06-backlog.md` | Issue 16 — Return Orders DUoM | No implementado; correcto que figure como pendiente |

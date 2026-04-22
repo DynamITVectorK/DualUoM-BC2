@@ -49,7 +49,7 @@ already covers the need:
 |---|---|---|
 | `DUoM Item Setup` | 50100 | Per-item DUoM configuration (enabled, second UoM, mode, ratio) |
 | `DUoM Item Variant Setup` | 50101 | Optional per-variant DUoM override (Second UoM Code, Conversion Mode, Fixed Ratio). Absent = inherit from item. |
-| `DUoM Lot Ratio` | 50102 | Ratio real medido por lote `(Item No., Lot No.)`. Se pre-rellena automáticamente en líneas de documento al validar `Lot No.` (solo modos Variable y AlwaysVariable). |
+| `DUoM Lot Ratio` | 50102 | **[PHASE 2 — PENDIENTE]** Tabla para almacenar ratio real por lote. Integración con Item Tracking Lines en Phase 2 (Issue 13). |
 
 ### Custom Pages
 
@@ -104,7 +104,7 @@ already covers the need:
 | `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
 | `DUoM UoM Helper` | 50106 | Helper de UoM: `GetSecondUoMRoundingPrecision(ItemNo)` y `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` para obtener `Qty. Rounding Precision` de la tabla `Item Unit of Measure` |
 | `DUoM Setup Resolver` | 50107 | Centraliza la resolución jerárquica Item → Variante de la configuración DUoM efectiva. Todos los suscriptores y triggers deben llamar a `GetEffectiveSetup(ItemNo, VariantCode, ...)` |
-| `DUoM Lot Subscribers` | 50108 | Subscribers para pre-rellenado automático del ratio de lote en Purchase Line, Sales Line e Item Journal Line al validar `Lot No.` |
+| `DUoM Lot Subscribers` | 50108 | **[PHASE 2 — PENDIENTE]** Subscribers para integración con Item Tracking Lines. No implementado en MVP. |
 
 ---
 

@@ -109,32 +109,22 @@ tener que introducirlo manualmente cada vez.
 
 La validación `OnValidate` del campo `Actual Ratio` impide valores ≤ 0.
 
-### Pre-rellenado automático al validar `Lot No.`
+### Nota: Multi-Lote y Item Tracking (Phase 2 — Pendiente)
 
-Cuando el usuario valida `Lot No.` en una línea de compra, venta o diario de artículo
-para un artículo con DUoM activado, el codeunit `DUoM Lot Subscribers` (50108) actúa:
+**Hallazgo arquitectónico:** En Business Central 27, cuando una línea de documento (compra, venta)
+requiere seguimiento de múltiples lotes, éstos se gestionan a través de la tabla estándar
+`Item Tracking Lines`, no como campo directo en la línea de documento.
 
-1. Llama a `DUoM Setup Resolver.GetEffectiveSetup` para obtener el modo de conversión efectivo.
-2. Si el modo es **Fixed**: el ratio de lote **nunca** sobreescribe el ratio fijo.
-3. Si el modo es **Variable** o **AlwaysVariable**: busca un registro en `DUoM Lot Ratio` para `(Item No., Lot No.)`.
-   - Si existe → sobreescribe `DUoM Ratio` con el ratio real del lote y recalcula `DUoM Second Qty`.
-   - Si no existe → no modifica los campos (respeta el valor previo o el default del artículo/variante).
+El diseño actual de `DUoM Lot Ratio` con clave `(Item No., Lot No.)` está clasificado como
+**Pendiente (Phase 2)** e integración real con `Item Tracking Lines` requiere:
 
-### Jerarquía de resolución completa: Artículo → Variante → Lote
+1. Suscriptor en `Item Tracking Line` para propagar ratio de lote
+2. Tabla intermedia o extensión para asociar ratios medidos a cada línea de Item Tracking
+3. Propagación durante posting a través del flujo estándar de trazabilidad BC
 
-```
-1. DUoM Item Setup (50100) — master switch Dual UoM Enabled
-2. DUoM Item Variant Setup (50101) — override por variante (si existe para el par Item No./Variant Code)
-3. DUoM Lot Ratio (50102) — ratio real por lote (solo en modo Variable / AlwaysVariable)
-```
-
-El ratio de lote prevalece sobre el ratio de variante/artículo en los modos Variable y
-AlwaysVariable. En modo Fixed, el ratio de configuración siempre prevalece.
-
-### Navegación desde `DUoM Item Setup`
-
-La página `DUoM Item Setup` (50100) dispone de la acción `DUoM Lot Ratios` que abre
-la página `DUoM Lot Ratio List` (50102) filtrada por el artículo actual.
+Para documentos de compra/venta simples sin trazabilidad multi-lote, `DUoM Ratio` se aplica
+a nivel de línea de documento (campos `DUoM Ratio` en `Purchase Line` y `Sales Line`),
+sin diferenciar por lote.
 
 ---
 

@@ -319,7 +319,7 @@ Las siguientes funcionalidades quedan explícitamente **fuera del alcance** de e
 
 | Riesgo | Probabilidad | Mitigación |
 |--------|-------------|-----------|
-| `Lot No.` no es campo directo en `Purchase Line` / `Sales Line` en BC 27 (puede residir solo en `Item Tracking Lines`) | Media | Verificar en BC 27 Symbol Reference antes de implementar. Si no existe campo directo, documentar la alternativa (p. ej. suscribir a `Item Tracking Lines` OnAfterValidate) y actualizar el diseño. |
+| **[VERIFICADO - 2026-04-22]** `Lot No.` NO es campo directo en `Purchase Line` / `Sales Line` en BC 27 (reside SOLO en `Item Tracking Lines`) | Confirmado | Código especulativo removido. Issue 13 (Phase 2) debe diseñarse alrededor de Item Tracking Lines. Discovery obligatorio antes de implementar. |
 | Colisión de IDs si otro issue paralelo reserva el mismo rango | Baja | Confirmar en `docs/06-backlog.md` que los IDs 50102 (table, page) y 50108 (codeunit) siguen libres antes de crear objetos. |
 | `TableRelation` con `Lot No. Info` o tablas de trazabilidad de BC puede fallar si la tabla no es accesible en extensiones PTE | Baja-Media | Usar `TableRelation` sin validación estricta si la tabla de trazabilidad no está disponible para extensiones. Documentar la decisión. |
 | Tests que requieren creación de `Item Tracking Lines` pueden ser frágiles en entornos SaaS sin licencia de ítem tracking | Baja | Usar `Library - Item Tracking` si existe, o crear el registro `DUoM Lot Ratio` directamente en el test sin pasar por el flujo completo de tracking estándar de BC. Priorizar tests que validen el comportamiento del subscriber DUoM, no el flujo nativo de BC. |
@@ -328,26 +328,37 @@ Las siguientes funcionalidades quedan explícitamente **fuera del alcance** de e
 
 ## 10. Instrucciones adicionales para @copilot
 
-### Estrategia TDD
+### Estrategia TDD — ACTUALIZADO (Cambio de scope Phase 2)
 
-1. **Primero**, crear `test/src/codeunit/DUoMLotRatioTests.Codeunit.al` (ID 50217) con
-   todos los tests en **rojo** (el código de producción aún no existe).
-2. **Segundo**, crear los objetos de producción en el orden: tabla → página → codeunit
-   de suscriptores → pageextension en `DUoM Item Setup`.
-3. **Tercero**, ejecutar CI para verificar que todos los tests pasan (verde).
+**NOTA IMPORTANTE (2026-04-22):** El diseño anterior de Issue 13 fue especulativo. 
+Se descubrió que "Lot No." no es campo directo en Purchase Line / Sales Line en BC 27.
+Por lo tanto, los tests y lógica de suscriptores especulativos han sido removidos del código.
 
-### Verificación de firma del subscriber de `Lot No.`
+Para Phase 2 (Issue 13 rediseñado):
 
-Antes de añadir el `[EventSubscriber]` para `Lot No.`, consultar el BC 27 Symbol
-Reference (o el repositorio `microsoft/ALAppExtensions`) para confirmar:
+1. **Primero:** sesión de discovery de Item Tracking Lines en BC 27:
+   - Estructura de `Item Tracking Line` table (campos, eventos disponibles)
+   - Cómo se asignan múltiples lotes a una línea de documento
+   - Eventos de validación/posting en Item Tracking Line
+   
+2. **Segundo:** actualizar diseño en docs (02-functional-design, 03-technical-architecture)
+   con la arquitectura Item Tracking correcta.
 
-- Que `Lot No.` es un campo directo en `Purchase Line`, `Sales Line` e `Item Journal Line`.
-- El tipo y nombre exacto del campo.
-- Si el campo existe en esas tablas, el evento `OnAfterValidateEvent` estará disponible.
+3. **Tercero:** crear tabla intermedia o extensión para asociar ratios DUoM a Item Tracking Lines.
 
-Si el campo **no existe directamente** en esas tablas (caso frecuente cuando el tracking
-se gestiona exclusivamente vía `Item Tracking Lines`), documentar la alternativa y
-abrir una sub-task si el alcance cambia significativamente.
+4. **Cuarto:** implementar suscriptores en Item Tracking Line (no en Purchase/Sales Line).
+
+5. **Quinto:** tests TDD cubriendo el flujo multi-lote correcto.
+
+### Verificación COMPLETADA — "Lot No." en BC 27
+
+**Hallazgo:** Se verificó en BC 27 Symbol Reference que `Lot No.` **NO es campo directo**
+en `Purchase Line` (table 39) ni `Sales Line` (table 37). Los números de lote se gestionan
+exclusivamente a través de `Item Tracking Lines` (table 6500).
+
+Conclusión: El diseño anterior (MVP) de Issue 13 con suscriptores en Purchase/Sales Line
+fue especulativo y ha sido removido del código (2026-04-22). La verdadera integración multi-lote
+requiere suscriptores en Item Tracking Line en Phase 2.
 
 ### Patrón de suscriptor delegante (thin subscriber)
 

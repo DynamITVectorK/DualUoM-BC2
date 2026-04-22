@@ -358,44 +358,40 @@ Alcance implementado:
 `DUoMDocTransferHelper.Codeunit.al`, `DUoMInventorySubscribers.Codeunit.al`,
 pageextensions 50101, 50102, 50104–50109, permission sets, XLF, `DUoMCostPriceTests.Codeunit.al` (50216)
 
-### Issue 13 — Ratio real por lote ✅ IMPLEMENTADO
+### Issue 13 — Ratio real por lote con Item Tracking (Phase 2 — Pendiente)
 
 **Objetivo:** almacenar y recuperar el ratio de conversión real (medido al pesaje o recepción)
-asociado a un número de lote específico. Pre-rellenado automático en líneas de documento
-al validar el número de lote, respetando el modo de conversión activo.
+asociado a un número de lote específico, integrado con el estándar `Item Tracking Lines` de BC 27.
+Descargar automático del ratio de lote a cada línea de Item Tracking cuando se registra
+un documento con trazabilidad activada.
 
-Alcance implementado:
-- Nueva tabla `DUoM Lot Ratio` (50102) con campos: `Item No.` (PK), `Lot No.` (PK),
-  `Actual Ratio` (Decimal, 0:5, validación > 0), `Description` (Text[100]).
-- Nueva página `DUoM Lot Ratio List` (50102) para mantenimiento de ratios por lote.
-- Acción `DUoM Lot Ratios` en la página `DUoM Item Setup` (50100) que abre la lista
-  filtrada por el artículo actual.
-- Nuevo codeunit `DUoM Lot Subscribers` (50108) con suscriptores para `Lot No.` validate en
-  `Purchase Line`, `Sales Line` e `Item Journal Line`. Método helper centralizado
-  `ApplyLotRatioIfExists` implementa la lógica de los modos:
-  - **Fixed**: el ratio de lote NUNCA sobreescribe el ratio fijo.
-  - **Variable / AlwaysVariable**: si existe registro de lote, sobreescribe `DUoM Ratio`
-    y recalcula `DUoM Second Qty`.
-- Jerarquía completa: Item → Variante → Lote (el ratio de lote prevalece en modos Variable/AlwaysVariable).
-- Permission sets `DUoM - All` (50100) y `DUoM - Test All` (50200): entrada
-  `tabledata "DUoM Lot Ratio" = RIMD` añadida.
-- `DUoM Test Helpers` (50208): métodos `CreateLotRatio` y `DeleteLotRatioIfExists`.
-- 6 tests en nuevo codeunit `DUoM Lot Ratio Tests` (50217): T01 (PurchLine Variable), T02 (sin ratio),
-  T03 (Fixed), T04 (SalesLine Variable), T05 (ItemJnlLine Variable), T06 (validación Actual Ratio ≤ 0).
-- XLF en-US y es-ES actualizados (IDs pendientes de verificación contra .g.xlf CI).
-- Documentación actualizada: `docs/02-functional-design.md`, `docs/03-technical-architecture.md`,
-  `docs/04-item-setup-model.md`, `docs/06-backlog.md`, `docs/TestCoverageAudit.md`.
+**Hallazgo arquitectónico descubierto (2026-04-22):**
+- En BC 27, una línea de documento de compra/venta puede contener múltiples lotes.
+  Cada lote se gestiona a través de la tabla estándar `Item Tracking Lines`, no mediante
+  un campo directo en la línea de documento.
+- Diseño anterior (MVP) asumía campo `Lot No.` directo en Purchase/Sales Line — **no existe**.
+- Código especulativo (`DUoM Lot Subscribers` codeunit 50108, `DUoMLotRatioTests` codeunit 50217)
+  fue removido de la base de código el 2026-04-22.
 
-**Deliverables:**
-- `DUoMLotRatio.Table.al` (table 50102)
-- `DUoMLotRatioList.Page.al` (page 50102)
-- `DUoMLotSubscribers.Codeunit.al` (codeunit 50108)
-- `DUoMItemSetup.Page.al` (50100) — acción DUoM Lot Ratios añadida
-- `DUoMAll.PermissionSet.al` (50100), `DUoMTestAll.PermissionSet.al` (50200) — actualizados
-- `DUoMTestHelpers.Codeunit.al` (50208) — métodos de lot ratio
-- `DUoMLotRatioTests.Codeunit.al` (codeunit 50217) — 6 tests
-- `DualUoM-BC.en-US.xlf`, `DualUoM-BC.es-ES.xlf` — trans-units Issue 13 añadidos
-- `docs/issues/issue-13-lot-ratio.md`
+**Alcance para Phase 2 (Issue 13):**
+- Mantener tabla `DUoM Lot Ratio` (50102) con estructura `(Item No., Lot No.)` para almacenar
+  ratios reales medidos.
+- Suscriptores en `Item Tracking Line` (Table 93) para:
+  1. Pre-rellenar `DUoM Ratio` en cada Item Tracking Line al validar `Lot No.`
+  2. Propagar durante posting a través del flujo estándar de Item Tracking (Item Journal Line → ILE)
+- Tabla intermedia opcional (a diseñar en Phase 2) para asociación multi-lote por línea de documento.
+- Discovery de BC 27 Item Tracking infrastructure obligatorio antes de implementar.
+
+**Prerequisitos para Issue 13:**
+1. Sesión de discovery de Item Tracking Lines structure en BC 27 (eventos disponibles, tablas relacionadas)
+2. Actualización del diseño en `docs/02-functional-design.md`, `docs/03-technical-architecture.md`
+3. Mockups de comportamiento multi-lote esperado con cliente
+
+**Nota:** Tabla `DUoM Lot Ratio` (50102) y página `DUoM Lot Ratio List` (50102) siguen
+en la base de código como placeholders para Phase 2. Permission sets ya incluyen la entrada
+`tabledata "DUoM Lot Ratio" = RIMD` (agregada en MVP anticipando integración posterior).
+
+**Dependencias:** Issue 12 completado (coste/precio). Issues 14/15 pueden ejecutarse en paralelo.
 
 ### Issue 14 — Warehouse Receipt and Shipment DUoM Fields
 
