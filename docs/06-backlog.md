@@ -41,7 +41,7 @@ issues futuros (almacén, lotes).
 - `DUoMConversionMode.Enum.al` (enum 50100)
 - `DUoMItemSetup.Table.al` (table 50100) con `GetOrCreate()` y `ValidateSetup()`
 - `DUoMItemSetup.Page.al` (page 50100) — tarjeta de configuración por artículo
-- `DUoMItemCardExt.PageExt.al` (pageextension 50103) — acción en Item Card
+- `DUoMItemCardExt.PageExt.al` (pageextension 50100) — acción en Item Card
 - `Item.TableExt.al` (tableextension 50100) — cascade delete
 - Tests: `DUoMItemSetupTests.Codeunit.al` (50201), `DUoMItemCardOpeningTests.Codeunit.al` (50202),
   `DUoMItemDeleteTests.Codeunit.al` (50203)
@@ -100,7 +100,7 @@ Extensión del subformulario del diario de productos para mostrar los campos.
 `OnAfterInitItemLedgEntry` cubre también las contabilizaciones manuales por diario.
 
 **Deliverables:** `DUoMItemJournalLine.TableExt.al` (50112),
-`DUoMItemJournalExt.PageExt.al` (pageextension), `DUoMInventoryTests.Codeunit.al` (50207)
+`DUoMItemJournalExt.PageExt.al` (pageextension 50103), `DUoMInventoryTests.Codeunit.al` (50207)
 
 ### Issue 9 — Campos DUoM en líneas de documentos registrados + tests E2E Phase 1 ✅ IMPLEMENTADO
 
@@ -350,7 +350,7 @@ Alcance implementado:
   `DUoM Second Qty` desde `Item Journal Line` a `Value Entry` — sin Modify().
 - Visibilidad en páginas de pedido (editables) y documentos históricos (solo lectura).
 - Permission sets `DUoM - All` (50100) y `DUoM - Test All` (50200) actualizados con
-  `tabledata "Value Entry" = RIMD`.
+  `tabledata "Value Entry" = R`.
 - Tests TDD: `DUoM Cost Price Tests` (codeunit 50216), 8 tests T01–T08.
 
 **Deliverables:** `DUoMPurchaseLine.TableExt.al`, `DUoMSalesLine.TableExt.al`,

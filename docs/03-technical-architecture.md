@@ -21,7 +21,7 @@ This guarantees compatibility with future BC updates and safe uninstallation.
 |---|---|
 | No direct table access to internal BC tables via `RecordRef` where avoidable | Fragile against schema changes |
 | No `OnBeforeInsert`/`OnBeforeModify` subscribers that throw errors mid-flow | Prefer `OnAfterValidate` and dedicated validation codeunits |
-| Para propagar campos de extensión a tablas base en el posting, usar eventos **antes** del Insert (`OnBefore*Insert`) en lugar de `OnAfter*Insert` + `Modify()` | `Modify()` en un subscriber `OnAfter*` requiere permiso `M` del usuario sobre la tabla base (BC SaaS error "Su licencia no le concede Modify en TableData NNN"). El patrón `OnBefore*Insert` + asignación directa de campos es seguro y no requiere permiso adicional. |
+| Para propagar campos de extensión a tablas base en el posting, usar **eventos de inicialización de tabla** (`OnAfterInit*`) en lugar de `OnAfter*Insert` + `Modify()` | `Modify()` en un subscriber `OnAfter*Insert` requiere permiso `M` del usuario sobre la tabla base (BC SaaS error "Su licencia no le concede Modify en TableData NNN"). Los eventos `OnAfterInitFrom*` publicados por las tablas de destino (p. ej. `OnAfterInitFromPurchLine` en `Table "Purch. Rcpt. Line"`) exponen el `var` record ANTES del `Insert()`, permitiendo asignación directa de campos sin ningún permiso adicional. |
 | No `BLOB` fields unless unavoidable | Performance and upgrade risk |
 | No hardcoded object IDs from the base application | Use `Codeunit.RUN` and `Page.RUN` by name where possible |
 | No deprecated BC APIs | Always use current-release patterns |
