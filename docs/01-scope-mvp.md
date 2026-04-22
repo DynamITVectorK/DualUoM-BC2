@@ -34,7 +34,6 @@ an item using two units of measure with a variable conversion ratio.
 - Physical inventory with second quantity
 - Warehouse receipts and shipments with second quantity
 - Directed put-away and pick with second quantity
-- Value entry propagation (for costing accuracy)
 - Reporting extensions (second qty columns on standard reports)
 
 ---

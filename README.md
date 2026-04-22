@@ -26,10 +26,12 @@ and tracked — even when the ratio varies by lot.
 | [Scope & MVP](docs/01-scope-mvp.md) | What is in MVP, Phase 2, and out of scope |
 | [Functional Design](docs/02-functional-design.md) | Item setup, conversion modes, propagation |
 | [Technical Architecture](docs/03-technical-architecture.md) | Extension design, events, SaaS principles |
+| [Item Setup Model](docs/04-item-setup-model.md) | Data model design — dedicated setup table rationale and fields |
 | [Testing Strategy](docs/05-testing-strategy.md) | TDD rules, test types, CI validation |
 | [Backlog](docs/06-backlog.md) | Ordered delivery backlog |
 | [CI Cost Decisions](docs/ci-cost-decisions.md) | Why CI is configured the way it is |
 | [Estimación y Valoración Económica](docs/08-estimacion-esfuerzo-y-valoracion-economica.md) | Análisis de esfuerzo, valoración económica y escenarios de contratación |
+| [Informe de Alineación Docs-Código](docs/audit/alignment-report.md) | Auditoría de consistencia entre documentación y objetos AL implementados |
 
 ## Modules in Scope
 
