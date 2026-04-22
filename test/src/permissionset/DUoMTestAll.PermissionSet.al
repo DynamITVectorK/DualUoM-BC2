@@ -21,6 +21,7 @@ permissionset 50200 "DUoM - Test All"
     Permissions =
         tabledata "DUoM Item Setup" = RIMD,
         tabledata "DUoM Item Variant Setup" = RIMD,
+        tabledata "DUoM Lot Ratio" = RIMD,
         tabledata "Purch. Rcpt. Line" = RIMD,
         tabledata "Sales Shipment Line" = RIMD,
         tabledata "Purch. Inv. Line" = RIMD,

@@ -719,6 +719,99 @@
           <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Pstd Sales CrM Subform - Control DUoM Unit Price - Property ToolTip</note>
         </trans-unit>
 
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Table 50102  DUoM Lot Ratio
+             PENDING: IDs to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="Table 3801234561 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Lot Ratio</source>
+          <target state="final">DUoM Lot Ratio</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Lot Ratio table; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Lot Ratio - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 3801234561 - Field 568743302 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>Item No.</source>
+          <target state="final">Item No.</target>
+          <note from="Developer" annotates="general" priority="2">Caption for Item No. field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Lot Ratio - Field Item No. - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 3801234561 - Field 3801234563 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>Lot No.</source>
+          <target state="final">Lot No.</target>
+          <note from="Developer" annotates="general" priority="2">Caption for Lot No. field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Lot Ratio - Field Lot No. - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 3801234561 - Field 3801234564 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>Actual Ratio</source>
+          <target state="final">Actual Ratio</target>
+          <note from="Developer" annotates="general" priority="2">Caption for Actual Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Lot Ratio - Field Actual Ratio - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 3801234561 - Field 3801234565 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>Description</source>
+          <target state="final">Description</target>
+          <note from="Developer" annotates="general" priority="2">Caption for Description field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Lot Ratio - Field Description - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Table 3801234561 - NamedType 3801234566" translate="yes" xml:space="preserve">
+          <source>Actual Ratio must be greater than zero.</source>
+          <target state="final">Actual Ratio must be greater than zero.</target>
+          <note from="Developer" annotates="general" priority="2">Validation error; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Table DUoM Lot Ratio - NamedType ErrActualRatioMustBePositiveLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Page 50102  DUoM Lot Ratio List
+             PENDING: IDs to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="Page 3801234562 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Lot Ratio List</source>
+          <target state="final">DUoM Lot Ratio List</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Lot Ratio List page; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Lot Ratio List - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Page 3801234562 - Control 568743302 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the item number this lot ratio belongs to.</source>
+          <target state="final">Specifies the item number this lot ratio belongs to.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for Item No. on DUoM Lot Ratio List; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Lot Ratio List - Control Item No. - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 3801234562 - Control 3801234563 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the lot number for which the actual ratio has been recorded.</source>
+          <target state="final">Specifies the lot number for which the actual ratio has been recorded.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for Lot No. on DUoM Lot Ratio List; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Lot Ratio List - Control Lot No. - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 3801234562 - Control 3801234564 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the actual measured conversion ratio for this lot (e.g. KG per PCS).</source>
+          <target state="final">Specifies the actual measured conversion ratio for this lot (e.g. KG per PCS).</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for Actual Ratio on DUoM Lot Ratio List; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Lot Ratio List - Control Actual Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="Page 3801234562 - Control 3801234565 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies an optional description or comment for this lot ratio record.</source>
+          <target state="final">Specifies an optional description or comment for this lot ratio record.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for Description on DUoM Lot Ratio List; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Lot Ratio List - Control Description - Property ToolTip</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Page 50100  DUoM Item Setup — action DUoMLotRatios (Issue 13)
+             PENDING: Action ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="Page 2256867475 - Action 3801234567 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Lot Ratios</source>
+          <target state="final">DUoM Lot Ratios</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Lot Ratios action on DUoM Item Setup page; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - Action DUoMLotRatios - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="Page 2256867475 - Action 3801234567 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Opens the list of actual conversion ratios registered per lot for this item.</source>
+          <target state="final">Opens the list of actual conversion ratios registered per lot for this item.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Lot Ratios action on DUoM Item Setup page; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - Action DUoMLotRatios - Property ToolTip</note>
+        </trans-unit>
+
       </group>
     </body>
   </file>

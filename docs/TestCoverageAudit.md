@@ -20,6 +20,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | enum 50100 | DUoM Conversion Mode | Enum |
 | table 50100 | DUoM Item Setup | Table |
 | table 50101 | DUoM Item Variant Setup | Table |
+| table 50102 | DUoM Lot Ratio | Table |
 | tableextension 50100 | Item (cascade delete) | TableExt |
 | tableextension 50110 | Purchase Line | TableExt |
 | tableextension 50111 | Sales Line | TableExt |
@@ -40,8 +41,10 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | codeunit 50105 | DUoM Doc Transfer Helper | Codeunit |
 | codeunit 50106 | DUoM UoM Helper | Codeunit |
 | codeunit 50107 | DUoM Setup Resolver | Codeunit |
+| codeunit 50108 | DUoM Lot Subscribers | Codeunit |
 | page 50100 | DUoM Item Setup | Page |
 | page 50101 | DUoM Variant Setup List | Page |
+| page 50102 | DUoM Lot Ratio List | Page |
 | pageextension 50100–50111 | Varios (campos DUoM en forms) | PageExt |
 | permissionset 50100 | DUoM - All | PermissionSet |
 
@@ -67,6 +70,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | 50214 | DUoM Variable Mode Post Tests | Tests E2E en modos Variable y AlwaysVariable (compra y venta) |
 | 50215 | DUoM Variant Del Tests | Item Variant TableExt (cascade delete de DUoM Item Variant Setup) |
 | 50216 | DUoM Cost Price Tests | DUoM Unit Cost / DUoM Unit Price, propagación a históricos, DUoM Second Qty en Value Entry |
+| 50217 | DUoM Lot Ratio Tests | DUoM Lot Ratio (table), DUoM Lot Subscribers (Issue 13) |
 
 ---
 
@@ -97,6 +101,8 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Doc Transfer Helper (cu 50105) | ❌ Ninguno directo | ✅ 50209, 50210, 50216 | **Indirecta** | Cubierto vía E2E; sin tests unitarios aislados (GAP P2) |
 | DUoM UoM Helper (cu 50106) | ✅ 50213 | Indirecta | **Completa** | 7 tests unitarios directos (GAP P0-01 cerrado) |
 | DUoM Setup Resolver (cu 50107) | ✅ 50211 | — | **Completa** | Jerarquía Item→Variante cubierta |
+| DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 y pre-rellenado en líneas cubiertos |
+| DUoM Lot Subscribers (cu 50108) | ✅ 50217 | — | **Completa** | Fixed, Variable, sin ratio, SalesLine, ItemJnlLine cubiertos |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
 | DUoM permissionset 50100 | — | — | **N/A** | Verificado implícitamente por tests E2E con TestPermissions |
@@ -173,9 +179,6 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 
 | Test propuesto | Área funcional | Motivo de exclusión |
 |----------------|----------------|---------------------|
-| DualUoMLotRatioAssignTest | Item Tracking / Lotes | Funcionalidad no implementada (Phase 2, Issue 13) |
-| DualUoMLotRatioRecallTest | Item Tracking / Lotes | Funcionalidad no implementada (Phase 2, Issue 13) |
-| DualUoMLotRatioMismatchTest | Item Tracking / Lotes | Funcionalidad no implementada (Phase 2, Issue 13) |
 | DualUoMWhseReceiptTest | WMS — Warehouse Receipt | Funcionalidad no implementada (Phase 2, Issue 14) |
 | DualUoMWhsePutawayTest | WMS — Put-away | Funcionalidad no implementada (Phase 2, Issue 15) |
 | DualUoMWhsePickTest | WMS — Pick | Funcionalidad no implementada (Phase 2, Issue 15) |
