@@ -358,28 +358,44 @@ Alcance implementado:
 `DUoMDocTransferHelper.Codeunit.al`, `DUoMInventorySubscribers.Codeunit.al`,
 pageextensions 50101, 50102, 50104–50109, permission sets, XLF, `DUoMCostPriceTests.Codeunit.al` (50216)
 
-### Issue 13 — Ratio real por lote
+### Issue 13 — Ratio real por lote ✅ IMPLEMENTADO
 
 **Objetivo:** almacenar y recuperar el ratio de conversión real (medido al pesaje o recepción)
-asociado a un número de lote específico.
+asociado a un número de lote específico. Pre-rellenado automático en líneas de documento
+al validar el número de lote, respetando el modo de conversión activo.
 
-Alcance:
-- Nueva tabla `DUoM Lot Ratio` (ID libre en rango 50101–50199) con campos:
-  `Item No.`, `Lot No.`, `Actual Ratio`, `Description`.
-- Página de mantenimiento de ratios por lote.
-- Suscriptor `OnAfterValidateEvent` en el campo `Lot No.` de `Purchase Line`, `Sales Line`
-  e `Item Journal Line`: si existe un ratio registrado para el lote, pre-rellena `DUoM Ratio`
-  en la línea de documento.
-- Actualización del permiso set `DUoM - All` (50100) y `DUoM - Test All` (50200).
-- Tests TDD:
-  - Dado lote con ratio registrado, asignar lote en línea de compra → verificar ratio pre-rellenado.
-  - Dado lote sin ratio, asignar lote → verificar que `DUoM Ratio` no se modifica.
-  - Verificar que el ratio de lote prevalece sobre el ratio fijo del artículo cuando el modo es Variable.
+Alcance implementado:
+- Nueva tabla `DUoM Lot Ratio` (50102) con campos: `Item No.` (PK), `Lot No.` (PK),
+  `Actual Ratio` (Decimal, 0:5, validación > 0), `Description` (Text[100]).
+- Nueva página `DUoM Lot Ratio List` (50102) para mantenimiento de ratios por lote.
+- Acción `DUoM Lot Ratios` en la página `DUoM Item Setup` (50100) que abre la lista
+  filtrada por el artículo actual.
+- Nuevo codeunit `DUoM Lot Subscribers` (50108) con suscriptores para `Lot No.` validate en
+  `Purchase Line`, `Sales Line` e `Item Journal Line`. Método helper centralizado
+  `ApplyLotRatioIfExists` implementa la lógica de los modos:
+  - **Fixed**: el ratio de lote NUNCA sobreescribe el ratio fijo.
+  - **Variable / AlwaysVariable**: si existe registro de lote, sobreescribe `DUoM Ratio`
+    y recalcula `DUoM Second Qty`.
+- Jerarquía completa: Item → Variante → Lote (el ratio de lote prevalece en modos Variable/AlwaysVariable).
+- Permission sets `DUoM - All` (50100) y `DUoM - Test All` (50200): entrada
+  `tabledata "DUoM Lot Ratio" = RIMD` añadida.
+- `DUoM Test Helpers` (50208): métodos `CreateLotRatio` y `DeleteLotRatioIfExists`.
+- 6 tests en nuevo codeunit `DUoM Lot Ratio Tests` (50217): T01 (PurchLine Variable), T02 (sin ratio),
+  T03 (Fixed), T04 (SalesLine Variable), T05 (ItemJnlLine Variable), T06 (validación Actual Ratio ≤ 0).
+- XLF en-US y es-ES actualizados (IDs pendientes de verificación contra .g.xlf CI).
+- Documentación actualizada: `docs/02-functional-design.md`, `docs/03-technical-architecture.md`,
+  `docs/04-item-setup-model.md`, `docs/06-backlog.md`, `docs/TestCoverageAudit.md`.
 
-**Dependencias:** Issues 1–11. Issue 12 recomendado antes (coste/precio usa el ratio).
-**Deliverables:** `DUoMLotRatio.Table.al`, `DUoMLotRatio.Page.al`,
-suscriptores en nuevo `DUoMLotSubscribers.Codeunit.al`,
-Tests: `DUoM Lot Ratio Tests` (ID en 50212+)
+**Deliverables:**
+- `DUoMLotRatio.Table.al` (table 50102)
+- `DUoMLotRatioList.Page.al` (page 50102)
+- `DUoMLotSubscribers.Codeunit.al` (codeunit 50108)
+- `DUoMItemSetup.Page.al` (50100) — acción DUoM Lot Ratios añadida
+- `DUoMAll.PermissionSet.al` (50100), `DUoMTestAll.PermissionSet.al` (50200) — actualizados
+- `DUoMTestHelpers.Codeunit.al` (50208) — métodos de lot ratio
+- `DUoMLotRatioTests.Codeunit.al` (codeunit 50217) — 6 tests
+- `DualUoM-BC.en-US.xlf`, `DualUoM-BC.es-ES.xlf` — trans-units Issue 13 añadidos
+- `docs/issues/issue-13-lot-ratio.md`
 
 ### Issue 14 — Warehouse Receipt and Shipment DUoM Fields
 

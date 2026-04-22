@@ -76,9 +76,26 @@ cannot independently enable DUoM if the item has it disabled.
 
 ---
 
-## Configuration Hierarchy: Item → Variant
+## Lot-Level Ratio Table (Issue 13)
 
-Resolved by `DUoM Setup Resolver` (codeunit 50107):
+### `DUoM Lot Ratio` (50102) — Ratio real medido por lote
+
+| Field | Type | Purpose |
+|---|---|---|
+| `Item No.` | Code[20] PK | Links to `Item` |
+| `Lot No.` | Code[50] PK | Número de lote |
+| `Actual Ratio` | Decimal(0:5) | Ratio real medido (> 0 obligatorio) |
+| `Description` | Text[100] | Descripción o comentario opcional |
+
+**Design principle:** El ratio de lote solo aplica en los modos Variable y AlwaysVariable.
+En modo Fixed, el ratio de configuración siempre prevalece.
+
+---
+
+## Configuration Hierarchy: Item → Variant → Lot
+
+Resolved by `DUoM Setup Resolver` (codeunit 50107) for Item/Variant level,
+and by `DUoM Lot Subscribers` (codeunit 50108) for the Lot level:
 
 ```
 1. Check DUoM Item Setup (50100) for the item.
@@ -86,11 +103,11 @@ Resolved by `DUoM Setup Resolver` (codeunit 50107):
 2. If VariantCode is not empty, check DUoM Item Variant Setup (50101).
    If a record exists → use its fields (Second UoM Code, Conversion Mode, Fixed Ratio).
 3. Otherwise → use the item-level fields from DUoM Item Setup.
+4. When Lot No. is validated on a document line (Variable / AlwaysVariable only):
+   Check DUoM Lot Ratio (50102) for (Item No., Lot No.).
+   If a record exists → overwrite DUoM Ratio with the actual lot ratio and recalculate DUoM Second Qty.
+   Fixed mode: lot ratio is NEVER applied.
 ```
-
-All callers (subscribers, table extension triggers) must use `DUoM Setup Resolver`
-to resolve the effective setup. Direct reads from `DUoM Item Setup` are only
-acceptable where variant context is absent (e.g. setup pages, item-only flows).
 
 ---
 
@@ -128,9 +145,6 @@ acceptable where variant context is absent (e.g. setup pages, item-only flows).
 
 ## Future Extensibility
 
-- **Lot-specific ratios (Phase 2)**: will be stored in a separate table keyed by
-  `(Item No., Lot No.)` or `(Item No., Variant Code, Lot No.)`. The resolver will
-  be extended with a third level: Lot override → Variant override → Item setup.
 - **Warehouse fields (Phase 2)**: additional boolean flags can be added to
   `DUoM Item Setup` as new fields without breaking existing data.
 - **Document propagation**: all document line logic uses `DUoM Setup Resolver`

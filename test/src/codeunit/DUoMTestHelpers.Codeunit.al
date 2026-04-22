@@ -77,6 +77,37 @@ codeunit 50208 "DUoM Test Helpers"
     end;
 
     /// <summary>
+    /// Crea e inserta un registro DUoM Lot Ratio para el par (ItemNo, LotNo).
+    /// Devuelve el registro insertado para su uso inmediato en el test.
+    /// </summary>
+    procedure CreateLotRatio(
+        ItemNo: Code[20];
+        LotNo: Code[50];
+        ActualRatio: Decimal): Record "DUoM Lot Ratio"
+    var
+        DUoMLotRatio: Record "DUoM Lot Ratio";
+    begin
+        DUoMLotRatio.Init();
+        DUoMLotRatio."Item No." := ItemNo;
+        DUoMLotRatio."Lot No." := LotNo;
+        DUoMLotRatio."Actual Ratio" := ActualRatio;
+        DUoMLotRatio.Insert(false);
+        exit(DUoMLotRatio);
+    end;
+
+    /// <summary>
+    /// Elimina el registro DUoM Lot Ratio para el par (ItemNo, LotNo) si existe.
+    /// No produce error si el registro no existe.
+    /// </summary>
+    procedure DeleteLotRatioIfExists(ItemNo: Code[20]; LotNo: Code[50])
+    var
+        DUoMLotRatio: Record "DUoM Lot Ratio";
+    begin
+        if DUoMLotRatio.Get(ItemNo, LotNo) then
+            DUoMLotRatio.Delete(false);
+    end;
+
+    /// <summary>
     /// Crea una variante de artículo con el código específico indicado.
     /// Usa Library - Inventory.CreateItemVariant internamente (norma del proyecto)
     /// y después renombra al código deseado para mantener semántica de negocio

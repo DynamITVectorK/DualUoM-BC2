@@ -72,6 +72,16 @@ page 50100 "DUoM Item Setup"
                     Message(SetupValidMsg);
                 end;
             }
+            action(DUoMLotRatios)
+            {
+                ApplicationArea = All;
+                Caption = 'DUoM Lot Ratios';
+                Image = Lot;
+                RunObject = page "DUoM Lot Ratio List";
+                RunPageLink = "Item No." = field("Item No.");
+                RunPageMode = View;
+                ToolTip = 'Opens the list of actual conversion ratios registered per lot for this item.';
+            }
         }
     }
 
