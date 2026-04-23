@@ -13,12 +13,13 @@
 /// NOTA SOBRE T04-T06 (Caso A vs Caso B):
 ///   Los tests T04-T06 verifican el comportamiento de OnAfterInitItemLedgEntry +
 ///   TryApplyLotRatioToILE mediante contabilización de diario de artículos (Caso A).
+///   El seguimiento de lote se asigna mediante Reservation Entries (AssignLotToItemJnlLine),
+///   que es el mecanismo estándar de BC 27 para ítems con "Lot Specific Tracking" activo.
 ///   El escenario Caso B (Purchase/Sales Order con múltiples lotes vía Item Tracking)
 ///   se basa en el mismo mecanismo subyacente (OnAfterInitItemLedgEntry) y queda cubierto
-///   funcionalmente por estos tests. La diferencia es que en el Caso B el IJL recibe el
-///   ratio de la línea de documento (no el de lote), y TryApplyLotRatioToILE lo sobrescribe;
-///   en el Caso A el IJL ya tiene el ratio de lote (por el subscriber de validación), y
-///   TryApplyLotRatioToILE lo confirma. Ambos flujos convergen en el mismo resultado final.
+///   funcionalmente por estos tests. En ambos casos, TryApplyLotRatioToILE sobrescribe
+///   el ratio del ILE con el ratio de lote específico registrado en DUoM Lot Ratio.
+///   Ambos flujos convergen en el mismo resultado final.
 /// </summary>
 codeunit 50217 "DUoM Lot Ratio Tests"
 {
@@ -48,10 +49,6 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         // [GIVEN] Ratio de lote registrado: (ItemNo, 'LOTE-T01') = 0,38
         LotNo := 'LOTE-T01';
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
-
-        // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
-        // Necesario para que BC 27 acepte y mantenga Lot No. en la validación del campo.
-        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
 
         // [GIVEN] Item Journal Line para 10 unidades
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
@@ -189,25 +186,28 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
 
         // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
-        // Necesario para que BC 27 mantenga Lot No. en IJL tras Validate y para que
-        // TryApplyLotRatioToILE pueda aplicar el ratio de lote al ILE.
+        // Necesario para que BC 27 procese las Reservation Entries de lote al contabilizar
+        // y para que TryApplyLotRatioToILE reciba el Lot No. correcto en el IJL interno.
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
 
-        // [GIVEN] IJL para 10 unidades con Lot No. validado → subscriber aplica ratio 0,38
+        // [GIVEN] IJL para 10 unidades; el seguimiento de lote se asigna vía Reservation Entry.
+        // No se usa Validate("Lot No.") directo: con "Lot Specific Tracking" activo, BC 27
+        // requiere Reservation Entry para que la contabilización sea válida.
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
         LibraryInventory.CreateItemJournalLine(
             ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
             "Item Ledger Entry Type"::Purchase, Item."No.", 0);
         ItemJnlLine.Validate(Quantity, 10);
-        ItemJnlLine.Validate("Lot No.", LotNo);
         ItemJnlLine.Modify(true);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, 10);
 
         // [WHEN] Se contabiliza el diario
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
         // [THEN] ILE: DUoM Ratio = 0,38 (ratio de lote)
-        // Nota: ILE."Lot No." no se poblará sin Reservation Entries; se busca por Item No.
+        // Con Reservation Entry activa, BC popula ILE."Lot No." = LotNo al contabilizar;
+        // la búsqueda por Item No. también es válida (único ILE del artículo).
         ILE.SetRange("Item No.", Item."No.");
         LibraryAssert.IsTrue(ILE.FindFirst(), 'T04: Se esperaba un ILE para el artículo contabilizado');
         LibraryAssert.AreEqual(0.38, ILE."DUoM Ratio",
@@ -252,34 +252,35 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoB, 0.41);
 
         // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
-        // Necesario para que BC 27 mantenga Lot No. en cada IJL tras Validate y para que
-        // TryApplyLotRatioToILE aplique el ratio específico de cada lote a su ILE.
+        // Necesario para que BC 27 procese las Reservation Entries de cada lote al
+        // contabilizar y para que TryApplyLotRatioToILE aplique el ratio específico
+        // de cada lote a su ILE.
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
 
-        // [GIVEN] IJL Lote A: 6 unidades
+        // [GIVEN] IJL Lote A: 6 unidades; seguimiento de lote asignado vía Reservation Entry
         LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
         LibraryInventory.CreateItemJournalLine(
             ItemJnlLineA, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
             "Item Ledger Entry Type"::Purchase, Item."No.", 0);
         ItemJnlLineA.Validate(Quantity, 6);
-        ItemJnlLineA.Validate("Lot No.", LotNoA);
         ItemJnlLineA.Modify(true);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLineA, LotNoA, 6);
 
         // [GIVEN] IJL Lote B: 4 unidades (misma plantilla y lote, misma contabilización)
         LibraryInventory.CreateItemJournalLine(
             ItemJnlLineB, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
             "Item Ledger Entry Type"::Purchase, Item."No.", 0);
         ItemJnlLineB.Validate(Quantity, 4);
-        ItemJnlLineB.Validate("Lot No.", LotNoB);
         ItemJnlLineB.Modify(true);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLineB, LotNoB, 4);
 
         // [WHEN] Se contabilizan ambas líneas
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
         // [THEN] ILE Lote A: DUoM Ratio = 0,38; DUoM Second Qty = 6 × 0,38 = 2,28
-        // Nota: ILE."Lot No." no se poblará sin Reservation Entries; se identifica por
-        // la cantidad (6 uds para Lote A, 4 uds para Lote B), que es única por línea.
+        // Con Reservation Entries activas, BC popula ILE."Lot No." para cada lote.
+        // Se identifica el ILE por la cantidad (6 uds para Lote A, 4 uds para Lote B).
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange(Quantity, 6);
         LibraryAssert.IsTrue(ILE.FindFirst(), 'T05: Se esperaba ILE para Lote A (6 uds)');
@@ -325,8 +326,8 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.42);
 
         // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
-        // Necesario para que BC 27 mantenga Lot No. en IJL tras Validate y para que
-        // TryApplyLotRatioToILE pueda aplicar el ratio de lote al ILE.
+        // Necesario para que BC 27 procese las Reservation Entries de lote al contabilizar
+        // y para que TryApplyLotRatioToILE pueda aplicar el ratio de lote al ILE.
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
 
         // [GIVEN] Recepción previa: 100 unidades del mismo lote (para tener inventario)
@@ -336,25 +337,25 @@ codeunit 50217 "DUoM Lot Ratio Tests"
             ItemJnlLinePurch, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
             "Item Ledger Entry Type"::Purchase, Item."No.", 0);
         ItemJnlLinePurch.Validate(Quantity, 100);
-        ItemJnlLinePurch.Validate("Lot No.", LotNo);
         ItemJnlLinePurch.Modify(true);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLinePurch, LotNo, 100);
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
-        // [GIVEN] IJL de salida: 10 unidades del mismo lote
+        // [GIVEN] IJL de salida: 10 unidades del mismo lote; trazabilidad vía Reservation Entry
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
         LibraryInventory.CreateItemJournalLine(
             ItemJnlLineSale, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
             "Item Ledger Entry Type"::Sale, Item."No.", 0);
         ItemJnlLineSale.Validate(Quantity, 10);
-        ItemJnlLineSale.Validate("Lot No.", LotNo);
         ItemJnlLineSale.Modify(true);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLineSale, LotNo, -10);
 
         // [WHEN] Se contabiliza la salida
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
         // [THEN] ILE de venta: DUoM Ratio = 0,42 (ratio del lote)
-        // Nota: ILE."Lot No." no se poblará sin Reservation Entries; se busca por
-        // Item No. + Entry Type, que identifica unívocamente la salida de este artículo.
+        // Con Reservation Entry activa, BC popula ILE."Lot No." = LotNo al contabilizar;
+        // la búsqueda por Item No. + Entry Type identifica unívocamente la salida.
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
         LibraryAssert.IsTrue(ILE.FindFirst(), 'T06: Se esperaba ILE de salida para el artículo');

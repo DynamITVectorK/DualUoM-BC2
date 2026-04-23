@@ -141,6 +141,62 @@ codeunit 50208 "DUoM Test Helpers"
     end;
 
     /// <summary>
+    /// Asigna seguimiento de lote a una Item Journal Line creando la Reservation Entry
+    /// (Estado: Surplus) que BC 27 requiere para contabilizar un diario con trazabilidad
+    /// de lote activada ("Lot Specific Tracking" = true en Item Tracking Code).
+    ///
+    /// Sin esta Reservation Entry, BC lanza "You must assign a lot number..." al intentar
+    /// contabilizar la línea, incluso si "Lot No." está indicado directamente en el IJL.
+    ///
+    /// Excepción justificada (Init + Insert sin helper estándar):
+    ///   Se verificó que "Library - Item Tracking" (Tests-TestLibraries BC 27) expone
+    ///   CreateItemJournalLineItemTracking, pero la firma exacta del parámetro
+    ///   ItemJournalLine (var Record vs. Record por valor) difiere entre versiones de
+    ///   runtime y no puede confirmarse sin compilación. Una discordancia provocaría
+    ///   error de compilación AL0036 en CI. Se opta por la creación directa de la
+    ///   Reservation Entry con los campos mínimos exigidos por el motor de BC,
+    ///   patrón que coincide con la implementación interna del propio helper estándar.
+    ///   Ver regla "AL Test Data Creation" en docs/05-testing-strategy.md.
+    ///
+    /// Nota sobre el cálculo del Entry No.:
+    ///   La tabla "Reservation Entry" no expone GetLastEntryNo(). El patrón estándar
+    ///   en BC (incluido en "Library - Item Tracking") es FindLast() + "Entry No." + 1.
+    ///
+    /// Parámetros:
+    ///   ItemJnlLine — La línea de diario a la que asignar la trazabilidad de lote.
+    ///   LotNo       — El número de lote a asignar.
+    ///   Qty         — Cantidad: positiva para entradas (Purchase), negativa para salidas (Sale).
+    /// </summary>
+    procedure AssignLotToItemJnlLine(var ItemJnlLine: Record "Item Journal Line"; LotNo: Code[50]; Qty: Decimal)
+    var
+        ReservationEntry: Record "Reservation Entry";
+        NextEntryNo: Integer;
+    begin
+        if ReservationEntry.FindLast() then
+            NextEntryNo := ReservationEntry."Entry No." + 1
+        else
+            NextEntryNo := 1;
+        ReservationEntry.Init();
+        ReservationEntry."Entry No." := NextEntryNo;
+        ReservationEntry."Item No." := ItemJnlLine."Item No.";
+        ReservationEntry."Variant Code" := ItemJnlLine."Variant Code";
+        ReservationEntry."Location Code" := ItemJnlLine."Location Code";
+        ReservationEntry."Lot No." := LotNo;
+        ReservationEntry."Reservation Status" := ReservationEntry."Reservation Status"::Surplus;
+        ReservationEntry."Source Type" := Database::"Item Journal Line";
+        ReservationEntry."Source Subtype" := ItemJnlLine."Entry Type".AsInteger();
+        ReservationEntry."Source ID" := ItemJnlLine."Journal Template Name";
+        ReservationEntry."Source Batch Name" := ItemJnlLine."Journal Batch Name";
+        ReservationEntry."Source Ref. No." := ItemJnlLine."Line No.";
+        ReservationEntry."Quantity (Base)" := Qty;
+        ReservationEntry."Qty. to Handle (Base)" := Qty;
+        ReservationEntry."Qty. to Invoice (Base)" := Qty;
+        ReservationEntry.Positive := Qty > 0;
+        ReservationEntry."Creation Date" := Today;
+        ReservationEntry.Insert(false);
+    end;
+
+    /// <summary>
     /// Crea una variante de artículo con el código específico indicado.
     /// Usa Library - Inventory.CreateItemVariant internamente (norma del proyecto)
     /// y después renombra al código deseado para mantener semántica de negocio
