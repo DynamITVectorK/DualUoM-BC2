@@ -2,7 +2,7 @@
 
 **Extensión de Doble Unidad de Medida para Microsoft Dynamics 365 Business Central**
 
-> **Versión del documento:** 1.1 (MVP + Issue 11b — Variantes)
+> **Versión del documento:** 1.2 (MVP + Issues 11b + 13 — Variantes + Ratios por Lote)
 > **Módulos cubiertos:** Compras · Ventas · Inventario · Almacén (básico)
 > **Audiencia:** Usuarios de negocio (sin conocimientos técnicos)
 
@@ -16,12 +16,14 @@
    - [2.2 Campos y modos de conversión](#campos-de-configuración-duom)
    - [2.3 Precisión de redondeo de la segunda UdM](#23-precisión-de-redondeo-de-la-segunda-udm)
    - [2.4 Configuración DUoM por variante (override opcional)](#24-configuración-duom-por-variante-override-opcional)
+   - [2.5 DUoM Unit Cost (compras) y DUoM Unit Price (ventas)](#25-duom-unit-cost-compras-y-duom-unit-price-ventas)
 3. [Compras](#3-compras)
 4. [Ventas](#4-ventas)
 5. [Inventario — Diario de productos](#5-inventario--diario-de-productos)
 6. [Almacén (básico)](#6-almacén-básico)
 7. [Consultas y análisis](#7-consultas-y-análisis)
 8. [Preguntas frecuentes (FAQ)](#8-preguntas-frecuentes-faq)
+9. [Ratios específicos por lote](#9-ratios-específicos-por-lote)
 
 ---
 
@@ -48,6 +50,8 @@ La extensión **DualUoM-BC** añade a Business Central la capacidad de registrar
 | **Segunda Qty** (`DUoM Second Qty`) | La cantidad en la segunda unidad de medida, visible en las líneas de documento. |
 | **Ratio DUoM** (`DUoM Ratio`) | El factor de conversión entre la primera y la segunda UdM para esa línea concreta. Fórmula: `Segunda Qty = Primera Qty × Ratio`. |
 | **Modo de conversión** | Define cómo se calcula (o no) automáticamente el ratio. Véase la sección siguiente. |
+| **DUoM Unit Cost** | Coste unitario en la **segunda UdM** (sólo en compras). Se sincroniza bidireccionalmente con el campo estándar **Coste directo unit.** usando el ratio. |
+| **DUoM Unit Price** | Precio de venta unitario en la **segunda UdM** (sólo en ventas). Se sincroniza bidireccionalmente con el campo estándar **Precio unit.** usando el ratio. |
 | **Precisión de redondeo** (`Qty. Rounding Precision`) | Paso mínimo permitido para la segunda cantidad. Configurado en BC en la tabla **Unidades de medida por artículo** (`Item Unit of Measure`). Véase la sección [2.3 — Precisión de redondeo de la segunda UdM](#23-precisión-de-redondeo-de-la-segunda-udm). |
 
 ---
@@ -74,6 +78,13 @@ Se abrirá la página **DUoM Item Setup**, que contiene los siguientes campos.
 | **Second UoM Code** | Sí | Código de la segunda unidad de medida (ej. `PCS`, `BOX`, `KG`). No puede coincidir con la UdM base. |
 | **Conversion Mode** | Sí | Modo de cálculo del ratio (Fijo / Variable / Siempre Variable). Véase tabla siguiente. |
 | **Fixed Ratio** | Según modo | Ratio de conversión por defecto. Obligatorio en modo Fijo; opcional en modo Variable; no aplica en Siempre Variable. |
+
+#### Acciones disponibles en la página DUoM Item Setup
+
+| Acción | Descripción |
+|--------|-------------|
+| **Validate Setup** | Comprueba que la configuración DUoM del artículo es coherente y completa (p. ej. que Second UoM Code está informado si DUoM está activado). Muestra un mensaje de confirmación si todo es correcto. |
+| **DUoM Lot Ratios** | Abre la lista de ratios reales registrados por lote para este artículo. Permite consultar y mantener la tabla **DUoM Lot Ratio**. Véase [sección 9 — Ratios específicos por lote](#9-ratios-específicos-por-lote). |
 
 ### Modos de conversión
 
@@ -268,6 +279,61 @@ Cuando el usuario **cambia el código de variante en una línea de pedido** (com
 
 ---
 
+## 2.5 DUoM Unit Cost (compras) y DUoM Unit Price (ventas)
+
+Además de la segunda cantidad, DualUoM-BC añade un campo de **precio/coste en la segunda unidad de medida** en las líneas de compra y venta. Este campo permite introducir o consultar el importe unitario expresado en la segunda UdM y se sincroniza automáticamente con el precio/coste principal del artículo.
+
+### DUoM Unit Cost — Líneas de compra
+
+| Campo | Descripción |
+|-------|-------------|
+| **DUoM Unit Cost** | Coste unitario en la segunda UdM (ej. €/PCS cuando la UdM base es KG). |
+
+**Comportamiento bidireccional:**
+
+- Si el usuario introduce el **DUoM Unit Cost** (ej. 2,50 €/PCS con ratio 1,25):
+  `Coste directo unit. = DUoM Unit Cost / DUoM Ratio = 2,50 / 1,25 = 2,00 €/KG`
+  El campo **Coste directo unit.** se actualiza automáticamente.
+
+- Si el usuario modifica el **Coste directo unit.** estándar de BC (ej. 2,00 €/KG):
+  `DUoM Unit Cost = Coste directo unit. × DUoM Ratio = 2,00 × 1,25 = 2,50 €/PCS`
+  El campo **DUoM Unit Cost** se recalcula automáticamente.
+
+> **Nota:** Si el DUoM Ratio es 0 (modo Siempre Variable sin ratio introducido), la derivación automática no se aplica — el sistema no puede calcular el precio de la segunda UdM sin conocer el ratio.
+
+### DUoM Unit Price — Líneas de venta
+
+| Campo | Descripción |
+|-------|-------------|
+| **DUoM Unit Price** | Precio de venta unitario en la segunda UdM (ej. €/PCS cuando la UdM base es KG). |
+
+**Comportamiento bidireccional:**
+
+- Si el usuario introduce el **DUoM Unit Price** (ej. 3,75 €/PCS con ratio 1,25):
+  `Precio unit. = DUoM Unit Price / DUoM Ratio = 3,75 / 1,25 = 3,00 €/KG`
+  El campo **Precio unit.** estándar de BC se actualiza automáticamente.
+
+- Si el usuario modifica el **Precio unit.** estándar (ej. 3,00 €/KG):
+  `DUoM Unit Price = Precio unit. × DUoM Ratio = 3,00 × 1,25 = 3,75 €/PCS`
+  El campo **DUoM Unit Price** se recalcula automáticamente.
+
+> **Nota:** Igual que en compras, si DUoM Ratio = 0 no se aplica la derivación automática.
+
+### Visibilidad del campo de precio/coste
+
+| Documento | Campo DUoM de precio/coste | Editable |
+|-----------|-----------------------------|----------|
+| Líneas de pedido de compra | **DUoM Unit Cost** | ✅ Sí |
+| Líneas de pedido de venta | **DUoM Unit Price** | ✅ Sí |
+| Albarán de compra registrado | **DUoM Unit Cost** | ❌ No (inmutable) |
+| Factura de compra registrada | **DUoM Unit Cost** | ❌ No (inmutable) |
+| Abono de compra registrado | **DUoM Unit Cost** | ❌ No (inmutable) |
+| Albarán de venta registrado | **DUoM Unit Price** | ❌ No (inmutable) |
+| Factura de venta registrada | **DUoM Unit Price** | ❌ No (inmutable) |
+| Abono de venta registrado | **DUoM Unit Price** | ❌ No (inmutable) |
+
+---
+
 ## 3. Compras
 
 La extensión añade dos campos en las **líneas de pedido de compra**: **DUoM Second Qty** y **DUoM Ratio**. Estos campos aparecen automáticamente cuando el artículo tiene DUoM activado.
@@ -282,8 +348,9 @@ La extensión añade dos campos en las **líneas de pedido de compra**: **DUoM S
 
 | Campo | Ubicación | Comportamiento |
 |-------|-----------|----------------|
-| **DUoM Second Qty** | Líneas del pedido, junto a **Cantidad** | Calculado automáticamente (modos Fijo y Variable) o editable por el usuario (modo Siempre Variable) |
+| **DUoM Second Qty** | Líneas del pedido, junto a **Cantidad** | Calculado automáticamente (modos Fijo y Variable) o editable por el usuario (modo Siempre Variable). El encabezado de la columna muestra el código de la segunda UdM (p. ej. **PCS**) cuando está disponible. |
 | **DUoM Ratio** | Líneas del pedido | Siempre editable; permite ajustar el ratio línea a línea en modo Variable |
+| **DUoM Unit Cost** | Líneas del pedido | Editable; se sincroniza bidireccionalmente con **Coste directo unit.** usando el ratio. Véase [sección 2.5](#25-duom-unit-cost-compras-y-duom-unit-price-ventas). |
 
 > `[PENDIENTE CAPTURA]` *Líneas de pedido de compra con las columnas DUoM Second Qty y DUoM Ratio visibles.*
 
@@ -345,9 +412,25 @@ Cuando el pedido de compra está listo para recibirse:
 
 > **Importante:** Antes de contabilizar, verifique que cada línea con DUoM tiene una **DUoM Second Qty** correcta (especialmente en modo Siempre Variable). Si la segunda cantidad queda a cero, el sistema la registrará tal cual en el movimiento de producto — no hay bloqueo ni aviso automático en la versión actual.
 
-### 3.3 Ver los movimientos de producto resultantes
+### 3.3 Ver los campos DUoM en documentos registrados y movimientos de producto
 
-Después de contabilizar el albarán:
+Después de contabilizar el albarán, los campos DUoM son visibles en **dos lugares**:
+
+#### 3.3.1 Documentos de compra registrados
+
+Los campos **DUoM Second Qty**, **DUoM Ratio** y **DUoM Unit Cost** aparecen directamente en las líneas de los siguientes documentos registrados, sin necesidad de navegar a los movimientos de producto:
+
+| Documento registrado | Cómo acceder |
+|----------------------|--------------|
+| **Albarán de compra registrado** | Compras → Historial → Recepciones registradas |
+| **Factura de compra registrada** | Compras → Historial → Facturas registradas |
+| **Abono de compra registrado** | Compras → Historial → Abonos registrados |
+
+Todos los campos en documentos registrados son **de solo lectura** — los documentos contabilizados son inmutables.
+
+#### 3.3.2 Movimientos de producto
+
+Para ver el historial de doble UdM a nivel de movimiento contable:
 
 1. Abra el artículo o el pedido de compra.
 2. Navegue a **Movimientos de producto** (desde la ficha del artículo: **Movimientos → Movimientos de producto**; o desde el pedido: **Navegar → Movimientos contabilizados**).
@@ -361,7 +444,7 @@ Los valores de **DUoM Second Qty** y **DUoM Ratio** en los movimientos de produc
 
 ## 4. Ventas
 
-La extensión añade los mismos campos (**DUoM Second Qty** y **DUoM Ratio**) en las **líneas de pedido de venta**. El comportamiento es equivalente al de compras.
+La extensión añade los mismos campos en las **líneas de pedido de venta**. El comportamiento es equivalente al de compras, con la única diferencia de que el campo de precio se denomina **DUoM Unit Price** (en lugar de DUoM Unit Cost).
 
 ### 4.1 Introducir un pedido de venta con segunda cantidad
 
@@ -378,6 +461,14 @@ La extensión añade los mismos campos (**DUoM Second Qty** y **DUoM Ratio**) en
    - **Fijo:** La **DUoM Second Qty** se calcula automáticamente (ej. 25 KG si ratio = 1,25). No editable. Si la segunda UdM tiene **Qty. Rounding Precision** configurada, el resultado se redondea al salir del campo Cantidad.
    - **Variable:** Se propone la **DUoM Second Qty** según el ratio por defecto. Puede modificar el **DUoM Ratio** para ajustar. El resultado se redondea si hay precisión configurada.
    - **Siempre Variable:** Introduzca manualmente la **DUoM Second Qty**. Si hay precisión configurada, el valor se redondeará al salir del campo (ej. 11,5 → 12 con precisión = 1).
+
+#### Campos nuevos en las líneas de venta
+
+| Campo | Ubicación | Comportamiento |
+|-------|-----------|----------------|
+| **DUoM Second Qty** | Líneas del pedido, junto a **Cantidad** | Calculado automáticamente (modos Fijo y Variable) o editable (modo Siempre Variable). El encabezado de la columna muestra el código de la segunda UdM cuando está disponible. |
+| **DUoM Ratio** | Líneas del pedido | Siempre editable; permite ajustar el ratio línea a línea en modo Variable |
+| **DUoM Unit Price** | Líneas del pedido | Editable; se sincroniza bidireccionalmente con **Precio unit.** usando el ratio. Véase [sección 2.5](#25-duom-unit-cost-compras-y-duom-unit-price-ventas). |
 
 > `[PENDIENTE CAPTURA]` *Líneas de pedido de venta con DUoM Second Qty y DUoM Ratio visibles.*
 
@@ -406,13 +497,27 @@ El comportamiento con variantes es idéntico al descrito para compras en la [sec
 
 > `[PENDIENTE CAPTURA]` *Pedido de venta listo para contabilizar con líneas DUoM correctamente completadas.*
 
-### 4.3 Ver los movimientos de producto resultantes
+### 4.3 Ver los campos DUoM en documentos registrados y movimientos de producto
 
-Tras contabilizar el albarán de venta:
+Tras contabilizar el albarán de venta, los campos DUoM son visibles en **dos lugares**:
 
-1. Desde la ficha del artículo, navegue a **Movimientos → Movimientos de producto**.
-2. Localice los movimientos de tipo *Venta* generados por el albarán.
-3. Compruebe los campos **DUoM Second Qty** (negativo, ya que representa una salida) y **DUoM Ratio**.
+#### 4.3.1 Documentos de venta registrados
+
+Los campos **DUoM Second Qty**, **DUoM Ratio** y **DUoM Unit Price** aparecen directamente en las líneas de los siguientes documentos registrados:
+
+| Documento registrado | Cómo acceder |
+|----------------------|--------------|
+| **Albarán de venta registrado** | Ventas → Historial → Envíos registrados |
+| **Factura de venta registrada** | Ventas → Historial → Facturas registradas |
+| **Abono de venta registrado** | Ventas → Historial → Abonos registrados |
+
+Todos los campos en documentos registrados son **de solo lectura**.
+
+#### 4.3.2 Movimientos de producto
+
+Desde la ficha del artículo, navegue a **Movimientos → Movimientos de producto**.
+Localice los movimientos de tipo *Venta* generados por el albarán.
+Compruebe los campos **DUoM Second Qty** (negativo, ya que representa una salida) y **DUoM Ratio**.
 
 > `[PENDIENTE CAPTURA]` *Movimientos de producto de tipo Venta con columnas DUoM.*
 
@@ -596,11 +701,15 @@ Si desactiva el campo **Dual UoM Enabled** en un artículo:
 
 ### ¿Se puede usar DUoM con seguimiento de lotes?
 
-**Sí, con matices.** En la **Fase 1 (MVP)**, DUoM es compatible con artículos que tienen seguimiento de lotes activado. La segunda cantidad y el ratio se registran a nivel de línea de documento, por lo que funcionan con normalidad aunque el artículo use lotes.
+**Sí, completamente.** DualUoM-BC es compatible con artículos que tienen seguimiento de lotes activado. Además, la extensión soporta **ratios específicos por lote**: es posible registrar el ratio real medido para cada lote (ej. el peso por pieza pesado en recepción) y que el sistema lo proponga automáticamente cuando ese lote se asigna en el Diario de productos.
 
-La limitación en Fase 1 es que **el ratio no es específico por lote**: todos los lotes del mismo artículo comparten el mismo ratio por defecto (el configurado en **Fixed Ratio**). Si el peso real de un lote concreto difiere del ratio por defecto, el usuario puede ajustar el **DUoM Ratio** en la línea de ese albarán.
+**Funcionalidad disponible:**
 
-El soporte de **ratios específicos por lote** (es decir, registrar y reutilizar el ratio pesado de cada lote de forma automática) estará disponible en la **Fase 2** del proyecto.
+- En el **Diario de productos**, al asignar un número de lote (`Lot No.`) a una línea, el sistema busca en la tabla **DUoM Lot Ratio** si existe un ratio registrado para ese lote. Si existe y el modo de conversión del artículo es Variable o Siempre Variable, los campos **DUoM Ratio** y **DUoM Second Qty** se pre-rellenan automáticamente con el ratio del lote.
+- El modo **Fixed** siempre usa el ratio fijo del artículo; el ratio de lote no lo sobrescribe.
+- Al contabilizar, cada **Movimiento de producto** recibe el ratio real del lote (proporcional a la cantidad del movimiento cuando hay múltiples lotes en la misma línea).
+
+Para más detalle sobre cómo registrar y gestionar ratios de lote, véase [sección 9 — Ratios específicos por lote](#9-ratios-específicos-por-lote).
 
 ---
 
@@ -672,18 +781,120 @@ La configuración DUoM de esa variante se **elimina automáticamente** al borrar
 
 ---
 
+## 9. Ratios específicos por lote
+
+### 9.1 ¿Para qué sirven los ratios por lote?
+
+En artículos con seguimiento de lotes donde el ratio varía entre lotes (p. ej. fruta fresca, queso o cualquier producto pesado individualmente), DualUoM-BC permite registrar el **ratio real medido** para cada número de lote. Cuando ese lote se asigna posteriormente en una transacción, el sistema propone automáticamente el ratio real sin que el usuario tenga que introducirlo manualmente.
+
+**Ejemplo:** El artículo *Queso Manchego* tiene Modo = Variable, ratio por defecto = 2,5 KG/PCS. Al pesar el lote `LOTE-2025-04` en recepción se midió 2,73 KG/PCS. Si se registra ese ratio en la tabla DUoM Lot Ratio, la próxima vez que alguien use el lote `LOTE-2025-04` en el Diario de productos, el sistema propondrá automáticamente ratio = 2,73 y calculará la segunda cantidad correcta.
+
+### 9.2 Cuándo aplica el ratio de lote
+
+| Modo de conversión | ¿Se aplica el ratio de lote? |
+|--------------------|------------------------------|
+| **Fixed** | ❌ No. El ratio fijo del artículo siempre prevalece. |
+| **Variable** | ✅ Sí. El ratio de lote sobrescribe el ratio por defecto si existe. |
+| **AlwaysVariable** | ✅ Sí. El ratio de lote pre-rellena los campos en lugar de dejarlos vacíos. |
+
+### 9.3 Cómo registrar un ratio de lote
+
+**Opción 1: desde la ficha DUoM del artículo**
+
+1. Abra la ficha del artículo.
+2. Haga clic en **Navegar → DUoM Setup** para abrir la configuración DUoM.
+3. En la página **DUoM Item Setup**, haga clic en la acción **DUoM Lot Ratios**.
+4. Se abre la página **DUoM Lot Ratio List**, filtrada al artículo actual.
+5. Haga clic en **Nuevo** (o edite directamente la línea en blanco al final).
+6. Rellene los campos:
+
+| Campo | Descripción |
+|-------|-------------|
+| **Item No.** | Nº de artículo. Se rellena automáticamente por el filtro. |
+| **Lot No.** | Número de lote al que corresponde este ratio (ej. `LOTE-2025-04`). |
+| **Actual Ratio** | Ratio real medido (ej. `2,73`). Debe ser mayor que cero. |
+| **Description** | Descripción opcional (ej. "Pesado en recepción 15-abr-2025"). |
+
+7. Cierre la página. Los cambios se guardan automáticamente.
+
+> `[PENDIENTE CAPTURA]` *Página DUoM Lot Ratio List con un registro de ejemplo para el artículo Queso Manchego.*
+
+**Opción 2: búsqueda directa**
+
+También puede acceder a la lista global de ratios de lote buscando **DUoM Lot Ratio List** en la búsqueda de BC.
+
+### 9.4 Cómo funciona el ratio de lote en el Diario de productos
+
+1. Cree una nueva línea en el **Diario de productos**.
+2. Seleccione el artículo con DUoM activado y con seguimiento de lotes.
+3. Introduzca la **Cantidad** principal (ej. 5 KG).
+4. En el campo **Lot No.** (Nº de lote), introduzca o seleccione el número de lote.
+5. El sistema busca automáticamente si existe un ratio registrado en **DUoM Lot Ratio** para ese artículo y ese lote.
+   - Si **sí existe** y el modo es Variable o AlwaysVariable: los campos **DUoM Ratio** y **DUoM Second Qty** se pre-rellenan con el ratio del lote (ej. DUoM Ratio = 2,73; DUoM Second Qty = 5 × 2,73 = 13,65 → redondeado a 14 PCS si precisión = 1).
+   - Si **no existe** ratio para ese lote: el sistema usa el comportamiento habitual según el modo (ratio por defecto en Variable, campos vacíos en AlwaysVariable).
+
+> `[PENDIENTE CAPTURA]` *Diario de productos con un artículo de seguimiento de lotes y el campo DUoM Ratio pre-rellenado automáticamente tras introducir el Lot No.*
+
+### 9.5 Propagación del ratio de lote al contabilizar
+
+Cuando se contabiliza el Diario de productos con múltiples lotes en la misma línea (cada uno con cantidad parcial), el sistema crea un **Movimiento de producto** por lote. La extensión DualUoM-BC calcula la **DUoM Second Qty** de cada ILE proporcionalmente a la cantidad del movimiento:
+
+```
+DUoM Second Qty del ILE = Abs(Cantidad del ILE) × Ratio efectivo del lote
+```
+
+Esto garantiza que la suma de las segundas cantidades de todos los ILEs coincide con la segunda cantidad total de la línea, incluso con múltiples lotes.
+
+### 9.6 Preguntas frecuentes sobre ratios por lote
+
+**¿Puedo modificar el ratio de un lote que ya tiene movimientos contabilizados?**
+
+Sí, puede actualizar el **Actual Ratio** en la tabla DUoM Lot Ratio en cualquier momento. Los movimientos ya contabilizados son inmutables (conservan el ratio que tenían cuando se contabilizaron). El nuevo ratio sólo afecta a las próximas transacciones en que se use ese lote.
+
+**¿El ratio de lote se aplica en los pedidos de compra o venta?**
+
+En la versión actual, el ratio de lote se aplica automáticamente en el **Diario de productos** (cuando el usuario valida el campo Lot No.). En los pedidos de compra y venta, la asignación de lotes se realiza a través de las líneas de seguimiento de artículos, y el sistema aplica el ratio de lote en el momento de la contabilización (al crear los ILEs), no en la línea de pedido.
+
+
+---
+
+*Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, informes avanzados) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
+
+*Última actualización: v1.2 — Issues 11b + 13 — Variantes, ratios por lote, DUoM Unit Cost/Price, documentos registrados.*
+
 ## Apéndice: Resumen de campos DUoM por documento
 
 | Documento | Campo | Editable | Notas |
 |-----------|-------|----------|-------|
-| Pedido de compra (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Al cambiar Variante, se recalcula automáticamente. |
+| Pedido de compra (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Al cambiar Variante, se recalcula automáticamente. Encabezado de columna muestra el código de la segunda UdM. |
 | Pedido de compra (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea; se resetea al cambiar variante. |
+| Pedido de compra (líneas) | **DUoM Unit Cost** | Siempre | Coste unitario en 2ª UdM. Se sincroniza bidireccionalmente con Coste directo unit. usando el ratio. |
 | Pedido de venta (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Ídem compras. Al cambiar Variante, se recalcula automáticamente. |
 | Pedido de venta (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea; se resetea al cambiar variante. |
-| Diario de productos (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Respeta variante si se informa. |
-| Diario de productos (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea |
-| Movimiento de producto | **DUoM Second Qty** | ❌ No editable | Inmutable tras contabilizar |
+| Pedido de venta (líneas) | **DUoM Unit Price** | Siempre | Precio de venta unitario en 2ª UdM. Se sincroniza bidireccionalmente con Precio unit. usando el ratio. |
+| Diario de productos (líneas) | **DUoM Second Qty** | Sólo en modo Siempre Variable | Auto-calculado en modo Fijo y Variable. Respeta variante si se informa. Se pre-rellena desde ratio de lote si existe. |
+| Diario de productos (líneas) | **DUoM Ratio** | Siempre | Permite ajuste línea a línea. Se pre-rellena desde ratio de lote si existe. |
+| Movimiento de producto | **DUoM Second Qty** | ❌ No editable | Inmutable tras contabilizar. En transacciones de salida (venta, ajuste negativo) es negativo. |
 | Movimiento de producto | **DUoM Ratio** | ❌ No editable | Inmutable tras contabilizar |
+| Movimiento de valor (Value Entry) | **DUoM Second Qty** | ❌ No editable | Propagado automáticamente desde el Diario de productos al contabilizar. Negativo en salidas. |
+| Albarán de compra registrado | **DUoM Second Qty** | ❌ No editable | Propagado desde la línea de compra origen |
+| Albarán de compra registrado | **DUoM Ratio** | ❌ No editable | Propagado desde la línea de compra origen |
+| Albarán de compra registrado | **DUoM Unit Cost** | ❌ No editable | Propagado desde la línea de compra origen |
+| Factura de compra registrada | **DUoM Second Qty** | ❌ No editable | Propagado desde la línea de compra origen |
+| Factura de compra registrada | **DUoM Ratio** | ❌ No editable | Propagado desde la línea de compra origen |
+| Factura de compra registrada | **DUoM Unit Cost** | ❌ No editable | Propagado desde la línea de compra origen |
+| Abono de compra registrado | **DUoM Second Qty** | ❌ No editable | Propagado desde la línea de compra origen |
+| Abono de compra registrado | **DUoM Ratio** | ❌ No editable | Propagado desde la línea de compra origen |
+| Abono de compra registrado | **DUoM Unit Cost** | ❌ No editable | Propagado desde la línea de compra origen |
+| Albarán de venta registrado | **DUoM Second Qty** | ❌ No editable | Propagado desde la línea de venta origen |
+| Albarán de venta registrado | **DUoM Ratio** | ❌ No editable | Propagado desde la línea de venta origen |
+| Albarán de venta registrado | **DUoM Unit Price** | ❌ No editable | Propagado desde la línea de venta origen |
+| Factura de venta registrada | **DUoM Second Qty** | ❌ No editable | Propagado desde la línea de venta origen |
+| Factura de venta registrada | **DUoM Ratio** | ❌ No editable | Propagado desde la línea de venta origen |
+| Factura de venta registrada | **DUoM Unit Price** | ❌ No editable | Propagado desde la línea de venta origen |
+| Abono de venta registrado | **DUoM Second Qty** | ❌ No editable | Propagado desde la línea de venta origen |
+| Abono de venta registrado | **DUoM Ratio** | ❌ No editable | Propagado desde la línea de venta origen |
+| Abono de venta registrado | **DUoM Unit Price** | ❌ No editable | Propagado desde la línea de venta origen |
 | Configuración DUoM artículo | **Dual UoM Enabled** | ✅ Sí | Interruptor principal; no puede ser sobrescrito por variante |
 | Configuración DUoM artículo | **Second UoM Code** | ✅ Sí | Código de UdM secundaria base |
 | Configuración DUoM artículo | **Conversion Mode** | ✅ Sí | Fijo / Variable / Siempre Variable |
@@ -692,10 +903,15 @@ La configuración DUoM de esa variante se **elimina automáticamente** al borrar
 | Override DUoM variante | **Second UoM Code** | ✅ Sí | Override de segunda UdM para la variante |
 | Override DUoM variante | **Conversion Mode** | ✅ Sí | Override del modo de conversión |
 | Override DUoM variante | **Fixed Ratio** | ✅ Sí | Override del ratio por defecto |
+| DUoM Lot Ratio | **Item No.** | ✅ Sí | Artículo al que pertenece el ratio de lote |
+| DUoM Lot Ratio | **Lot No.** | ✅ Sí | Número de lote con ratio específico |
+| DUoM Lot Ratio | **Actual Ratio** | ✅ Sí | Ratio real medido para este lote. Debe ser > 0. |
+| DUoM Lot Ratio | **Description** | ✅ Sí | Descripción o comentario opcional del lote |
 | Unid. medida por artículo (BC std.) | **Qty. Rounding Precision** | ✅ Sí | Controla el redondeo de `DUoM Second Qty`. Configurar en ficha artículo → pestaña Unidades de medida. |
 
 ---
 
-*Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, ratios por lote, informes) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
+*Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, informes avanzados) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
 
-*Última actualización: Issue 11b — Soporte DUoM por variante (jerarquía Artículo → Variante).*
+*Última actualización: v1.2 — Issues 11b + 13 — Variantes, ratios por lote, DUoM Unit Cost/Price, documentos registrados.*
+
