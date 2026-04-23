@@ -30,12 +30,13 @@ codeunit 50108 "DUoM Lot Subscribers"
     /// (a diferencia de Purchase Line y Sales Line donde no es campo directo en BC 27).
     /// Firma verificada: BC 27 / runtime 15 — Item Journal Line tiene Lot No. como campo propio.
     ///
-    /// Patrón estándar AL para campos de tableextension en suscriptores de evento:
-    ///   Los campos de extensión (tableextension) del parámetro var Rec de un suscriptor
-    ///   no se propagan de vuelta correctamente a través de cadenas de var-param anidadas.
-    ///   El patrón correcto es leer en variables locales, invocar el helper con esas variables
-    ///   y asignar de vuelta explícitamente a Rec. Este es el mismo patrón usado por
-    ///   OnAfterValidateItemJnlLineQty (asignación directa Rec."DUoM Ratio" := ...).
+    /// Patrón correcto para propagar campos de tableextension en suscriptores de evento:
+    ///   La asignación directa (:=) a un campo de tableextension dentro de un suscriptor
+    ///   de evento no garantiza la propagación de vuelta al registro llamante en BC AL.
+    ///   El patrón correcto es usar Rec.Validate("DUoM Ratio", NewRatio), que:
+    ///     1) Propaga el valor del ratio correctamente al registro llamante.
+    ///     2) Dispara el trigger OnValidate del campo, que recalcula DUoM Second Qty
+    ///        con la precisión de redondeo de la UoM secundaria, evitando pérdida de decimales.
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
     local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
@@ -47,7 +48,7 @@ codeunit 50108 "DUoM Lot Subscribers"
         NewSecondQty := Rec."DUoM Second Qty";
         ApplyLotRatioIfExists(Rec."Item No.", Rec."Lot No.", Rec."Variant Code",
                               Rec.Quantity, NewRatio, NewSecondQty);
-        Rec."DUoM Ratio" := NewRatio;
+        Rec.Validate("DUoM Ratio", NewRatio);
         Rec."DUoM Second Qty" := NewSecondQty;
     end;
 
