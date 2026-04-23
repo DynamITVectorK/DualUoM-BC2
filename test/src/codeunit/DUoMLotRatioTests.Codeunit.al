@@ -348,7 +348,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
             "Item Ledger Entry Type"::Sale, Item."No.", 0);
         ItemJnlLineSale.Validate(Quantity, 10);
         ItemJnlLineSale.Modify(true);
-        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLineSale, LotNo, -10);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLineSale, LotNo, 10);
 
         // [WHEN] Se contabiliza la salida
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);

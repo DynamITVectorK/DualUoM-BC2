@@ -79,25 +79,34 @@ de BC cuando existe un helper de librería equivalente.
 | Sales Header        | `LibrarySales.CreateSalesHeader(...)`                        |
 | Sales Line          | `LibrarySales.CreateSalesLine(...)`                          |
 | Item Journal Line   | `LibraryInventory.CreateItemJournalLine(...)`                |
+| Item c/ lot tracking | `DUoMTestHelpers.EnableLotTrackingOnItem(var Item)` — delega en `LibraryItemTracking.CreateItemTrackingCode` |
+| IJL lot assignment  | `DUoMTestHelpers.AssignLotToItemJnlLine(var ItemJnlLine, LotNo, Qty)` — delega en `LibraryItemTracking.CreateItemJournalLineItemTracking` |
 | DUoM Item Setup     | `DUoMTestHelpers.CreateItemSetup(...)`                       |
 | DUoM Variant Setup  | `DUoMTestHelpers.CreateVariantSetup(...)`                    |
 | DUoM Lot Ratio      | `DUoMTestHelpers.CreateLotRatio(ItemNo, LotNo, Ratio)`       |
-| Item c/ lot tracking | `DUoMTestHelpers.EnableLotTrackingOnItem(var Item)`          |
 
-> **Nota sobre seguimiento de lotes:** Los tests que validan `Lot No.` en `Item Journal Line`
-> y esperan que el campo se mantenga después de `Validate("Lot No.", ...)` **deben** llamar a
-> `DUoMTestHelpers.EnableLotTrackingOnItem(Item)` antes de crear el IJL. Sin un `Item Tracking Code`
-> asignado, BC 27 puede limpiar el campo durante la validación, impidiendo que el subscriber de
-> lotes (codeunit 50108) aplique el ratio de lote correspondiente. El helper crea el código
-> `'DUoM-LOT'` con `Lot Specific Tracking = true` y lo asigna al artículo.
+> **Nota sobre seguimiento de lotes en Item Journal Line:**
+> Los tests que publican IJL con seguimiento de lote activo ("Lot Specific Tracking" = true)
+> deben:
+> 1. Llamar a `DUoMTestHelpers.EnableLotTrackingOnItem(Item)` — asigna Item Tracking Code
+>    con "Lot Specific Tracking" = true usando `Library - Item Tracking`.
+> 2. Llamar a `DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, Qty)` — crea la
+>    Reservation Entry requerida por BC 27 para la contabilización, usando
+>    `LibraryItemTracking.CreateItemJournalLineItemTracking` del flujo estándar.
+>    `Qty` debe ser positiva (user-facing); el signo se aplica automáticamente según Entry Type.
+>
+> Los tests que solo validan el campo `Lot No.` (subscriber T01/T02/T03, sin contabilizar)
+> **no** deben activar lot tracking en el artículo: BC 27 limpiaría el campo `"Lot No."` si
+> no existe Reservation Entry de respaldo. Con `"Lot No."` vacío, el subscriber de lotes
+> (50108) sale inmediatamente (`if LotNo = '' then exit`) sin aplicar el ratio de lote,
+> y `DUoM Ratio` queda en el valor genérico del artículo en lugar del ratio específico del lote.
 
 ### Excepciones justificadas (documentadas en código)
 
 - `Init()` sin `Insert()` es válido para registros puramente en memoria (p.ej. test de validación de campos en aislamiento).
 - `WhseEntry.Init()` + `Insert(false)` es aceptable para crear entradas de almacén en tests de condición de editabilidad, porque no existe helper estándar sin configuración completa de almacén. Debe documentarse en comentario en el test.
 - `DUoMTestHelpers.CreateItemVariantWithCode` usa `LibraryInventory.CreateItemVariant` internamente y después renombra al código específico. Se justifica porque los tests DUoM requieren códigos con semántica de negocio determinista (`'ROMANA'`, `'ICEBERG'`, `'GRANEL'`).
-- Los helpers propios `DUoMTestHelpers.CreateItemSetup`, `CreateVariantSetup`, `CreateLotRatio` y `EnableLotTrackingOnItem` crean registros de tablas propias de la extensión o configuran entidades BC sin equivalente estándar de Microsoft.
-- `DUoMTestHelpers.EnableLotTrackingOnItem` usa `Init() + Insert(false)` para `Item Tracking Code` porque `Library - Inventory` no ofrece métodos de creación de Item Tracking Code. Aunque existe `Library - Item Tracking` en `Tests-TestLibraries`, no está verificada su disponibilidad exacta en este entorno (sin uso previo en el proyecto). Excepción documentada en el propio helper.
+- Los helpers propios `DUoMTestHelpers.CreateItemSetup`, `CreateVariantSetup` y `CreateLotRatio` crean registros de tablas propias de la extensión sin equivalente en las bibliotecas estándar de Microsoft.
 
 ---
 

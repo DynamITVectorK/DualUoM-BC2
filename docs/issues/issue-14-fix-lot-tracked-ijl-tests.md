@@ -62,7 +62,8 @@ aunque `"Lot No."` esté indicado en el campo del IJL.
 - Mismo patrón que T04 para ambas líneas (Lote A y Lote B).
 
 **T06 — `IJLPosting_SaleLot_ILEHasAbsQtyTimesLotRatio`:**
-- Mismo patrón que T04 para la línea de compra (Qty positiva) y la línea de venta (Qty negativa).
+- Mismo patrón que T04 para la línea de compra (Qty = 100) y la línea de venta (Qty = 10 — positivo).
+  El signo negativo para la salida lo aplica la librería estándar automáticamente.
 
 **Comentarios de cabecera y `[THEN]`:**
 - Actualizado el comentario "NOTA SOBRE T04-T06" para reflejar el uso de `Reservation Entries`.
@@ -71,10 +72,18 @@ aunque `"Lot No."` esté indicado en el campo del IJL.
 
 ### `test/src/codeunit/DUoMTestHelpers.Codeunit.al`
 
-- Añadido nuevo helper público `AssignLotToItemJnlLine(var ItemJnlLine, LotNo, Qty)`:
-  crea directamente una `Reservation Entry` (Status = Surplus) con los campos mínimos
-  requeridos por el motor de contabilización de BC 27. La cantidad es positiva para
-  entradas (Purchase) y negativa para salidas (Sale).
+**`EnableLotTrackingOnItem`:**
+- Reemplazado el `Init/Insert` manual de `Item Tracking Code` por
+  `LibraryItemTracking.CreateItemTrackingCode(ItemTrackingCode, false, true)`.
+  El código se genera aleatoriamente (sin hardcoding a 'DUoM-LOT'), siguiendo el
+  flujo estándar BC. El `Library - Item Tracking` (codeunit 130502) pertenece a
+  `Tests-TestLibraries` (ID `5d86850b-0d76-4eca-bd7b-951ad998e997`).
+
+**`AssignLotToItemJnlLine`** (nuevo helper):
+- Implementado con `LibraryItemTracking.CreateItemJournalLineItemTracking(ReservEntry, ItemJnlLine, '', LotNo, Qty)`.
+  La library aplica el signo correcto internamente vía `ItemJournalLine.Signed(Qty)`:
+  para Purchase → `+Qty` en Reservation Entry; para Sale → `−Qty`.
+  El caller siempre pasa `Qty` como valor positivo (user-facing), igual a `ItemJnlLine.Quantity`.
 
 ### Código de producción
 
@@ -96,7 +105,10 @@ con el flujo estándar de `Reservation Entries`:
 - [x] `IJLPosting_SingleLot_ILEHasLotSpecificRatio`: ILE con `DUoM Ratio = 0,38`
 - [x] `IJLPosting_TwoLots_EachILEHasLotSpecificRatio`: cada ILE con su ratio específico
 - [x] `IJLPosting_SaleLot_ILEHasAbsQtyTimesLotRatio`: ILE salida con `DUoM Second Qty = 4,2`
-- [x] Asignación de lote vía mecanismo estándar BC 27 (Reservation Entries)
+- [x] Asignación de lote vía mecanismo estándar BC 27 (`Library - Item Tracking`, codeunit 130502)
+- [x] `Library - Item Tracking.CreateItemTrackingCode` usado en `EnableLotTrackingOnItem`
+- [x] `Library - Item Tracking.CreateItemJournalLineItemTracking` usado en `AssignLotToItemJnlLine`
+- [x] Sin creación manual de `Reservation Entry` ni de `Item Tracking Code`
 - [x] Ratio de lote específico cargado correctamente desde `DUoM Lot Ratio` (tabla 50102)
 - [x] Sin fallback incorrecto al ratio genérico del artículo
 - [x] Precisión decimal preservada (0,38, no redondeado a 0,4)

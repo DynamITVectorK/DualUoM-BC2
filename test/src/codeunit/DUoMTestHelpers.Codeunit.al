@@ -109,91 +109,51 @@ codeunit 50208 "DUoM Test Helpers"
 
     /// <summary>
     /// Asigna un Item Tracking Code con seguimiento de lotes al artículo indicado.
-    /// Crea el código 'DUoM-LOT' si no existe ya en la base de datos de prueba.
-    /// Necesario para que BC 27 acepte y mantenga Lot No. en Item Journal Line
-    /// durante la validación del campo (Validate("Lot No.", ...)), lo que permite
-    /// al subscriber de lotes (50108) aplicar el ratio de lote sobre DUoM Ratio y
-    /// DUoM Second Qty. Sin este código de seguimiento, BC puede limpiar el campo
-    /// Lot No. durante la validación, dejando el subscriber sin efecto.
+    /// Necesario para que BC 27 exija y procese el seguimiento de lote al contabilizar
+    /// un Item Journal Line.
     ///
-    /// Excepción justificada (Init + Insert sin helper estándar):
-    ///   Library - Inventory no ofrece ningún método de creación de Item Tracking Code.
-    ///   En BC 27 existe Library - Item Tracking en Tests-TestLibraries, pero no está
-    ///   verificada su disponibilidad exacta ni su nombre de método en este entorno
-    ///   (no tiene ningún uso previo en el proyecto). Para evitar una dependencia no
-    ///   verificada, se crea el registro directamente con Init() + Insert(false), que
-    ///   es el patrón admitido en el proyecto cuando no existe helper estándar aplicable.
-    ///   Ver regla "AL Test Data Creation" en docs/05-testing-strategy.md.
+    /// Usa Library - Item Tracking (Tests-TestLibraries):
+    ///   LibraryItemTracking.CreateItemTrackingCode(ItemTrackingCode, false, true)
+    ///   crea un código con "Lot Specific Tracking" = true mediante el flujo estándar BC.
+    ///   Cada llamada genera un código único con nombre aleatorio — patrón estándar BC
+    ///   (los tests en bc-w1 / ALAppExtensions siguen esta misma convención). El código
+    ///   queda en la transacción del test y se descarta con el rollback de TestIsolation.
     /// </summary>
     procedure EnableLotTrackingOnItem(var Item: Record Item)
     var
         ItemTrackingCode: Record "Item Tracking Code";
+        LibraryItemTracking: Codeunit "Library - Item Tracking";
     begin
-        if not ItemTrackingCode.Get('DUoM-LOT') then begin
-            ItemTrackingCode.Init();
-            ItemTrackingCode.Code := 'DUoM-LOT';
-            ItemTrackingCode.Description := 'DUoM Lot Tracking';
-            ItemTrackingCode."Lot Specific Tracking" := true;
-            ItemTrackingCode.Insert(false);
-        end;
+        LibraryItemTracking.CreateItemTrackingCode(ItemTrackingCode, false, true);
         Item.Validate("Item Tracking Code", ItemTrackingCode.Code);
         Item.Modify(true);
     end;
 
     /// <summary>
-    /// Asigna seguimiento de lote a una Item Journal Line creando la Reservation Entry
-    /// (Estado: Surplus) que BC 27 requiere para contabilizar un diario con trazabilidad
-    /// de lote activada ("Lot Specific Tracking" = true en Item Tracking Code).
+    /// Asigna seguimiento de lote a una Item Journal Line usando el flujo estándar BC 27.
     ///
-    /// Sin esta Reservation Entry, BC lanza "You must assign a lot number..." al intentar
-    /// contabilizar la línea, incluso si "Lot No." está indicado directamente en el IJL.
+    /// Usa Library - Item Tracking (Tests-TestLibraries):
+    ///   LibraryItemTracking.CreateItemJournalLineItemTracking(ReservEntry, ItemJnlLine, SerialNo, LotNo, Qty)
+    ///   crea la Reservation Entry (Surplus) a través del mismo mecanismo interno que BC
+    ///   usa cuando se abren las Item Tracking Lines desde el diario.
     ///
-    /// Excepción justificada (Init + Insert sin helper estándar):
-    ///   Se verificó que "Library - Item Tracking" (Tests-TestLibraries BC 27) expone
-    ///   CreateItemJournalLineItemTracking, pero la firma exacta del parámetro
-    ///   ItemJournalLine (var Record vs. Record por valor) difiere entre versiones de
-    ///   runtime y no puede confirmarse sin compilación. Una discordancia provocaría
-    ///   error de compilación AL0036 en CI. Se opta por la creación directa de la
-    ///   Reservation Entry con los campos mínimos exigidos por el motor de BC,
-    ///   patrón que coincide con la implementación interna del propio helper estándar.
-    ///   Ver regla "AL Test Data Creation" en docs/05-testing-strategy.md.
-    ///
-    /// Nota sobre el cálculo del Entry No.:
-    ///   La tabla "Reservation Entry" no expone GetLastEntryNo(). El patrón estándar
-    ///   en BC (incluido en "Library - Item Tracking") es FindLast() + "Entry No." + 1.
+    /// Convención de cantidad:
+    ///   Qty debe ser POSITIVA y coincidir con la cantidad de la línea de diario.
+    ///   La librería aplica el signo correcto automáticamente según Entry Type:
+    ///   Purchase → +Qty en Reservation Entry; Sale → −Qty en Reservation Entry.
+    ///   (Internamente: ItemJournalLine.Signed(Qty) determina el signo.)
     ///
     /// Parámetros:
     ///   ItemJnlLine — La línea de diario a la que asignar la trazabilidad de lote.
     ///   LotNo       — El número de lote a asignar.
-    ///   Qty         — Cantidad: positiva para entradas (Purchase), negativa para salidas (Sale).
+    ///   Qty         — Cantidad positiva (user-facing), igual a ItemJnlLine.Quantity.
     /// </summary>
     procedure AssignLotToItemJnlLine(var ItemJnlLine: Record "Item Journal Line"; LotNo: Code[50]; Qty: Decimal)
     var
-        ReservationEntry: Record "Reservation Entry";
-        NextEntryNo: Integer;
+        LibraryItemTracking: Codeunit "Library - Item Tracking";
+        ReservEntry: Record "Reservation Entry";
     begin
-        if ReservationEntry.FindLast() then
-            NextEntryNo := ReservationEntry."Entry No." + 1
-        else
-            NextEntryNo := 1;
-        ReservationEntry.Init();
-        ReservationEntry."Entry No." := NextEntryNo;
-        ReservationEntry."Item No." := ItemJnlLine."Item No.";
-        ReservationEntry."Variant Code" := ItemJnlLine."Variant Code";
-        ReservationEntry."Location Code" := ItemJnlLine."Location Code";
-        ReservationEntry."Lot No." := LotNo;
-        ReservationEntry."Reservation Status" := ReservationEntry."Reservation Status"::Surplus;
-        ReservationEntry."Source Type" := Database::"Item Journal Line";
-        ReservationEntry."Source Subtype" := ItemJnlLine."Entry Type".AsInteger();
-        ReservationEntry."Source ID" := ItemJnlLine."Journal Template Name";
-        ReservationEntry."Source Batch Name" := ItemJnlLine."Journal Batch Name";
-        ReservationEntry."Source Ref. No." := ItemJnlLine."Line No.";
-        ReservationEntry."Quantity (Base)" := Qty;
-        ReservationEntry."Qty. to Handle (Base)" := Qty;
-        ReservationEntry."Qty. to Invoice (Base)" := Qty;
-        ReservationEntry.Positive := Qty > 0;
-        ReservationEntry."Creation Date" := Today;
-        ReservationEntry.Insert(false);
+        LibraryItemTracking.CreateItemJournalLineItemTracking(ReservEntry, ItemJnlLine, '', LotNo, Qty);
     end;
 
     /// <summary>
