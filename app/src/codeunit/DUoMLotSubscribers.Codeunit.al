@@ -29,12 +29,26 @@ codeunit 50108 "DUoM Lot Subscribers"
     /// Evento elegido: OnAfterValidateEvent, porque Lot No. ES campo directo en IJL
     /// (a diferencia de Purchase Line y Sales Line donde no es campo directo en BC 27).
     /// Firma verificada: BC 27 / runtime 15 — Item Journal Line tiene Lot No. como campo propio.
+    ///
+    /// Patrón estándar AL para campos de tableextension en suscriptores de evento:
+    ///   Los campos de extensión (tableextension) del parámetro var Rec de un suscriptor
+    ///   no se propagan de vuelta correctamente a través de cadenas de var-param anidadas.
+    ///   El patrón correcto es leer en variables locales, invocar el helper con esas variables
+    ///   y asignar de vuelta explícitamente a Rec. Este es el mismo patrón usado por
+    ///   OnAfterValidateItemJnlLineQty (asignación directa Rec."DUoM Ratio" := ...).
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
     local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
+    var
+        NewRatio: Decimal;
+        NewSecondQty: Decimal;
     begin
+        NewRatio := Rec."DUoM Ratio";
+        NewSecondQty := Rec."DUoM Second Qty";
         ApplyLotRatioIfExists(Rec."Item No.", Rec."Lot No.", Rec."Variant Code",
-                              Rec.Quantity, Rec."DUoM Ratio", Rec."DUoM Second Qty");
+                              Rec.Quantity, NewRatio, NewSecondQty);
+        Rec."DUoM Ratio" := NewRatio;
+        Rec."DUoM Second Qty" := NewSecondQty;
     end;
 
     /// <summary>
