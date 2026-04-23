@@ -81,13 +81,23 @@ de BC cuando existe un helper de librería equivalente.
 | Item Journal Line   | `LibraryInventory.CreateItemJournalLine(...)`                |
 | DUoM Item Setup     | `DUoMTestHelpers.CreateItemSetup(...)`                       |
 | DUoM Variant Setup  | `DUoMTestHelpers.CreateVariantSetup(...)`                    |
+| DUoM Lot Ratio      | `DUoMTestHelpers.CreateLotRatio(ItemNo, LotNo, Ratio)`       |
+| Item c/ lot tracking | `DUoMTestHelpers.EnableLotTrackingOnItem(var Item)`          |
+
+> **Nota sobre seguimiento de lotes:** Los tests que validan `Lot No.` en `Item Journal Line`
+> y esperan que el campo se mantenga después de `Validate("Lot No.", ...)` **deben** llamar a
+> `DUoMTestHelpers.EnableLotTrackingOnItem(Item)` antes de crear el IJL. Sin un `Item Tracking Code`
+> asignado, BC 27 puede limpiar el campo durante la validación, impidiendo que el subscriber de
+> lotes (codeunit 50108) aplique el ratio de lote correspondiente. El helper crea el código
+> `'DUoM-LOT'` con `Lot Specific Tracking = true` y lo asigna al artículo.
 
 ### Excepciones justificadas (documentadas en código)
 
 - `Init()` sin `Insert()` es válido para registros puramente en memoria (p.ej. test de validación de campos en aislamiento).
 - `WhseEntry.Init()` + `Insert(false)` es aceptable para crear entradas de almacén en tests de condición de editabilidad, porque no existe helper estándar sin configuración completa de almacén. Debe documentarse en comentario en el test.
 - `DUoMTestHelpers.CreateItemVariantWithCode` usa `LibraryInventory.CreateItemVariant` internamente y después renombra al código específico. Se justifica porque los tests DUoM requieren códigos con semántica de negocio determinista (`'ROMANA'`, `'ICEBERG'`, `'GRANEL'`).
-- Los helpers propios `DUoMTestHelpers.CreateItemSetup` y `CreateVariantSetup` crean registros de tablas propias de la extensión sin equivalente estándar de Microsoft.
+- Los helpers propios `DUoMTestHelpers.CreateItemSetup`, `CreateVariantSetup`, `CreateLotRatio` y `EnableLotTrackingOnItem` crean registros de tablas propias de la extensión o configuran entidades BC sin equivalente estándar de Microsoft.
+- `DUoMTestHelpers.EnableLotTrackingOnItem` usa `Init() + Insert(false)` para `Item Tracking Code` porque `Library - Inventory` no ofrece métodos de creación de Item Tracking Code. Aunque existe `Library - Item Tracking` en `Tests-TestLibraries`, no está verificada su disponibilidad exacta en este entorno (sin uso previo en el proyecto). Excepción documentada en el propio helper.
 
 ---
 
