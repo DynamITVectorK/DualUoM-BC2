@@ -57,7 +57,6 @@ codeunit 50217 "DUoM Lot Ratio Tests"
             ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
             "Item Ledger Entry Type"::Purchase, Item."No.", 0);
         ItemJnlLine.Validate(Quantity, 10);
-        ItemJnlLine.Modify(true);
 
         // [WHEN] Se valida el campo Lot No. (dispara OnAfterValidateItemJnlLineLotNo)
         ItemJnlLine.Validate("Lot No.", LotNo);
