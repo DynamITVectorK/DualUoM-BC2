@@ -213,19 +213,25 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// OnPostItemJnlLineOnAfterCopyDocumentFields) and manual Item Journal postings
     /// (fields populated by OnAfterValidateItemJnlLineQty).
     ///
-    /// Corrección multi-lote (Issue 13):
-    ///   El comportamiento anterior copiaba DUoM Second Qty total desde la línea de documento.
-    ///   Con múltiples lotes, cada ILE recibía la segunda cantidad total en lugar de la parte
-    ///   proporcional al lote. El nuevo comportamiento recalcula proporcionalmente.
+    /// Modelo 1:N — Línea origen como agregado (Issue 20):
+    ///   Una línea de documento (Purchase Line, Sales Line, Item Journal Line) puede tener
+    ///   N asignaciones de lote mediante Item Tracking. BC crea un ILE por cada lote durante
+    ///   la contabilización. En OnAfterInitItemLedgEntry, ItemJournalLine tiene el Lot No. y
+    ///   la Quantity específicos del lote (BC divide la línea por lote antes de este evento).
     ///
-    /// Nuevo comportamiento:
-    ///   1. Copia DUoM Ratio desde IJL.
+    /// Nuevo comportamiento (correcto para N lotes por línea):
+    ///   1. Copia DUoM Ratio desde IJL (ratio a nivel de línea, puede ser el genérico del artículo).
     ///   2. Si DUoM Ratio ≠ 0: recalcula DUoM Second Qty = Abs(ILE.Quantity) × DUoM Ratio.
-    ///      Esto garantiza el valor correcto cuando el ILE solo tiene una fracción de la
-    ///      cantidad total de la línea (multi-lote).
-    ///   3. Si DUoM Ratio = 0 (AlwaysVariable sin ratio): copia DUoM Second Qty directamente
-    ///      desde IJL (comportamiento anterior preservado para este caso).
-    ///   4. Llama a DUoM Lot Subscribers.TryApplyLotRatioToILE para sobrescribir con el ratio
+    ///      Correcto para multi-lote: ILE.Quantity = cantidad del lote, no total de la línea.
+    ///   3. Si DUoM Ratio = 0 (AlwaysVariable sin ratio genérico) y NO hay Lot No.:
+    ///      Copia DUoM Second Qty directamente desde IJL (flujo sin trazabilidad de lote).
+    ///   4. Si DUoM Ratio = 0 y SÍ hay Lot No. (AlwaysVariable + multi-lote sin ratio genérico):
+    ///      NO copia DUoM Second Qty desde IJL (total de la línea no es válido por lote).
+    ///      ILE DUoM Second Qty queda en 0. Si hay ratio de lote en DUoM Lot Ratio,
+    ///      TryApplyLotRatioToILE lo calculará en el paso siguiente.
+    ///      Si no hay ratio de lote, el ILE queda sin datos DUoM — documentado como limitación
+    ///      de AlwaysVariable con multi-lote sin ratio de lote definido. Ver Issue 20.
+    ///   5. Llama a DUoM Lot Subscribers.TryApplyLotRatioToILE para sobrescribir con el ratio
     ///      real del lote específico cuando existe registro en DUoM Lot Ratio (50102).
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitItemLedgEntry', '', false, false)]
@@ -248,8 +254,14 @@ codeunit 50104 "DUoM Inventory Subscribers"
         if ItemJournalLine."DUoM Ratio" <> 0 then
             NewItemLedgEntry."DUoM Second Qty" := Abs(NewItemLedgEntry.Quantity) * ItemJournalLine."DUoM Ratio"
         else
-            // AlwaysVariable sin ratio de lote: copia directa (comportamiento previo preservado)
-            NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+            // AlwaysVariable sin ratio genérico: solo copiar DUoM Second Qty desde IJL cuando
+            // no hay Lot No. asignado (flujo sin trazabilidad de lote, línea única).
+            // Con Lot No. asignado (multi-lote), el total de la línea NO es válido para cada ILE;
+            // ILE DUoM Second Qty se deja en 0 y se recalcula con TryApplyLotRatioToILE si
+            // existe ratio de lote en DUoM Lot Ratio (50102). Sin ratio de lote, ILE queda a 0.
+            // Esto elimina la asunción 1:1 entre línea origen y lote (Issue 20).
+            if ItemJournalLine."Lot No." = '' then
+                NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
 
         // 3. Override con ratio de lote si corresponde (Variable/AlwaysVariable, lote con ratio)
         DUoMLotSubscribers.TryApplyLotRatioToILE(NewItemLedgEntry, ItemJournalLine);

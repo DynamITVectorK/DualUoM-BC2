@@ -122,6 +122,21 @@ de la infraestructura estándar de trazabilidad:
 
 El único caso donde `Lot No.` **sí** es campo directo es `Item Journal Line` (tabla 83).
 
+### Regla de diseño: línea origen como agregado — modelo 1:N (Issue 20)
+
+**DUoM no asume que 1 línea origen = 1 lote.**
+
+El modelo correcto de Business Central es:
+
+```
+1 línea origen (Purchase Line, Sales Line, Item Journal Line) = N asignaciones de lote
+```
+
+- Los campos DUoM de la **línea origen** son **totales agregados**.
+- Cada **ILE por lote** contiene la segunda cantidad y el ratio **específicos de ese lote**.
+- El **total DUoM de la línea** debe ser coherente con la suma de las cantidades DUoM
+  de todos los ILEs generados para esa línea.
+
 ### Flujo de integración implementado
 
 ```
@@ -131,14 +146,16 @@ Caso A — Item Journal Line (Lot No. campo directo):
   → DUoM Lot Subscribers (50108): busca DUoM Lot Ratio(Item No., Lot No.)
   → Si existe y modo ≠ Fixed: sobreescribe DUoM Ratio + recalcula DUoM Second Qty
 
-Caso B — Purchase/Sales Line (N lotes vía Item Tracking):
+Caso B — Purchase/Sales Line o IJL con N lotes vía Item Tracking:
   Usuario asigna N lotes en "Item Tracking Lines" (estándar BC)
-  → Lots persisten en Reservation Entry (flujo estándar, sin intervención DUoM)
-  → Al contabilizar: BC crea un ILE por lote con Lot No. específico en el IJL
-  → OnAfterInitItemLedgEntry(NewILE, ItemJnlLine, ...)
-    - DUoM Ratio: copiado desde IJL (ratio del documento)
+  → Lotes persisten en Reservation Entry (flujo estándar, sin intervención DUoM)
+  → Al contabilizar: BC divide la línea por lote y crea un ILE por lote
+  → Para cada ILE: OnAfterInitItemLedgEntry(NewILE, ItemJnlLine, ...)
+    - ItemJnlLine.Lot No. = lote específico del ILE
+    - ItemJnlLine.Quantity = cantidad del lote (no el total de la línea)
+    - DUoM Ratio: copiado desde IJL (ratio del documento, puede ser ratio genérico)
     - DUoM Second Qty: Abs(ILE.Quantity) × DUoM Ratio (proporcional al lote)
-    - TryApplyLotRatioToILE: si lote tiene ratio y modo ≠ Fixed →
+    - TryApplyLotRatioToILE: si lote tiene ratio en DUoM Lot Ratio y modo ≠ Fixed →
         ILE.DUoM Ratio = LotActualRatio
         ILE.DUoM Second Qty = Abs(ILE.Quantity) × LotActualRatio
 ```
@@ -149,11 +166,24 @@ Caso B — Purchase/Sales Line (N lotes vía Item Tracking):
 |------|---------------------------------------------|
 | Fixed | Ratio de lote NO aplicado. El ratio fijo siempre prevalece. |
 | Variable | Si existe ratio de lote → sobrescribe DUoM Ratio + recalcula DUoM Second Qty |
-| AlwaysVariable | Si existe ratio de lote → sobrescribe DUoM Ratio (como sugerencia) |
+| AlwaysVariable + ratio de lote | Si existe ratio de lote → sobrescribe DUoM Ratio + recalcula DUoM Second Qty |
+| AlwaysVariable sin ratio de lote, sin Lot No. | Copia DUoM Second Qty directamente desde IJL (flujo sin trazabilidad de lote) |
+| AlwaysVariable sin ratio de lote, con Lot No. | ILE DUoM Second Qty = 0. Ver limitación conocida. |
 
-Si no hay ratio registrado para el lote:
-- `DUoM Ratio ≠ 0`: recalcula `Abs(ILE.Quantity) × DUoM Ratio` proporcionalmente.
-- `DUoM Ratio = 0` (AlwaysVariable sin ratio): copia `DUoM Second Qty` directamente desde IJL.
+### Limitación conocida: AlwaysVariable + multi-lote sin ratio de lote
+
+Cuando se contabiliza con modo AlwaysVariable, asignación de N lotes y **sin** ratio
+de lote registrado en `DUoM Lot Ratio` (50102):
+
+- La cantidad DUoM de la línea origen fue introducida manualmente por el usuario como total.
+- Al dividir la línea por lotes, no es posible distribuir automáticamente el total entre
+  los lotes sin un ratio de lote que proporcione la regla de distribución.
+- **Resultado:** el ILE de cada lote queda con `DUoM Second Qty = 0`.
+- **Solución recomendada:** registrar el ratio de lote en `DUoM Lot Ratio` para el artículo
+  y los lotes correspondientes, o usar el modo Variable con un ratio por defecto.
+
+Esta limitación está documentada y es preferible a copiar incorrectamente el total de la
+línea a cada ILE (que era el comportamiento anterior, eliminado en Issue 20).
 
 ---
 
