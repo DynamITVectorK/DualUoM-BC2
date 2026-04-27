@@ -31,10 +31,12 @@ codeunit 50108 "DUoM Lot Subscribers"
     /// Firma verificada: BC 27 / runtime 15 — Item Journal Line tiene Lot No. como campo propio.
     ///
     /// Patrón de asignación para campos de tableextension en suscriptores de evento:
-    ///   Se usa asignación directa (:=) para ambos campos DUoM. Llamar Rec.Validate() sobre
-    ///   un campo de tableextension desde dentro de OnAfterValidateEvent NO propaga el cambio
-    ///   de vuelta al registro llamante. La asignación directa sí propaga correctamente,
-    ///   al igual que se hace en OnAfterValidateItemJnlLineQty.
+    ///   Se usa asignación directa (:=) para ambos campos DUoM. Rec sí está pasado por
+    ///   referencia (var), por lo que la asignación directa propaga el cambio al registro
+    ///   llamante, igual que en OnAfterValidateItemJnlLineQty.
+    ///   Usar Rec.Validate() dentro de OnAfterValidateEvent puede provocar re-entrada
+    ///   (re-entrancy) en la cadena de validación del campo, causando comportamiento no
+    ///   determinista. La asignación directa (:=) evita este riesgo.
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
     local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
