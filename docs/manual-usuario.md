@@ -2,7 +2,7 @@
 
 **Extensión de Doble Unidad de Medida para Microsoft Dynamics 365 Business Central**
 
-> **Versión del documento:** 1.2 (MVP + Issues 11b + 13 — Variantes + Ratios por Lote)
+> **Versión del documento:** 1.3 (MVP + Issues 11b + 13 + 20 — Variantes + Ratios por Lote + Modelo Multi-Lote 1:N)
 > **Módulos cubiertos:** Compras · Ventas · Inventario · Almacén (básico)
 > **Audiencia:** Usuarios de negocio (sin conocimientos técnicos)
 
@@ -181,7 +181,7 @@ Cuando se registra una transacción con variante, el sistema aplica la siguiente
 ```
 1. Configuración base del artículo   → siempre obligatoria (activa/desactiva DUoM)
 2. Override de variante (opcional)   → si existe, sus valores prevalecen sobre el artículo
-3. Ratio real de lote (Fase 2)       → cuando aplica, prevalece sobre los anteriores
+3. Ratio real de lote (implementado) → cuando aplica, prevalece sobre los anteriores
 ```
 
 > **Regla clave:** La variante **no puede activar por sí sola** la DUoM si el artículo no la tiene activada. El interruptor **Dual UoM Enabled** siempre vive en la configuración del artículo.
@@ -707,7 +707,7 @@ Si desactiva el campo **Dual UoM Enabled** en un artículo:
 
 - En el **Diario de productos**, al asignar un número de lote (`Lot No.`) a una línea, el sistema busca en la tabla **DUoM Lot Ratio** si existe un ratio registrado para ese lote. Si existe y el modo de conversión del artículo es Variable o Siempre Variable, los campos **DUoM Ratio** y **DUoM Second Qty** se pre-rellenan automáticamente con el ratio del lote.
 - El modo **Fixed** siempre usa el ratio fijo del artículo; el ratio de lote no lo sobrescribe.
-- Al contabilizar, cada **Movimiento de producto** recibe el ratio real del lote (proporcional a la cantidad del movimiento cuando hay múltiples lotes en la misma línea).
+- **Una sola línea puede tener múltiples lotes.** En Business Central, es posible asignar N lotes a una sola línea de documento a través del seguimiento de artículos. DUoM gestiona cada lote de forma independiente: al contabilizar, cada **Movimiento de producto** recibe el ratio real y la segunda cantidad propios de su lote (véase sección 9.5).
 
 Para más detalle sobre cómo registrar y gestionar ratios de lote, véase [sección 9 — Ratios específicos por lote](#9-ratios-específicos-por-lote).
 
@@ -795,7 +795,9 @@ En artículos con seguimiento de lotes donde el ratio varía entre lotes (p. ej.
 |--------------------|------------------------------|
 | **Fixed** | ❌ No. El ratio fijo del artículo siempre prevalece. |
 | **Variable** | ✅ Sí. El ratio de lote sobrescribe el ratio por defecto si existe. |
-| **AlwaysVariable** | ✅ Sí. El ratio de lote pre-rellena los campos en lugar de dejarlos vacíos. |
+| **AlwaysVariable** (con ratio de lote registrado) | ✅ Sí. El ratio de lote calcula la segunda cantidad de cada movimiento. |
+| **AlwaysVariable** (sin ratio de lote registrado) y un único lote | ✅ El usuario introduce la segunda cantidad total en la línea; se copia al movimiento. |
+| **AlwaysVariable** (sin ratio de lote registrado) y múltiples lotes | ⚠️ **Limitación:** el sistema no puede distribuir la segunda cantidad total entre los lotes sin un ratio de lote. Los movimientos quedan con `DUoM Second Qty = 0`. Solución: registre el ratio de lote en **DUoM Lot Ratio** o use el modo Variable con un ratio por defecto. |
 
 ### 9.3 Cómo registrar un ratio de lote
 
@@ -835,15 +837,34 @@ También puede acceder a la lista global de ratios de lote buscando **DUoM Lot R
 
 > `[PENDIENTE CAPTURA]` *Diario de productos con un artículo de seguimiento de lotes y el campo DUoM Ratio pre-rellenado automáticamente tras introducir el Lot No.*
 
-### 9.5 Propagación del ratio de lote al contabilizar
+### 9.5 Propagación del ratio de lote al contabilizar — Modelo 1:N
 
-Cuando se contabiliza el Diario de productos con múltiples lotes en la misma línea (cada uno con cantidad parcial), el sistema crea un **Movimiento de producto** por lote. La extensión DualUoM-BC calcula la **DUoM Second Qty** de cada ILE proporcionalmente a la cantidad del movimiento:
+Business Central permite que **una sola línea de documento tenga múltiples lotes** asignados mediante el seguimiento de artículos (página *Líneas de seguimiento de artículo*). Por ejemplo:
+
+```
+Línea de Diario de productos: 10 KG
+  └─ LOTE-A: 4 KG  (ratio real = 0,38 KG/PCS)
+  └─ LOTE-B: 6 KG  (ratio real = 0,41 KG/PCS)
+```
+
+Al contabilizar, BC genera **un Movimiento de producto (ILE) por cada lote**. DualUoM-BC calcula los campos DUoM de cada ILE de forma **independiente** para cada lote:
+
+```
+ILE LOTE-A:  DUoM Ratio = 0,38  |  DUoM Second Qty = 4 × 0,38 = 1,52 PCS
+ILE LOTE-B:  DUoM Ratio = 0,41  |  DUoM Second Qty = 6 × 0,41 = 2,46 PCS
+─────────────────────────────────────────────────────────────────
+Total DUoM:                          1,52 + 2,46 = 3,98 PCS
+```
+
+La fórmula aplicada a cada ILE es:
 
 ```
 DUoM Second Qty del ILE = Abs(Cantidad del ILE) × Ratio efectivo del lote
 ```
 
-Esto garantiza que la suma de las segundas cantidades de todos los ILEs coincide con la segunda cantidad total de la línea, incluso con múltiples lotes.
+**Principio importante:** los campos DUoM de la línea de documento son el **total agregado**. Los campos DUoM de los Movimientos de producto son el **dato operativo real de cada lote**. Ambos niveles son coherentes: la suma de los ILEs refleja el total de la línea.
+
+> **Nota sobre Siempre Variable (AlwaysVariable) sin ratio de lote:** Si el artículo está en modo Siempre Variable, hay múltiples lotes asignados y ninguno de ellos tiene ratio registrado en DUoM Lot Ratio, el sistema no puede calcular la distribución automáticamente. En ese caso, los ILEs quedan con `DUoM Second Qty = 0`. Para evitar esta situación, registre el ratio de cada lote en la tabla **DUoM Lot Ratio** antes de contabilizar (véase sección 9.3).
 
 ### 9.6 Preguntas frecuentes sobre ratios por lote
 
@@ -855,12 +876,24 @@ Sí, puede actualizar el **Actual Ratio** en la tabla DUoM Lot Ratio en cualquie
 
 En la versión actual, el ratio de lote se aplica automáticamente en el **Diario de productos** (cuando el usuario valida el campo Lot No.). En los pedidos de compra y venta, la asignación de lotes se realiza a través de las líneas de seguimiento de artículos, y el sistema aplica el ratio de lote en el momento de la contabilización (al crear los ILEs), no en la línea de pedido.
 
+**¿Qué ocurre si una línea tiene dos lotes con ratios diferentes?**
+
+El sistema gestiona cada lote de forma completamente independiente. Cada Movimiento de producto recibe el ratio real de su lote específico y la segunda cantidad calculada para su fracción de la cantidad total. Véase la sección 9.5 para el ejemplo detallado.
+
+**¿Puedo tener una línea de diario con múltiples lotes en modo Variable?**
+
+Sí. En modo Variable, si ambos lotes tienen ratio registrado en DUoM Lot Ratio, cada ILE recibe su ratio específico. Si algún lote no tiene ratio registrado, el ILE de ese lote usará el ratio por defecto del artículo (el campo Fixed Ratio) para calcular la segunda cantidad de forma proporcional.
+
+**¿Qué ocurre con la DUoM Second Qty de la línea origen cuando hay múltiples lotes?**
+
+La segunda cantidad de la línea de documento (ej. línea del Diario de productos) es un **total agregado informativo**. El valor operativo real de cada lote queda en el Movimiento de producto (ILE) correspondiente. La suma de los ILEs refleja el total real considerando los ratios específicos de cada lote.
+
 
 ---
 
 *Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, informes avanzados) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
 
-*Última actualización: v1.2 — Issues 11b + 13 — Variantes, ratios por lote, DUoM Unit Cost/Price, documentos registrados.*
+*Última actualización: v1.3 — Issue 20 — Modelo multi-lote 1:N: una línea puede tener N lotes; DUoM gestiona cada lote de forma independiente.*
 
 ## Apéndice: Resumen de campos DUoM por documento
 
@@ -913,5 +946,5 @@ En la versión actual, el ratio de lote se aplica automáticamente en el **Diari
 
 *Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, informes avanzados) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
 
-*Última actualización: v1.2 — Issues 11b + 13 — Variantes, ratios por lote, DUoM Unit Cost/Price, documentos registrados.*
+*Última actualización: v1.3 — Issue 20 — Modelo multi-lote 1:N: una línea puede tener N lotes; DUoM gestiona cada lote de forma independiente.*
 
