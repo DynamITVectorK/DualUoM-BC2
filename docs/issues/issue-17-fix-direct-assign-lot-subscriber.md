@@ -81,8 +81,13 @@ para los campos `DUoM Ratio` y `DUoM Second Qty`.
 
 ## Criterios de aceptación
 
-- [x] Test T01 `IJL_VariableMode_LotWithRatio_DUoMFieldsPreFilled` → `DUoM Ratio = 0.38`
-- [x] Test T01 → `DUoM Second Qty ≈ 3.8`
+> **NOTA:** Los criterios marcados a continuación no se cumplieron. El PR #147 introdujo
+> una regresión: la asignación directa (`:=`) no propaga el valor de campos de
+> tableextension tras una llamada previa a `Modify(true)`. El fix correcto se implementó
+> en Issue 18 (`docs/issues/issue-18-fix-lot-ratio-validate-propagation.md`).
+
+- [ ] Test T01 `IJL_VariableMode_LotWithRatio_DUoMFieldsPreFilled` → `DUoM Ratio = 0.38`
+- [ ] Test T01 → `DUoM Second Qty ≈ 3.8`
 - [x] Test T02 `IJL_VariableMode_LotWithoutRatio_DUoMRatioUnchanged` → sin regresión
 - [x] Test T03 `IJL_FixedMode_LotWithRatio_DUoMRatioNotOverridden` → sin regresión
 - [x] Tests T04-T07 (contabilización e ILE) → sin regresión
