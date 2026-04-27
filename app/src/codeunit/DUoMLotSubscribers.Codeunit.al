@@ -31,12 +31,14 @@ codeunit 50108 "DUoM Lot Subscribers"
     /// Firma verificada: BC 27 / runtime 15 — Item Journal Line tiene Lot No. como campo propio.
     ///
     /// Patrón de asignación para campos de tableextension en suscriptores de evento:
-    ///   Se usa asignación directa (:=) para ambos campos DUoM. Rec sí está pasado por
-    ///   referencia (var), por lo que la asignación directa propaga el cambio al registro
-    ///   llamante, igual que en OnAfterValidateItemJnlLineQty.
-    ///   Usar Rec.Validate() dentro de OnAfterValidateEvent puede provocar re-entrada
-    ///   (re-entrancy) en la cadena de validación del campo, causando comportamiento no
-    ///   determinista. La asignación directa (:=) evita este riesgo.
+    ///   Se usa Rec.Validate("DUoM Ratio", NewRatio) para propagar el valor al registro
+    ///   llamante. La asignación directa (:=) a campos de tableextension dentro de un
+    ///   suscriptor de evento no garantiza la propagación al registro del código llamante
+    ///   (el valor se escribe en el buffer local del suscriptor pero el caller no lo ve).
+    ///   No existe riesgo de re-entrada: este suscriptor reacciona a "Lot No." y llama
+    ///   Validate("DUoM Ratio"), cuyo OnValidate no toca "Lot No." en ningún caso.
+    ///   DUoM Second Qty se asigna directamente (:=) como respaldo para el modo
+    ///   AlwaysVariable, donde el trigger OnValidate de DUoM Ratio sale sin recalcular.
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
     local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
@@ -48,7 +50,7 @@ codeunit 50108 "DUoM Lot Subscribers"
         NewSecondQty := Rec."DUoM Second Qty";
         ApplyLotRatioIfExists(Rec."Item No.", Rec."Lot No.", Rec."Variant Code",
                               Rec.Quantity, NewRatio, NewSecondQty);
-        Rec."DUoM Ratio" := NewRatio;
+        Rec.Validate("DUoM Ratio", NewRatio);
         Rec."DUoM Second Qty" := NewSecondQty;
     end;
 
