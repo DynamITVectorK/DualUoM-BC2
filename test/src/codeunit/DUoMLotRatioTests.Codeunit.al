@@ -1,14 +1,31 @@
 /// <summary>
 /// Tests TDD para DUoM Lot Subscribers (50108) y la integración con Item Tracking BC 27.
 ///
-/// Cubre los requisitos funcionales de Issue 13 (rediseño Phase 2):
+/// Cubre los requisitos funcionales de Issue 13 (rediseño Phase 2) e Issue 20 (multi-lote):
 ///   T01 — IJL, modo Variable, lote CON ratio → DUoM Ratio y Second Qty pre-rellenados
 ///   T02 — IJL, modo Variable, lote SIN ratio → DUoM Ratio sin cambios
 ///   T03 — IJL, modo Fixed, lote CON ratio    → DUoM Ratio NO sobreescrito (ratio fijo)
 ///   T04 — Contabilización IJL, lote único, modo Variable → ILE con ratio de lote
-///   T05 — Contabilización IJL, dos lotes distintos → cada ILE con su ratio de lote ✓ Crítico
+///   T05 — Contabilización IJL, dos líneas distintas con lotes distintos → cada ILE con su ratio
 ///   T06 — Contabilización IJL, salida con lote → ILE Abs(Qty) × ratio de lote
 ///   T07 — DUoM Lot Ratio: Actual Ratio ≤ 0 → error de validación
+///   T08 — UNA línea IJL con DOS lotes vía Item Tracking → cada ILE con su ratio de lote ✓ Crítico
+///          Escenario 1:N real: una línea origen = N asignaciones de lote = N ILEs
+///   T09 — UNA línea IJL con DOS lotes vía Item Tracking → suma de DUoM Second Qty = total esperado
+///   T10 — AlwaysVariable + multi-lote SIN ratio de lote → ILE DUoM Second Qty = 0 (no copia total)
+///
+/// MODELO 1:N — Línea origen como agregado (Issue 20):
+///   Una línea de documento BC puede tener N asignaciones de lote vía Item Tracking.
+///   Los campos DUoM de la línea origen son TOTALES AGREGADOS.
+///   Cada ILE generado por lote debe tener su DUoM Second Qty y DUoM Ratio propios.
+///   DUoM no puede asumir que 1 línea = 1 lote.
+///
+/// DIFERENCIA T05 vs T08:
+///   T05 usa DOS líneas IJL separadas (una por lote) en el mismo batch → dos ILEs.
+///        Verifica el comportamiento cuando cada lote viene en su propia línea de diario.
+///   T08 usa UNA sola línea IJL con DOS lotes asignados vía Item Tracking (Reservation Entries).
+///        Verifica el verdadero escenario 1:N de Business Central: una línea = N lotes.
+///        Es el escenario que ocurre en Purchase/Sales Orders con Item Tracking.
 ///
 /// NOTA SOBRE T04-T06 (Caso A vs Caso B):
 ///   Los tests T04-T06 verifican el comportamiento de OnAfterInitItemLedgEntry +
@@ -218,11 +235,15 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T05 — Dos lotes con ratios distintos → cada ILE con su ratio específico ✓ Crítico
+    // T05 — Dos líneas IJL separadas con lotes distintos → cada ILE con su ratio
     //
     // Verifica que OnAfterInitItemLedgEntry + TryApplyLotRatioToILE produce ILEs
     // con el ratio correcto para cada lote cuando se contabilizan múltiples líneas
-    // de diario (cada una con su propio Lot No. y cantidad).
+    // de diario (DOS LÍNEAS, cada una con su propio Lot No. y cantidad).
+    //
+    // NOTA: Este test usa DOS líneas IJL separadas (una por lote). Para el escenario
+    // de UNA sola línea con dos lotes vía Item Tracking (el verdadero caso 1:N de BC),
+    // ver T08 (IJLPosting_OneLine_TwoLotsTracking_EachILEHasLotRatio).
     // -------------------------------------------------------------------------
 
     [Test]
@@ -397,5 +418,224 @@ codeunit 50217 "DUoM Lot Ratio Tests"
 
         // [WHEN/THEN] Validar Actual Ratio = -1 → debe lanzar error de validación
         asserterror DUoMLotRatio.Validate("Actual Ratio", -1);
+    end;
+
+    // -------------------------------------------------------------------------
+    // T08 — UNA sola línea IJL con DOS lotes vía Item Tracking → cada ILE tiene
+    //        su ratio de lote específico. ✓ Crítico — Modelo 1:N (Issue 20)
+    //
+    // Escenario real de Business Central: una única línea de diario de artículos
+    // tiene DOS asignaciones de lote (via Reservation Entries), creadas con
+    // AssignLotToItemJnlLine llamado dos veces sobre la MISMA línea.
+    // Al contabilizar, BC crea un ILE por cada lote.
+    // DUoM debe asignar el ratio de lote correcto a cada ILE de forma independiente.
+    //
+    // Diferencia clave con T05: T05 usa dos líneas IJL separadas (una por lote).
+    // T08 usa UNA sola línea para 10 unidades, con 4 unidades asignadas a LOTE-T08A
+    // y 6 unidades a LOTE-T08B. Este es el escenario 1:N real de BC.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure IJLPosting_OneLine_TwoLotsTracking_EachILEHasLotRatio()
+    var
+        Item: Record Item;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNoA: Code[50];
+        LotNoB: Code[50];
+    begin
+        // [GIVEN] Artículo con DUoM Variable (ratio por defecto 0,40)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.40);
+
+        // [GIVEN] Dos lotes con ratios distintos: A = 0,38 (4 uds); B = 0,41 (6 uds)
+        LotNoA := 'LOTE-T08A';
+        LotNoB := 'LOTE-T08B';
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoA, 0.38);
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoB, 0.41);
+
+        // [GIVEN] Item Tracking Code con seguimiento de lotes asignado al artículo.
+        // Necesario para que BC 27 procese las Reservation Entries de cada lote al
+        // contabilizar y para que TryApplyLotRatioToILE aplique el ratio específico.
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] UNA sola línea IJL para 10 unidades (cantidad total/agregada)
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
+        ItemJnlLine.Validate(Quantity, 10);
+        ItemJnlLine.Modify(true);
+
+        // [GIVEN] Asignar DOS lotes a la MISMA línea IJL mediante Item Tracking.
+        // Este es el verdadero modelo 1:N de BC: 1 línea → N lotes.
+        // LOTE-T08A: 4 unidades; LOTE-T08B: 6 unidades. Suma = 10 = total de la línea.
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoA, 4);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoB, 6);
+
+        // [WHEN] Se contabiliza la única línea del batch
+        LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
+
+        // [THEN] ILE para LOTE-T08A: DUoM Ratio = 0,38; DUoM Second Qty = 4 × 0,38 = 1,52
+        // La búsqueda por Lot No. identifica unívocamente el ILE de cada lote.
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Lot No.", LotNoA);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T08: Se esperaba ILE para LOTE-T08A');
+        LibraryAssert.AreEqual(0.38, ILE."DUoM Ratio",
+            'T08: ILE LOTE-T08A — DUoM Ratio debe ser el ratio de lote (0,38)');
+        LibraryAssert.AreNearlyEqual(1.52, ILE."DUoM Second Qty", 0.001,
+            'T08: ILE LOTE-T08A — DUoM Second Qty debe ser 4 × 0,38 = 1,52');
+
+        // [THEN] ILE para LOTE-T08B: DUoM Ratio = 0,41; DUoM Second Qty = 6 × 0,41 = 2,46
+        ILE.SetRange("Lot No.", LotNoB);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T08: Se esperaba ILE para LOTE-T08B');
+        LibraryAssert.AreEqual(0.41, ILE."DUoM Ratio",
+            'T08: ILE LOTE-T08B — DUoM Ratio debe ser el ratio de lote (0,41)');
+        LibraryAssert.AreNearlyEqual(2.46, ILE."DUoM Second Qty", 0.001,
+            'T08: ILE LOTE-T08B — DUoM Second Qty debe ser 6 × 0,41 = 2,46');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T09 — UNA línea IJL con DOS lotes → suma de DUoM Second Qty de todos los ILEs
+    //        es coherente con el total esperado (1,52 + 2,46 = 3,98). Modelo 1:N.
+    //
+    // Verifica que el modelo 1:N es coherente: la suma de los valores DUoM a nivel
+    // de lote/tracking (ILEs) refleja correctamente el total de la línea origen.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure IJLPosting_OneLine_TwoLots_TotalDUoMEqualsSum()
+    var
+        Item: Record Item;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNoA: Code[50];
+        LotNoB: Code[50];
+        TotalDUoMSecondQty: Decimal;
+    begin
+        // [GIVEN] Artículo con DUoM Variable (ratio por defecto 0,40)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.40);
+
+        // [GIVEN] Dos lotes: A = 0,38 (4 uds); B = 0,41 (6 uds)
+        // Total esperado DUoM: 4 × 0,38 + 6 × 0,41 = 1,52 + 2,46 = 3,98
+        LotNoA := 'LOTE-T09A';
+        LotNoB := 'LOTE-T09B';
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoA, 0.38);
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoB, 0.41);
+
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] UNA línea IJL para 10 unidades con dos lotes asignados
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
+        ItemJnlLine.Validate(Quantity, 10);
+        ItemJnlLine.Modify(true);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoA, 4);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoB, 6);
+
+        // [WHEN] Se contabiliza
+        LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
+
+        // [THEN] Suma de DUoM Second Qty de todos los ILEs del artículo = 3,98
+        // El modelo 1:N garantiza que la suma de las cantidades DUoM por lote
+        // es coherente con el total esperado (aunque no es el mismo que el del IJL origen,
+        // ya que cada lote tiene su propio ratio específico).
+        ILE.SetRange("Item No.", Item."No.");
+        TotalDUoMSecondQty := 0;
+        if ILE.FindSet() then
+            repeat
+                TotalDUoMSecondQty += ILE."DUoM Second Qty";
+            until ILE.Next() = 0;
+        LibraryAssert.AreNearlyEqual(3.98, TotalDUoMSecondQty, 0.001,
+            'T09: Suma total DUoM Second Qty de ILEs debe ser 4×0,38 + 6×0,41 = 1,52 + 2,46 = 3,98');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T10 — AlwaysVariable + UNA línea IJL con DOS lotes SIN ratio de lote →
+    //        ILE DUoM Second Qty = 0 (no se copia el total de la línea a cada ILE)
+    //
+    // Verifica que la corrección de Issue 20 funciona correctamente:
+    // En modo AlwaysVariable sin ratio de lote, el total de DUoM Second Qty de la línea
+    // origen NO puede distribuirse entre los lotes sin información adicional.
+    // El ILE DUoM Second Qty queda en 0 en lugar de copiar incorrectamente el total.
+    //
+    // Comportamiento ANTERIOR (incorrecto): Cada ILE recibía DUoM Second Qty = 8 (el total).
+    // Comportamiento CORRECTO (Issue 20): ILE DUoM Second Qty = 0 cuando Lot No. está asignado
+    // pero DUoM Ratio = 0 y no existe ratio de lote en DUoM Lot Ratio.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure IJLPosting_AlwaysVariable_TwoLots_NoLotRatio_ILESecondQtyIsZero()
+    var
+        Item: Record Item;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNoA: Code[50];
+        LotNoB: Code[50];
+    begin
+        // [GIVEN] Artículo con DUoM AlwaysVariable (sin ratio por defecto, DUoM Ratio = 0)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::AlwaysVariable, 0);
+
+        // [GIVEN] DOS lotes SIN ratio registrado en DUoM Lot Ratio
+        // (el usuario no ha registrado ratios de lote para este artículo)
+        LotNoA := 'LOTE-T10A';
+        LotNoB := 'LOTE-T10B';
+
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] UNA línea IJL para 10 unidades con DUoM Second Qty = 8 introducida manualmente
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
+        ItemJnlLine.Validate(Quantity, 10);
+        // En modo AlwaysVariable, el usuario introduce DUoM Second Qty = 8 (total de la línea)
+        ItemJnlLine."DUoM Second Qty" := 8;
+        ItemJnlLine.Modify(true);
+
+        // [GIVEN] Dos lotes asignados a la misma línea (modelo 1:N): 4 uds LOTE-A + 6 uds LOTE-B
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoA, 4);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoB, 6);
+
+        // [WHEN] Se contabiliza
+        LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
+
+        // [THEN] ILE para LOTE-T10A: DUoM Second Qty = 0
+        // Con la corrección de Issue 20, el total de la línea (8) NO se copia a cada ILE
+        // cuando hay Lot No. asignado y DUoM Ratio = 0 sin ratio de lote.
+        // El valor incorrecto anterior (8 en cada ILE) queda eliminado.
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Lot No.", LotNoA);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T10: Se esperaba ILE para LOTE-T10A');
+        LibraryAssert.AreEqual(0, ILE."DUoM Second Qty",
+            'T10: ILE LOTE-T10A — DUoM Second Qty debe ser 0 (AlwaysVariable sin ratio de lote)');
+
+        // [THEN] ILE para LOTE-T10B: DUoM Second Qty = 0
+        ILE.SetRange("Lot No.", LotNoB);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T10: Se esperaba ILE para LOTE-T10B');
+        LibraryAssert.AreEqual(0, ILE."DUoM Second Qty",
+            'T10: ILE LOTE-T10B — DUoM Second Qty debe ser 0 (AlwaysVariable sin ratio de lote)');
     end;
 }

@@ -49,7 +49,7 @@ already covers the need:
 |---|---|---|
 | `DUoM Item Setup` | 50100 | Per-item DUoM configuration (enabled, second UoM, mode, ratio) |
 | `DUoM Item Variant Setup` | 50101 | Optional per-variant DUoM override (Second UoM Code, Conversion Mode, Fixed Ratio). Absent = inherit from item. |
-| `DUoM Lot Ratio` | 50102 | **[PHASE 2 — PENDIENTE]** Tabla para almacenar ratio real por lote. Integración con Item Tracking Lines en Phase 2 (Issue 13). |
+| `DUoM Lot Ratio` | 50102 | Almacena el ratio real medido por lote. Para artículos con trazabilidad de lote, la segunda cantidad y el ratio DUoM se persisten en el ILE de cada lote al contabilizar. Implementado en Issue 13; model 1:N consolidado en Issue 20. |
 
 ### Custom Pages
 
@@ -104,9 +104,39 @@ already covers the need:
 | `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
 | `DUoM UoM Helper` | 50106 | Helper de UoM: `GetSecondUoMRoundingPrecision(ItemNo)` y `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` para obtener `Qty. Rounding Precision` de la tabla `Item Unit of Measure` |
 | `DUoM Setup Resolver` | 50107 | Centraliza la resolución jerárquica Item → Variante de la configuración DUoM efectiva. Todos los suscriptores y triggers deben llamar a `GetEffectiveSetup(ItemNo, VariantCode, ...)` |
-| `DUoM Lot Subscribers` | 50108 | Subscribers para integración DUoM con lotes. `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` (Lot No. es campo directo en tabla 83). Método público `TryApplyLotRatioToILE` llamado desde `DUoM Inventory Subscribers` (50104) en `OnAfterInitItemLedgEntry`. |
+| `DUoM Lot Subscribers` | 50108 | Subscribers para integración DUoM con lotes. `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` (Lot No. es campo directo en tabla 83). Método público `TryApplyLotRatioToILE` llamado desde `DUoM Inventory Subscribers` (50104) en `OnAfterInitItemLedgEntry` para aplicar el ratio del lote específico a cada ILE. No asume 1 línea = 1 lote. |
 
 ---
+
+## Modelo 1:N — Línea origen como agregado (Issue 20)
+
+**DUoM nunca asume que 1 línea de documento BC equivale a 1 lote.** El modelo correcto es:
+
+```
+Línea origen (Purchase Line, Sales Line, IJL)  →  N lotes (vía Item Tracking)
+                 ↓ cantidad total (agregado)          ↓ ILE por lote
+                 ↓ DUoM Second Qty total         ↓ DUoM Second Qty por lote
+                                                  ↓ DUoM Ratio por lote
+```
+
+### Principios de implementación
+
+- La **línea origen** mantiene información DUoM como **total agregado**.
+- El **ILE por lote** contiene la segunda cantidad y el ratio propios de ese lote.
+- El posting calcula `ILE.DUoM Second Qty = Abs(ILE.Quantity) × DUoM Ratio` para garantizar
+  el valor correcto por lote, independientemente del número de lotes de la línea origen.
+- Si existe ratio de lote en `DUoM Lot Ratio` (50102), se sobrescribe el ratio genérico.
+- La suma de `DUoM Second Qty` de todos los ILEs de una línea refleja el total DUoM real.
+
+### Restricción de diseño
+
+- No se debe acceder a datos DUoM de lote a través de un único `FindFirst()` sobre
+  `Reservation Entry` desde lógica de línea origen — puede haber N entradas.
+- No se debe asumir que `ItemJournalLine."DUoM Second Qty"` en `OnAfterInitItemLedgEntry`
+  es la cantidad correcta para el ILE: en multi-lote, es el total de la línea, no el del lote.
+- La distribución correcta de DUoM entre lotes requiere el ratio de lote (`DUoM Lot Ratio`)
+  o el cálculo proporcional basado en `Abs(ILE.Quantity) × DUoM Ratio`.
+
 
 ## Resolución de configuración por variante
 

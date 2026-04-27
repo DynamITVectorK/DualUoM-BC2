@@ -378,7 +378,40 @@ asociado a un número de lote específico, integrado con el estándar de Item Tr
 
 **Dependencias:** Issue 12 completado. Issues 14/15 pueden ejecutarse en paralelo.
 
-### Issue 14 — Warehouse Receipt and Shipment DUoM Fields
+### Issue 20 — Eliminar asunciones 1:1 línea/lote y consolidar modelo 1:N ✅ IMPLEMENTADO
+
+**Objetivo:** auditar y refactorizar todo el repositorio para eliminar cualquier asunción
+funcional, técnica o de pruebas basada en que `1 línea origen BC = 1 lote`.
+Consolidar el modelo correcto: `1 línea origen = N lotes (vía Item Tracking)`.
+
+**Bug corregido:** En `OnAfterInitItemLedgEntry`, cuando `DUoM Ratio = 0` (modo AlwaysVariable
+sin ratio genérico) y el `ItemJournalLine` tenía `Lot No.` asignado (multi-lote), el código
+copiaba el total `DUoM Second Qty` de la línea a cada ILE. Esto era incorrecto: en un escenario
+multi-lote, el total de la línea no puede asignarse a cada ILE individual sin ratio de lote.
+Con la corrección, el ILE queda con `DUoM Second Qty = 0` en ese caso (limitación documentada),
+evitando que datos incorrectos contaminen los registros de inventario.
+
+**Nuevos tests (T08–T10) en `DUoM Lot Ratio Tests` (codeunit 50217):**
+- T08: UNA sola línea IJL con DOS lotes vía Item Tracking → cada ILE tiene su ratio de lote
+  (verdadero escenario 1:N de BC, diferente de T05 que usa dos líneas IJL separadas).
+- T09: Suma de `DUoM Second Qty` de todos los ILEs = total esperado (coherencia 1:N).
+- T10: AlwaysVariable + multi-lote sin ratio de lote → ILE `DUoM Second Qty = 0`
+  (verifica que la corrección elimina el bug de copia incorrecta del total).
+
+**Documentación actualizada:**
+- `docs/02-functional-design.md`: sección "Regla de diseño: línea origen como agregado — modelo 1:N"
+  con limitación conocida de AlwaysVariable + multi-lote sin ratio de lote.
+- `docs/03-technical-architecture.md`: corrección de "PHASE 2 — PENDIENTE" en `DUoM Lot Ratio` (50102),
+  nueva sección "Modelo 1:N — Línea origen como agregado" con principios y restricciones.
+- `docs/06-backlog.md`: Issue 13 actualizado (T01–T07 → T01–T10), Issue 20 añadido.
+- `docs/issues/issue-20-multilot-1n-refactor.md`: documentación del issue completa.
+
+**Deliverables:**
+- `app/src/codeunit/DUoMInventorySubscribers.Codeunit.al` (50104) — corrección `OnAfterInitItemLedgEntry`
+- `test/src/codeunit/DUoMLotRatioTests.Codeunit.al` (50217) — 3 nuevos tests T08–T10
+- `docs/02-functional-design.md`, `docs/03-technical-architecture.md`, `docs/06-backlog.md`
+- `docs/issues/issue-20-multilot-1n-refactor.md`
+
 
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
 
@@ -468,7 +501,7 @@ Alcance (report extensions en BC 27):
 
 - Orden de traslado DUoM (`Transfer Order`) — Issue 18+
 - Órdenes de montaje DUoM (`Assembly Order`) — si entra en scope
-- Integración con Item Tracking avanzado (multi-lote en línea) — Issue 19+
+- ~~Integración con Item Tracking avanzado (multi-lote en línea)~~ ✅ Resuelto en Issue 20
 
 ---
 
