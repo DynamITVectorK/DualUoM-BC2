@@ -13,6 +13,7 @@
 ///          Escenario 1:N real: una línea origen = N asignaciones de lote = N ILEs
 ///   T09 — UNA línea IJL con DOS lotes vía Item Tracking → suma de DUoM Second Qty = total esperado
 ///   T10 — AlwaysVariable + multi-lote SIN ratio de lote → ILE DUoM Second Qty = 0 (no copia total)
+///   T11 — IJL, modo Variable, lote CON ratio + precondiciones reforzadas → DUoM Ratio y Second Qty pre-rellenados
 ///
 /// MODELO 1:N — Línea origen como agregado (Issue 20):
 ///   Una línea de documento BC puede tener N asignaciones de lote vía Item Tracking.
@@ -637,5 +638,68 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LibraryAssert.IsTrue(ILE.FindFirst(), 'T10: Se esperaba ILE para LOTE-T10B');
         LibraryAssert.AreEqual(0, ILE."DUoM Second Qty",
             'T10: ILE LOTE-T10B — DUoM Second Qty debe ser 0 (AlwaysVariable sin ratio de lote)');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T11 — IJL, Variable, lote CON ratio + precondiciones reforzadas
+    //        → DUoM Ratio y Second Qty pre-rellenados con ratio de lote
+    //
+    // Versión reforzada de T01 que valida explícitamente:
+    //   - Precondición: la ratio del lote en BD es 0,38.
+    //   - Precondición: la línea parte de la ratio por defecto (0,40) antes de validar el lote.
+    //   - Postcondición: la ratio del lote (0,38) prevalece sobre la ratio por defecto (0,40).
+    //   - Postcondición: DUoM Second Qty = 10 × 0,38 = 3,8.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure T11_VariableMode_LotWithRatio_DUoMFieldsPreFilled()
+    var
+        Item: Record Item;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        DUoMLotRatio: Record "DUoM Lot Ratio";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+    begin
+        // [GIVEN] Artículo con DUoM Variable (ratio por defecto 0,40)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.40);
+
+        // [GIVEN] Ratio de lote registrado: (ItemNo, 'LOTE-T11') = 0,38
+        LotNo := 'LOTE-T11';
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
+
+        // Precondición: verificar que la ratio del lote está correctamente registrada en BD
+        DUoMLotRatio.Get(Item."No.", LotNo);
+        LibraryAssert.AreNearlyEqual(0.38, DUoMLotRatio."Actual Ratio", 0.00001,
+            'T11: Precondición — la ratio registrada del lote debe ser 0,38.');
+
+        // [GIVEN] Item Journal Line para 10 unidades
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
+        ItemJnlLine.Validate(Quantity, 10);
+
+        // Precondición: la línea debe tener la ratio por defecto antes de validar el lote
+        LibraryAssert.AreNearlyEqual(0.40, ItemJnlLine."DUoM Ratio", 0.00001,
+            'T11: Precondición — antes de validar el lote, la línea debe tener la ratio por defecto 0,40.');
+        LibraryAssert.AreNearlyEqual(4.0, ItemJnlLine."DUoM Second Qty", 0.001,
+            'T11: Precondición — antes de validar el lote, DUoM Second Qty debe ser 10 × 0,40 = 4,0.');
+
+        // [WHEN] Se valida el campo Lot No. (dispara OnAfterValidateItemJnlLineLotNo)
+        ItemJnlLine.Validate("Lot No.", LotNo);
+
+        // [THEN] DUoM Ratio sobreescrito con el ratio real del lote (0,38 prevalece sobre 0,40)
+        LibraryAssert.AreNearlyEqual(0.38, ItemJnlLine."DUoM Ratio", 0.00001,
+            'T11: DUoM Ratio debe ser 0,38 tras validar Lot No. con ratio registrado.');
+
+        // [THEN] DUoM Second Qty recalculada con el ratio de lote: 10 × 0,38 = 3,8
+        LibraryAssert.AreNearlyEqual(3.8, ItemJnlLine."DUoM Second Qty", 0.001,
+            'T11: DUoM Second Qty debe ser 10 × 0,38 = 3,8.');
     end;
 }
