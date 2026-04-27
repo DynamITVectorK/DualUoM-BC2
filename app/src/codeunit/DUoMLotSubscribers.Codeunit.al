@@ -31,14 +31,11 @@ codeunit 50108 "DUoM Lot Subscribers"
     /// Firma verificada: BC 27 / runtime 15 — Item Journal Line tiene Lot No. como campo propio.
     ///
     /// Patrón de asignación para campos de tableextension en suscriptores de evento:
-    ///   Se usa Rec.Validate("DUoM Ratio", NewRatio) para propagar el valor al registro
-    ///   llamante. La asignación directa (:=) a campos de tableextension dentro de un
-    ///   suscriptor de evento no garantiza la propagación al registro del código llamante
-    ///   (el valor se escribe en el buffer local del suscriptor pero el caller no lo ve).
-    ///   No existe riesgo de re-entrada: este suscriptor reacciona a "Lot No." y llama
-    ///   Validate("DUoM Ratio"), cuyo OnValidate no toca "Lot No." en ningún caso.
-    ///   DUoM Second Qty se asigna directamente (:=) como respaldo para el modo
-    ///   AlwaysVariable, donde el trigger OnValidate de DUoM Ratio sale sin recalcular.
+    ///   Se usa asignación directa (:=) ÚNICAMENTE cuando TryApplyLotRatioIfExists devuelve
+    ///   true (ratio de lote encontrada). Esto evita que Rec.Validate("DUoM Ratio", ...) dispare
+    ///   una validación anidada que en BC 27 puede restaurar el ratio por defecto del artículo
+    ///   (0,40) sobrescribiendo el ratio real del lote (0,38) que acabamos de calcular.
+    ///   Si no se encuentra ratio de lote, los campos DUoM no se modifican.
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
     local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
@@ -46,12 +43,21 @@ codeunit 50108 "DUoM Lot Subscribers"
         NewRatio: Decimal;
         NewSecondQty: Decimal;
     begin
+        if Rec."Item No." = '' then
+            exit;
+        if Rec."Lot No." = '' then
+            exit;
+
         NewRatio := Rec."DUoM Ratio";
         NewSecondQty := Rec."DUoM Second Qty";
-        ApplyLotRatioIfExists(Rec."Item No.", Rec."Lot No.", Rec."Variant Code",
-                              Rec.Quantity, NewRatio, NewSecondQty);
-        Rec.Validate("DUoM Ratio", NewRatio);
-        Rec."DUoM Second Qty" := NewSecondQty;
+
+        if TryApplyLotRatioIfExists(
+            Rec."Item No.", Rec."Lot No.", Rec."Variant Code",
+            Rec.Quantity, NewRatio, NewSecondQty)
+        then begin
+            Rec."DUoM Ratio" := NewRatio;
+            Rec."DUoM Second Qty" := NewSecondQty;
+        end;
     end;
 
     /// <summary>
@@ -74,15 +80,16 @@ codeunit 50108 "DUoM Lot Subscribers"
                  ItemJournalLine."Item No.", ItemJournalLine."Variant Code",
                  SecondUoMCode, ConversionMode, FixedRatio) then
             exit;
-        ApplyLotRatioToRecord(ItemJournalLine."Item No.", ItemJournalLine."Lot No.",
-                              ConversionMode, ItemLedgEntry.Quantity,
-                              ItemLedgEntry."DUoM Ratio", ItemLedgEntry."DUoM Second Qty");
+        TryApplyLotRatioToRecord(ItemJournalLine."Item No.", ItemJournalLine."Lot No.",
+                                 ConversionMode, ItemLedgEntry.Quantity,
+                                 ItemLedgEntry."DUoM Ratio", ItemLedgEntry."DUoM Second Qty");
     end;
 
     /// <summary>
-    /// Resuelve el modo de conversión efectivo del artículo y delega a ApplyLotRatioToRecord.
+    /// Resuelve el modo de conversión efectivo del artículo y delega a TryApplyLotRatioToRecord.
+    /// Devuelve true si se encontró y aplicó una ratio de lote; false en caso contrario.
     /// </summary>
-    local procedure ApplyLotRatioIfExists(ItemNo: Code[20]; LotNo: Code[50]; VariantCode: Code[10]; Quantity: Decimal; var DUoMRatio: Decimal; var DUoMSecondQty: Decimal)
+    local procedure TryApplyLotRatioIfExists(ItemNo: Code[20]; LotNo: Code[50]; VariantCode: Code[10]; Quantity: Decimal; var DUoMRatio: Decimal; var DUoMSecondQty: Decimal): Boolean
     var
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
         SecondUoMCode: Code[10];
@@ -90,29 +97,31 @@ codeunit 50108 "DUoM Lot Subscribers"
         FixedRatio: Decimal;
     begin
         if ItemNo = '' then
-            exit;
+            exit(false);
         if LotNo = '' then
-            exit;
+            exit(false);
         if not DUoMSetupResolver.GetEffectiveSetup(ItemNo, VariantCode, SecondUoMCode, ConversionMode, FixedRatio) then
-            exit;
-        ApplyLotRatioToRecord(ItemNo, LotNo, ConversionMode, Quantity, DUoMRatio, DUoMSecondQty);
+            exit(false);
+        exit(TryApplyLotRatioToRecord(ItemNo, LotNo, ConversionMode, Quantity, DUoMRatio, DUoMSecondQty));
     end;
 
     /// <summary>
     /// Sobrescribe DUoM Ratio y DUoM Second Qty si existe un ratio registrado para el lote
     /// y el modo de conversión lo permite (Variable o AlwaysVariable).
     /// Fixed: el ratio fijo siempre prevalece — nunca se sobrescribe.
+    /// Devuelve true si se aplicó el ratio de lote; false si no hay ratio o el modo es Fixed.
     /// </summary>
-    local procedure ApplyLotRatioToRecord(ItemNo: Code[20]; LotNo: Code[50]; ConversionMode: Enum "DUoM Conversion Mode"; Quantity: Decimal; var DUoMRatio: Decimal; var DUoMSecondQty: Decimal)
+    local procedure TryApplyLotRatioToRecord(ItemNo: Code[20]; LotNo: Code[50]; ConversionMode: Enum "DUoM Conversion Mode"; Quantity: Decimal; var DUoMRatio: Decimal; var DUoMSecondQty: Decimal): Boolean
     var
         DUoMLotRatio: Record "DUoM Lot Ratio";
     begin
         if ConversionMode = ConversionMode::Fixed then
-            exit; // Modo Fixed: el ratio fijo siempre prevalece
+            exit(false); // Modo Fixed: el ratio fijo siempre prevalece
         if not DUoMLotRatio.Get(ItemNo, LotNo) then
-            exit; // Sin ratio para este lote: sin cambios
+            exit(false); // Sin ratio para este lote: sin cambios
         DUoMRatio := DUoMLotRatio."Actual Ratio";
         // Recalcular usando la cantidad absoluta del registro destino
         DUoMSecondQty := Abs(Quantity) * DUoMLotRatio."Actual Ratio";
+        exit(true);
     end;
 }

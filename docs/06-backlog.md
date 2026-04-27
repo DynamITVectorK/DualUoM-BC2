@@ -412,6 +412,31 @@ evitando que datos incorrectos contaminen los registros de inventario.
 - `docs/02-functional-design.md`, `docs/03-technical-architecture.md`, `docs/06-backlog.md`
 - `docs/issues/issue-20-multilot-1n-refactor.md`
 
+### Issue 154 — Fix: ratio real por lote no se aplica al validar Lot No. en Item Journal Line ✅ IMPLEMENTADO
+
+**Objetivo:** corregir la regresión funcional por la que `DUoM Ratio` quedaba en `0,40` (ratio
+por defecto del artículo) en lugar de `0,38` (ratio real del lote) al validar `"Lot No."` en
+un `Item Journal Line` de un artículo en modo Variable con ratio de lote registrada.
+
+**Causa raíz:** El suscriptor `OnAfterValidateItemJnlLineLotNo` llamaba a
+`Rec.Validate("DUoM Ratio", 0.38)` tras encontrar el ratio de lote. En BC 27, esta validación
+anidada dentro de un `OnAfterValidateEvent` puede restaurar el valor por defecto del artículo,
+impidiendo que el ratio de lote `0,38` se persista en el buffer del registro llamante.
+
+**Corrección:** Renombrado `ApplyLotRatioIfExists` → `TryApplyLotRatioIfExists` (Boolean) y
+`ApplyLotRatioToRecord` → `TryApplyLotRatioToRecord` (Boolean). El suscriptor ahora sólo
+actualiza los campos DUoM con asignación directa (`:=`) cuando `TryApplyLotRatioIfExists`
+devuelve `true`, evitando la validación anidada que restauraba el ratio por defecto.
+
+**Nuevo test T11:** `T11_VariableMode_LotWithRatio_DUoMFieldsPreFilled` con precondiciones
+reforzadas que verifican explícitamente que el ratio de lote prevalece sobre el ratio por defecto.
+
+**Deliverables:**
+- `app/src/codeunit/DUoMLotSubscribers.Codeunit.al` (50108) — corrección subscriber + helpers Boolean
+- `test/src/codeunit/DUoMLotRatioTests.Codeunit.al` (50217) — nuevo test T11
+- `docs/06-backlog.md`, `docs/issues/issue-154-fix-lot-ratio-subscriber-validate.md`
+
+### Issue 14 — Warehouse Basic Documents DUoM Fields
 
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
 
