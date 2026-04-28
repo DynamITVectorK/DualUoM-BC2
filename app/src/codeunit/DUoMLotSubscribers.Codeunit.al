@@ -30,12 +30,16 @@ codeunit 50108 "DUoM Lot Subscribers"
     /// (a diferencia de Purchase Line y Sales Line donde no es campo directo en BC 27).
     /// Firma verificada: BC 27 / runtime 15 — Item Journal Line tiene Lot No. como campo propio.
     ///
-    /// Patrón de asignación para campos de tableextension en suscriptores de evento:
-    ///   Se usa asignación directa (:=) ÚNICAMENTE cuando TryApplyLotRatioIfExists devuelve
-    ///   true (ratio de lote encontrada). Esto evita que Rec.Validate("DUoM Ratio", ...) dispare
-    ///   una validación anidada que en BC 27 puede restaurar el ratio por defecto del artículo
-    ///   (0,40) sobrescribiendo el ratio real del lote (0,38) que acabamos de calcular.
-    ///   Si no se encuentra ratio de lote, los campos DUoM no se modifican.
+    /// Patrón de persistencia para campos de tableextension en suscriptores de evento BC 27:
+    ///   En BC 27, la cadena de validación de "Lot No." en Item Journal Line puede provocar
+    ///   un refresco interno del registro desde la base de datos. Si los campos de
+    ///   tableextension sólo se asignan en memoria (:=), ese refresco restaura los valores
+    ///   originales de BD sobrescribiendo los cambios del suscriptor.
+    ///   La solución es persistir los cambios con Rec.Modify(false) ANTES de que
+    ///   el refresco pueda ocurrir, garantizando que BD y buffer coincidan con el ratio
+    ///   real del lote. Rec.Modify(false) sólo se llama cuando se encontró ratio de lote
+    ///   (TryApplyLotRatioIfExists devuelve true) y el registro ya existe en BD
+    ///   (Rec."Line No." <> 0).
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
     local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
@@ -57,6 +61,8 @@ codeunit 50108 "DUoM Lot Subscribers"
         then begin
             Rec."DUoM Ratio" := NewRatio;
             Rec."DUoM Second Qty" := NewSecondQty;
+            if Rec."Line No." <> 0 then
+                Rec.Modify(false);
         end;
     end;
 
