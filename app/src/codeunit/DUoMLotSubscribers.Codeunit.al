@@ -20,7 +20,7 @@
 /// </summary>
 codeunit 50108 "DUoM Lot Subscribers"
 {
-    Access = Internal;
+    Access = Public;
 
     /// <summary>
     /// Pre-rellena DUoM Ratio y DUoM Second Qty en un Item Journal Line cuando el
@@ -38,28 +38,48 @@ codeunit 50108 "DUoM Lot Subscribers"
     ///   un refresco implícito del buffer desde la BD antes de escribir, lo que
     ///   sobrescribiría los valores asignados con := (p.ej. 0,38) con los valores
     ///   anteriores almacenados en BD (p.ej. 0,40), deshaciendo el cambio deseado.
+    /// Delegación: el subscriber delega en ApplyLotRatioToItemJournalLine para
+    ///   permitir llamada directa desde tests (T12) y aislar la lógica del evento.
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
     local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
+    begin
+        ApplyLotRatioToItemJournalLine(Rec);
+    end;
+
+    /// <summary>
+    /// Aplica el ratio de lote a los campos DUoM de un Item Journal Line.
+    /// Función reutilizable que permite llamada directa desde tests para aislar
+    /// la lógica de aplicación del evento OnAfterValidateEvent[Lot No.].
+    /// Devuelve true si se encontró y aplicó una ratio de lote; false en caso contrario.
+    /// </summary>
+    /// <param name="ItemJnlLine">Línea de diario a modificar (var — se sobrescriben DUoM Ratio y DUoM Second Qty).</param>
+    procedure ApplyLotRatioToItemJournalLine(var ItemJnlLine: Record "Item Journal Line"): Boolean
     var
         NewRatio: Decimal;
         NewSecondQty: Decimal;
     begin
-        if Rec."Item No." = '' then
-            exit;
-        if Rec."Lot No." = '' then
-            exit;
+        if ItemJnlLine."Item No." = '' then
+            exit(false);
+        if ItemJnlLine."Lot No." = '' then
+            exit(false);
 
-        NewRatio := Rec."DUoM Ratio";
-        NewSecondQty := Rec."DUoM Second Qty";
+        NewRatio := ItemJnlLine."DUoM Ratio";
+        NewSecondQty := ItemJnlLine."DUoM Second Qty";
 
-        if TryApplyLotRatioIfExists(
-            Rec."Item No.", Rec."Lot No.", Rec."Variant Code",
-            Rec.Quantity, NewRatio, NewSecondQty)
-        then begin
-            Rec."DUoM Ratio" := NewRatio;
-            Rec."DUoM Second Qty" := NewSecondQty;
-        end;
+        if not TryApplyLotRatioIfExists(
+            ItemJnlLine."Item No.",
+            ItemJnlLine."Lot No.",
+            ItemJnlLine."Variant Code",
+            ItemJnlLine.Quantity,
+            NewRatio,
+            NewSecondQty)
+        then
+            exit(false);
+
+        ItemJnlLine."DUoM Ratio" := NewRatio;
+        ItemJnlLine."DUoM Second Qty" := NewSecondQty;
+        exit(true);
     end;
 
     /// <summary>

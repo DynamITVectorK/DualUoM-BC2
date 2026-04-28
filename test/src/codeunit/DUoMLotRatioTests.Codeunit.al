@@ -14,6 +14,7 @@
 ///   T09 — UNA línea IJL con DOS lotes vía Item Tracking → suma de DUoM Second Qty = total esperado
 ///   T10 — AlwaysVariable + multi-lote SIN ratio de lote → ILE DUoM Second Qty = 0 (no copia total)
 ///   T11 — IJL, modo Variable, lote CON ratio + precondiciones reforzadas → DUoM Ratio y Second Qty pre-rellenados
+///   T12 — Llamada directa a ApplyLotRatioToItemJournalLine → lógica interna separada del evento
 ///
 /// MODELO 1:N — Línea origen como agregado (Issue 20):
 ///   Una línea de documento BC puede tener N asignaciones de lote vía Item Tracking.
@@ -694,6 +695,10 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         // [WHEN] Se valida el campo Lot No. (dispara OnAfterValidateItemJnlLineLotNo)
         ItemJnlLine.Validate("Lot No.", LotNo);
 
+        // [THEN] El campo Lot No. debe quedar informado en la línea
+        LibraryAssert.AreEqual(LotNo, ItemJnlLine."Lot No.",
+            'T11: Tras Validate("Lot No."), el lote debe quedar informado en la línea.');
+
         // [THEN] DUoM Ratio sobreescrito con el ratio real del lote (0,38 prevalece sobre 0,40)
         LibraryAssert.AreNearlyEqual(0.38, ItemJnlLine."DUoM Ratio", 0.00001,
             'T11: DUoM Ratio debe ser 0,38 tras validar Lot No. con ratio registrado.');
@@ -701,5 +706,57 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         // [THEN] DUoM Second Qty recalculada con el ratio de lote: 10 × 0,38 = 3,8
         LibraryAssert.AreNearlyEqual(3.8, ItemJnlLine."DUoM Second Qty", 0.001,
             'T11: DUoM Second Qty debe ser 10 × 0,38 = 3,8.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T12 — Llamada directa a ApplyLotRatioToItemJournalLine
+    //        → lógica interna separada del evento OnAfterValidateEvent[Lot No.]
+    //
+    // Si T12 falla: el problema está en TryApplyLotRatioIfExists, TryApplyLotRatioToRecord,
+    //              GetEffectiveSetup o DUoMLotRatio.Get (lógica interna).
+    // Si T12 pasa pero T11 falla: la lógica directa es correcta y el problema está en
+    //              el evento OnAfterValidateEvent o en la propagación de campos al llamante.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure T12_VariableMode_DirectCall_ApplyLotRatioToItemJnlLine()
+    var
+        Item: Record Item;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        DUoMLotSubscribers: Codeunit "DUoM Lot Subscribers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+    begin
+        // [GIVEN] Artículo con DUoM Variable (ratio por defecto 0,40)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.40);
+
+        // [GIVEN] Ratio de lote registrado: (ItemNo, 'LOTE-T12') = 0,38
+        LotNo := 'LOTE-T12';
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
+
+        // [GIVEN] Item Journal Line para 10 unidades con DUoM Ratio = 0,40 ya calculado
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
+        ItemJnlLine.Validate(Quantity, 10);
+        ItemJnlLine."Lot No." := LotNo;
+
+        // [WHEN] Se llama directamente a ApplyLotRatioToItemJournalLine (sin evento)
+        DUoMLotSubscribers.ApplyLotRatioToItemJournalLine(ItemJnlLine);
+
+        // [THEN] La llamada directa debe aplicar la ratio real del lote
+        LibraryAssert.AreNearlyEqual(0.38, ItemJnlLine."DUoM Ratio", 0.00001,
+            'T12: La llamada directa debe aplicar la ratio real del lote.');
+
+        // [THEN] DUoM Second Qty recalculada con el ratio de lote: 10 × 0,38 = 3,8
+        LibraryAssert.AreNearlyEqual(3.8, ItemJnlLine."DUoM Second Qty", 0.001,
+            'T12: La llamada directa debe recalcular DUoM Second Qty con la ratio del lote.');
     end;
 }
