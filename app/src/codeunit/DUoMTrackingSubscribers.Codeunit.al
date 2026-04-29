@@ -64,6 +64,23 @@ codeunit 50109 "DUoM Tracking Subscribers"
         RecalcTrackingSpecSecondQty(Rec);
     end;
 
+    // Publisher: Table "Reservation Entry" (337), Event: OnAfterCopyTrackingFromTrackingSpec
+    // Verificado contra BC 27 Symbol Reference — 2026-04-29
+    // Motivo: propagar DUoM Second Qty y DUoM Ratio desde el buffer Tracking Specification
+    // (tabla 6500) a la Reservation Entry persistida (tabla 337) en el momento en que
+    // Item Tracking Lines confirma el volcado. El evento se publica en el procedimiento
+    // ReservationEntry.CopyTrackingFromSpec(TrackingSpecification), que es el mecanismo
+    // estándar BC para transferir datos de tracking del buffer al registro persistido.
+    [EventSubscriber(ObjectType::Table, Database::"Reservation Entry",
+                     'OnAfterCopyTrackingFromTrackingSpec', '', false, false)]
+    local procedure OnAfterCopyTrackingFromTrackingSpec(
+        var ReservEntry: Record "Reservation Entry";
+        TrackingSpecification: Record "Tracking Specification")
+    begin
+        ReservEntry."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
+        ReservEntry."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
+    end;
+
     /// <summary>
     /// Aplica la ratio DUoM correspondiente a los campos del Tracking Specification.
     /// En modo Fixed: aplica el ratio fijo del artículo/variante.

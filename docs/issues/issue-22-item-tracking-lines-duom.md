@@ -255,38 +255,39 @@ Actualizar en el mismo PR:
 
 ### Código y tests
 
-- [ ] TableExtension `DUoM Tracking Spec Ext` compilando sin warnings.
-- [ ] PageExtension `DUoM Item Tracking Lines` compilando sin warnings.
-- [ ] Suscriptor `OnAfterValidateEvent` para `Lot No.` implementado y verificado en BC 27.
-- [ ] Suscriptor `OnAfterValidateEvent` para `Quantity (Base)` implementado y verificado.
-- [ ] Propagación a `Reservation Entry` implementada (o limitación documentada).
+- [x] TableExtension `DUoM Tracking Spec Ext` compilando sin warnings.
+- [x] TableExtension `DUoM Reservation Entry Ext` compilando sin warnings.
+- [x] PageExtension `DUoM Item Tracking Lines` compilando sin warnings.
+- [x] Suscriptor `OnAfterValidateEvent` para `Lot No.` implementado y verificado en BC 27.
+- [x] Suscriptor `OnAfterValidateEvent` para `Quantity (Base)` implementado y verificado.
+- [x] Propagación a `Reservation Entry` implementada vía `OnAfterCopyTrackingFromTrackingSpec` (patrón estándar BC).
 - [ ] T01–T05 pasando en CI.
 
 ### Calidad
 
 - [ ] Cero warnings `PerTenantExtensionCop`, `CodeCop`, `UICop`.
-- [ ] Sin `with` implícito (`NoImplicitWith`).
-- [ ] Sin uso de `Permissions` en codeunits (AL0246).
-- [ ] Todos los `Label` con propiedad `Comment`.
-- [ ] Nombres de objetos ≤ 30 caracteres.
+- [x] Sin `with` implícito (`NoImplicitWith`).
+- [x] Sin uso de `Permissions` en codeunits (AL0246).
+- [x] Todos los `Label` con propiedad `Comment`.
+- [x] Nombres de objetos ≤ 30 caracteres.
 
 ### Localización
 
-- [ ] `DualUoM-BC.en-US.xlf` actualizado.
-- [ ] `DualUoM-BC.es-ES.xlf` actualizado.
+- [x] `DualUoM-BC.en-US.xlf` actualizado.
+- [x] `DualUoM-BC.es-ES.xlf` actualizado.
 
 ### Permission sets
 
-- [ ] `DUoMAll.PermissionSet.al` actualizado si procede.
-- [ ] `DUoMTestAll.PermissionSet.al` actualizado si procede.
+- [x] `DUoMAll.PermissionSet.al` actualizado (`Reservation Entry = RIMD`).
+- [x] `DUoMTestAll.PermissionSet.al` actualizado (`Reservation Entry = RIMD`).
 
 ### Documentación
 
 - [ ] `docs/02-functional-design.md` actualizado.
-- [ ] `docs/03-technical-architecture.md` actualizado.
-- [ ] `docs/06-backlog.md` — Issue 22 marcado ✅ IMPLEMENTADO.
-- [ ] `docs/TestCoverageAudit.md` actualizado.
-- [ ] `docs/issues/issue-22-item-tracking-lines-duom.md` creado (este fichero).
+- [x] `docs/03-technical-architecture.md` actualizado.
+- [x] `docs/06-backlog.md` — Issue 22 marcado ✅ IMPLEMENTADO.
+- [x] `docs/TestCoverageAudit.md` actualizado.
+- [x] `docs/issues/issue-22-item-tracking-lines-duom.md` creado (este fichero).
 
 ---
 
@@ -376,6 +377,7 @@ Confirmar el nombre exacto de la página en BC 27 antes de crear la pageextensio
 | Objeto | Tipo | ID | Archivo |
 |--------|------|----|---------|
 | `DUoM Tracking Spec Ext` | tableextension | 50122 | `app/src/tableextension/DUoMTrackingSpecExt.TableExt.al` |
+| `DUoM Reservation Entry Ext` | tableextension | 50123 | `app/src/tableextension/DUoMReservationEntryExt.TableExt.al` |
 | `DUoM Item Tracking Lines` | pageextension | 50111 | `app/src/pageextension/DUoMItemTrackingLines.PageExt.al` |
 | `DUoM Tracking Subscribers` | codeunit | 50109 | `app/src/codeunit/DUoMTrackingSubscribers.Codeunit.al` |
 | `DUoM Item Tracking Tests` | test codeunit | 50218 | `test/src/codeunit/DUoMItemTrackingTests.Codeunit.al` |
@@ -391,26 +393,24 @@ Confirmar el nombre exacto de la página en BC 27 antes de crear la pageextensio
 3. **`Quantity (Base)` subscriber (RT-04):** solo recalcula si `DUoM Ratio ≠ 0`,
    evitando cálculos inútiles en líneas sin DUoM configurado.
 
-4. **Propagación a `Reservation Entry` (RF-04 / RT-05):**
-   No implementada. No se identificó un evento seguro en BC 27 con los parámetros
-   necesarios (`Tracking Specification` + `Reservation Entry` en la misma firma).
-   La consistencia DUoM se garantiza en el posting vía `TryApplyLotRatioToILE`
-   (codeunit 50108). Documentada como limitación conocida y tarea futura N-lotes.
+4. **Propagación a `Reservation Entry` (RF-04 / RT-05) — IMPLEMENTADA:**
+   Se identificó el evento estándar BC `OnAfterCopyTrackingFromTrackingSpec` publicado
+   en `Table "Reservation Entry"` (tabla 337), procedimiento `CopyTrackingFromSpec`.
+   Este evento es el mecanismo oficial BC para propagar campos personalizados de
+   `Tracking Specification` a `Reservation Entry` al confirmar Item Tracking Lines.
+   Se creó `DUoM Reservation Entry Ext` (tableextension 50123) y se añadió un subscriber
+   a `DUoM Tracking Subscribers` (50109) que copia `DUoM Second Qty` y `DUoM Ratio`
+   en el momento exacto del volcado estándar.
+   Mismo patrón usado por Package No. Information (BC estándar) y CD Tracking (localización RU).
 
-5. **Permission sets (RT-06):** No se requieren entradas explícitas para
-   `Tracking Specification` (tabla estándar) ni `Reservation Entry` (solo lectura
-   implícita en subscribers). La tabla `DUoM Lot Ratio` (50102) ya está cubierta.
+5. **Permission sets (RT-06):** Se añadió `tabledata "Reservation Entry" = RIMD`
+   en `DUoMAll.PermissionSet.al` y `DUoMTestAll.PermissionSet.al` para cubrir el
+   acceso de escritura a los campos DUoM en `Reservation Entry` desde el subscriber.
 
 6. **Tests T01–T05 usando Tracking Specification in-memory:**
    Los tests T01–T04 usan registros `Tracking Specification` sin `Insert()` para
    aislar la lógica de los subscribers. T05 verifica coherencia E2E entre el valor
    calculado en el buffer y el ILE resultante del posting.
-
-### Limitaciones conocidas
-
-- **RF-04 — Propagación a Reservation Entry:** los campos DUoM de `Tracking Specification`
-  no se copian automáticamente a `Reservation Entry` al confirmar Item Tracking Lines.
-  Los datos DUoM del lote se aplican durante el posting via `TryApplyLotRatioToILE`.
 
 ---
 

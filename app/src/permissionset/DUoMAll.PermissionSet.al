@@ -26,5 +26,6 @@ permissionset 50100 "DUoM - All"
         tabledata "Purch. Cr. Memo Line" = RIMD,
         tabledata "Sales Invoice Line" = RIMD,
         tabledata "Sales Cr.Memo Line" = RIMD,
-        tabledata "Value Entry" = R;
+        tabledata "Value Entry" = R,
+        tabledata "Reservation Entry" = RIMD;
 }

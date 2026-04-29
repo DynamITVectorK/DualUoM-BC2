@@ -35,6 +35,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | tableextension 50120 | Item Variant (cascade delete) | TableExt |
 | tableextension 50121 | DUoM Value Entry Ext (Value Entry) | TableExt |
 | tableextension 50122 | DUoM Tracking Spec Ext (Tracking Specification) | TableExt |
+| tableextension 50123 | DUoM Reservation Entry Ext (Reservation Entry) | TableExt |
 | codeunit 50101 | DUoM Calc Engine | Codeunit |
 | codeunit 50102 | DUoM Purchase Subscribers | Codeunit |
 | codeunit 50103 | DUoM Sales Subscribers | Codeunit |
@@ -97,6 +98,8 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Sales Invoice Line (TableExt) | — | ✅ 50210, 50216 | **Completa** | DUoM Unit Price propagado (50216 T06) |
 | DUoM Sales Cr.Memo Line (TableExt) | — | ✅ 50210 | **Completa** | |
 | DUoM Value Entry Ext (TableExt 50121) | — | ✅ 50216 | **Completa** | DUoM Second Qty en Value Entry tras compra (T07) y venta (T08) |
+| DUoM Tracking Spec Ext (TableExt 50122) | ✅ 50218 | ✅ 50218 (T05) | **Completa** | T01–T04 unitarios, T05 coherencia buffer → ILE (Issue 22) |
+| DUoM Reservation Entry Ext (TableExt 50123) | — | ✅ 50218 (T05) | **Buena** | Propagación vía OnAfterCopyTrackingFromTrackingSpec cubierta indirectamente en T05 E2E. GAP: test unitario aislado del subscriber reserva (P2) |
 | DUoM Calc Engine (cu 50101) | ✅ 50204 | — | **Completa** | Todos los modos, casos límite, rounding |
 | DUoM Purchase Subscribers (cu 50102) | ✅ 50205 | ✅ 50209, 50210, 50214 | **Completa** | Variable y AlwaysVariable cubiertos en 50214 |
 | DUoM Sales Subscribers (cu 50103) | ✅ 50206 | ✅ 50209, 50210, 50214 | **Completa** | Variable cubierto en 50214 |
@@ -106,6 +109,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Setup Resolver (cu 50107) | ✅ 50211 | — | **Completa** | Jerarquía Item→Variante cubierta |
 | DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 cubierta; aplicación de ratio durante posting cubierta (T04–T10) |
 | DUoM Lot Subscribers (cu 50108) | ✅ 50217 | — | **Completa** | Mecanismo TryApplyLotRatioToILE (posting) cubierto en T04–T10. T02/T03 son tests de regresión de diseño (No pre-relleno en Lot No. validate). T12 cubre el helper directo. |
+| DUoM Tracking Subscribers (cu 50109) | ✅ 50218 | ✅ 50218 (T05) | **Completa** | T01–T04 unitarios (Lot No./Qty (Base) subscribers), T05 E2E cubre subscriber ReservEntry (Issue 22) |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
 | DUoM permissionset 50100 | — | — | **N/A** | Verificado implícitamente por tests E2E con TestPermissions |

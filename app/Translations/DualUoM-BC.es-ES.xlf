@@ -852,6 +852,23 @@
           <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Tracking Spec Ext - Field DUoM Ratio - Property Caption</note>
         </trans-unit>
 
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TableExtension 50123  DUoM Reservation Entry Ext (Issue 22 — RF-04)
+             PENDING: TableExtension hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 2891634572 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="translated">Cdad. dual 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Reservation Entry Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 2891634572 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="translated">Ratio DUoM</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Reservation Entry Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
       </group>
     </body>
   </file>
