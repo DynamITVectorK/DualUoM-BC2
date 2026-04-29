@@ -436,6 +436,49 @@ reforzadas que verifican explícitamente que el ratio de lote prevalece sobre el
 - `test/src/codeunit/DUoMLotRatioTests.Codeunit.al` (50217) — nuevo test T11
 - `docs/06-backlog.md`, `docs/issues/issue-154-fix-lot-ratio-subscriber-validate.md`
 
+### Issue 21 — Refactorizar DUoM Lot Ratio: eliminar asunción incorrecta 1 línea = 1 lote ✅ IMPLEMENTADO
+
+**Objetivo:** eliminar toda lógica productiva que asuma una relación 1:1 entre línea de documento
+y lote DUoM. Consolidar el modelo correcto: `1 línea origen = N lotes` con ratio real DUoM a
+nivel de lote/tracking/ILE.
+
+**Decisión arquitectónica:**
+
+El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` (codeunit 50108) fue
+**eliminado** porque asumía incorrectamente que validar `"Lot No."` en una IJL equivale a
+asignar un único lote con su ratio DUoM. En Business Central real:
+- Una IJL puede tener N lotes asignados vía Item Tracking / Reservation Entry.
+- La ratio real por lote se aplica a nivel de ILE durante el posting (`TryApplyLotRatioToILE`).
+- `Item Journal Line."Lot No."` no es la fuente de verdad de la ratio DUoM por lote.
+
+**Tests eliminados (premisa 1:1 inválida):**
+- `T01` (`IJL_VariableMode_LotWithRatio_DUoMFieldsPreFilled`): esperaba que `Validate("Lot No.")`
+  pre-rellenara DUoM Ratio con el ratio del lote — dependía del subscriber eliminado.
+- `T11` (`T11_VariableMode_LotWithRatio_DUoMFieldsPreFilled`): versión reforzada de T01, mismo problema.
+
+**Tests actualizados (regresión de diseño):**
+- `T02` y `T03`: comentarios actualizados para documentar que `Validate("Lot No.")` NO interfiere
+  con campos DUoM (subscriber eliminado). Son tests de regresión del nuevo diseño.
+- `T12`: reclasificado como test unitario de bajo nivel del helper `ApplyLotRatioToItemJournalLine`.
+  No representa un escenario BC real de Item Tracking.
+
+**Tests productivos no modificados (mecanismo correcto):**
+- T04–T10: posting con Reservation Entries → TryApplyLotRatioToILE → ILE correcto por lote.
+
+**Documentación actualizada:**
+- `docs/02-functional-design.md`: eliminado "Caso A" del flujo de integración; actualizada regla
+  de diseño 1:N para indicar que `Item Journal Line."Lot No."` no es fuente de verdad.
+- `docs/03-technical-architecture.md`: descripción de `DUoM Lot Subscribers` (50108) actualizada;
+  nueva sección "Historial de decisión" en el modelo 1:N.
+- `docs/06-backlog.md`: este issue añadido; nueva tarea futura N-lotes añadida.
+- `docs/issues/issue-21-lot-ratio-1n-refactor.md`: documentación completa del issue.
+
+**Deliverables:**
+- `app/src/codeunit/DUoMLotSubscribers.Codeunit.al` (50108) — subscriber eliminado, comentarios actualizados
+- `test/src/codeunit/DUoMLotRatioTests.Codeunit.al` (50217) — T01 y T11 eliminados; T02, T03, T12 actualizados
+- `docs/02-functional-design.md`, `docs/03-technical-architecture.md`, `docs/06-backlog.md`
+- `docs/issues/issue-21-lot-ratio-1n-refactor.md`
+
 ### Issue 14 — Warehouse Basic Documents DUoM Fields
 
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
@@ -528,7 +571,48 @@ Alcance (report extensions en BC 27):
 - Órdenes de montaje DUoM (`Assembly Order`) — si entra en scope
 - ~~Integración con Item Tracking avanzado (multi-lote en línea)~~ ✅ Resuelto en Issue 20
 
----
+### Tarea futura — Arquitectura DUoM por lote sobre Item Tracking (N lotes reales)
+
+**Contexto:** Issue 21 eliminó el subscriber que asumía 1 línea = 1 lote y consolidó el modelo
+correcto: la ratio DUoM real por lote se almacena en `DUoM Lot Ratio` (50102) y se aplica
+durante el posting en `TryApplyLotRatioToILE`. Sin embargo, la arquitectura de *entrada* de
+datos de ratio de lote (cómo el usuario registra la ratio real al momento de la recepción/pesaje)
+aún no está integrada con el flujo estándar de Item Tracking de BC.
+
+**Objetivo futuro:** diseñar e implementar la arquitectura completa DUoM por lote basada en
+los mecanismos estándar de Business Central:
+
+```
+Source Line
+    ↓
+N asignaciones de lote/tracking (Reservation Entry / Item Tracking Lines)
+    ↓
+Ratio DUoM real por lote (DUoM Lot Ratio)
+    ↓
+Cantidad secundaria por lote (ILE.DUoM Second Qty = Abs(Qty) × LotRatio)
+    ↓
+Agregación hacia línea origen (opcional — totales)
+    ↓
+Posting hacia movimientos e históricos
+```
+
+**Alcance mínimo de la futura implementación:**
+
+- Líneas de diario de artículos (Item Journal Lines) con N lotes vía Item Tracking.
+- Líneas de compra (Purchase Lines) con N lotes vía Item Tracking Lines.
+- Líneas de venta (Sales Lines) con N lotes vía Item Tracking Lines.
+- Líneas de almacén (Warehouse Receipt/Shipment Lines) con N lotes.
+- Actividades de almacén (Warehouse Activity Lines) con N lotes.
+- Documentos registrados: ILE, Purch. Rcpt. Line, Sales Shipment Line.
+- Warehouse Entries con DUoM por lote.
+- Cantidades DUoM agregadas en línea origen derivadas de la suma por lote.
+- Escenarios WMS avanzados con Directed Put-away & Pick.
+- Propagación a históricos y movimientos de forma coherente.
+
+**Prerequisitos:**
+- Issues 14 y 15 (Warehouse Documents) deben completarse antes.
+- La arquitectura debe basarse en mecanismos estándar BC 27 (sin manipulación manual
+  de `Reservation Entry` ni `Tracking Specification`).
 
 ## Notes
 
