@@ -1,5 +1,17 @@
 # Issue 13 — Ratio Real por Lote (DUoM Lot Ratio)
 
+> **⚠️ DOCUMENTO HISTÓRICO — Issue 13 está COMPLETADO.**
+>
+> Este documento fue la propuesta de tarea para Issue 13. La implementación se realizó
+> en la fecha prevista incluyendo Issues 13, 20 y 21, que refactorizaron el modelo de
+> lotes de 1:1 a 1:N y consolidaron la arquitectura correcta `TryApplyLotRatioToILE`.
+>
+> El **próximo issue pendiente** es **Issue 14 — Warehouse Basic Documents DUoM Fields**
+> (soporte de campos DUoM en Warehouse Receipt/Shipment Lines).
+>
+> Ver `docs/06-backlog.md` para el estado actualizado del backlog y la tarea futura
+> de arquitectura DUoM por lote sobre Item Tracking (N lotes reales).
+
 ## 1. Título propuesto
 
 **DualUoM — Issue 13: Ratio Real por Lote (`DUoM Lot Ratio`)**
