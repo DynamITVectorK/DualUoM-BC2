@@ -1,10 +1,14 @@
 /// <summary>
 /// Tests TDD para DUoM Lot Subscribers (50108) y la integración con Item Tracking BC 27.
 ///
-/// Cubre los requisitos funcionales de Issue 13 (rediseño Phase 2) e Issue 20 (multi-lote):
-///   T01 — IJL, modo Variable, lote CON ratio → DUoM Ratio y Second Qty pre-rellenados
-///   T02 — IJL, modo Variable, lote SIN ratio → DUoM Ratio sin cambios
-///   T03 — IJL, modo Fixed, lote CON ratio    → DUoM Ratio NO sobreescrito (ratio fijo)
+/// ARQUITECTURA N:1 (Issue 21 — Refactorización):
+///   DUoM no asume que 1 línea origen = 1 lote.
+///   El subscriber OnAfterValidateEvent[Lot No.] en Item Journal Line ha sido ELIMINADO
+///   porque asumía incorrectamente que 1 línea = 1 lote = 1 ratio DUoM.
+///   La ratio real por lote se aplica a nivel de ILE en el flujo de posting:
+///   OnAfterInitItemLedgEntry → TryApplyLotRatioToILE (mecanismo productivo principal).
+///
+/// Tests de posting (mecanismo productivo principal):
 ///   T04 — Contabilización IJL, lote único, modo Variable → ILE con ratio de lote
 ///   T05 — Contabilización IJL, dos líneas distintas con lotes distintos → cada ILE con su ratio
 ///   T06 — Contabilización IJL, salida con lote → ILE Abs(Qty) × ratio de lote
@@ -13,8 +17,21 @@
 ///          Escenario 1:N real: una línea origen = N asignaciones de lote = N ILEs
 ///   T09 — UNA línea IJL con DOS lotes vía Item Tracking → suma de DUoM Second Qty = total esperado
 ///   T10 — AlwaysVariable + multi-lote SIN ratio de lote → ILE DUoM Second Qty = 0 (no copia total)
-///   T11 — IJL, modo Variable, lote CON ratio + precondiciones reforzadas → DUoM Ratio y Second Qty pre-rellenados
-///   T12 — Llamada directa a ApplyLotRatioToItemJournalLine → lógica interna separada del evento
+///
+/// Tests de regresión de diseño (verifican que Validate("Lot No.") NO modifica campos DUoM):
+///   T02 — IJL, Variable, lote SIN ratio: Validate("Lot No.") no modifica DUoM Ratio
+///   T03 — IJL, Fixed, lote CON ratio: Validate("Lot No.") no modifica DUoM Ratio (no hay subscriber)
+///
+/// Test unitario de bajo nivel (helper interno):
+///   T12 — Llamada directa a ApplyLotRatioToItemJournalLine (helper de un único lote)
+///         Verifica la lógica interna del helper en escenarios controlados.
+///         "Lot No." := directo (no Validate) — solo válido para tests de helper, no para BC real.
+///
+/// ELIMINADOS (Issue 21 — premisa 1:1 inválida):
+///   T01 — IJL, Variable, lote CON ratio → DUoM Ratio y Second Qty pre-rellenados
+///          Eliminado: dependía del subscriber OnAfterValidateEvent[Lot No.] que asumía 1 línea = 1 lote.
+///   T11 — IJL, Variable, lote CON ratio + precondiciones reforzadas
+///          Eliminado: mismo problema arquitectónico que T01.
 ///
 /// MODELO 1:N — Línea origen como agregado (Issue 20):
 ///   Una línea de documento BC puede tener N asignaciones de lote vía Item Tracking.
@@ -28,17 +45,6 @@
 ///   T08 usa UNA sola línea IJL con DOS lotes asignados vía Item Tracking (Reservation Entries).
 ///        Verifica el verdadero escenario 1:N de Business Central: una línea = N lotes.
 ///        Es el escenario que ocurre en Purchase/Sales Orders con Item Tracking.
-///
-/// NOTA SOBRE T04-T06 (Caso A vs Caso B):
-///   Los tests T04-T06 verifican el comportamiento de OnAfterInitItemLedgEntry +
-///   TryApplyLotRatioToILE mediante contabilización de diario de artículos (Caso A).
-///   El seguimiento de lote se asigna mediante Reservation Entries (AssignLotToItemJnlLine),
-///   que es el mecanismo estándar de BC 27 para ítems con "Lot Specific Tracking" activo.
-///   El escenario Caso B (Purchase/Sales Order con múltiples lotes vía Item Tracking)
-///   se basa en el mismo mecanismo subyacente (OnAfterInitItemLedgEntry) y queda cubierto
-///   funcionalmente por estos tests. En ambos casos, TryApplyLotRatioToILE sobrescribe
-///   el ratio del ILE con el ratio de lote específico registrado en DUoM Lot Ratio.
-///   Ambos flujos convergen en el mismo resultado final.
 /// </summary>
 codeunit 50217 "DUoM Lot Ratio Tests"
 {
@@ -46,51 +52,14 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
-    // T01 — IJL, Variable, lote CON ratio → DUoM Ratio y Second Qty pre-rellenados
-    // -------------------------------------------------------------------------
-
-    [Test]
-    procedure IJL_VariableMode_LotWithRatio_DUoMFieldsPreFilled()
-    var
-        Item: Record Item;
-        ItemJnlTemplate: Record "Item Journal Template";
-        ItemJnlBatch: Record "Item Journal Batch";
-        ItemJnlLine: Record "Item Journal Line";
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-        LibraryInventory: Codeunit "Library - Inventory";
-        LibraryAssert: Codeunit "Library Assert";
-        LotNo: Code[50];
-    begin
-        // [GIVEN] Artículo con DUoM Variable (ratio por defecto 0,40)
-        LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.40);
-
-        // [GIVEN] Ratio de lote registrado: (ItemNo, 'LOTE-T01') = 0,38
-        LotNo := 'LOTE-T01';
-        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
-
-        // [GIVEN] Item Journal Line para 10 unidades
-        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
-        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
-        LibraryInventory.CreateItemJournalLine(
-            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
-            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
-        ItemJnlLine.Validate(Quantity, 10);
-
-        // [WHEN] Se valida el campo Lot No. (dispara OnAfterValidateItemJnlLineLotNo)
-        ItemJnlLine.Validate("Lot No.", LotNo);
-
-        // [THEN] DUoM Ratio sobreescrito con el ratio de lote
-        LibraryAssert.AreEqual(0.38, ItemJnlLine."DUoM Ratio",
-            'T01: DUoM Ratio debe ser 0,38 tras validar Lot No. con ratio registrado');
-
-        // [THEN] DUoM Second Qty recalculada con el ratio de lote: 10 × 0,38 = 3,8
-        LibraryAssert.AreNearlyEqual(3.8, ItemJnlLine."DUoM Second Qty", 0.001,
-            'T01: DUoM Second Qty debe ser 10 × 0,38 = 3,8');
-    end;
-
-    // -------------------------------------------------------------------------
-    // T02 — IJL, Variable, lote SIN ratio → DUoM Ratio sin cambios
+    // T02 — IJL, Variable, lote SIN ratio → Validate("Lot No.") no cambia DUoM Ratio
+    //
+    // Test de regresión de diseño (Issue 21):
+    // Verifica que, tras eliminar el subscriber OnAfterValidateEvent[Lot No.],
+    // validar el número de lote en una IJL no interfiere con los campos DUoM.
+    // El valor de DUoM Ratio establecido previamente (ratio por defecto) permanece
+    // sin cambios, lo que es el comportamiento correcto para el modelo 1:N.
+    // La ratio real por lote se aplica en posting a nivel de ILE (T04–T10).
     // -------------------------------------------------------------------------
 
     [Test]
@@ -123,20 +92,27 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         ItemJnlLine."DUoM Second Qty" := 4.0;
         ItemJnlLine.Modify(true);
 
-        // [WHEN] Se valida el campo Lot No. (lote sin ratio en DUoM Lot Ratio)
+        // [WHEN] Se valida el campo Lot No. — sin subscriber DUoM activo (eliminado en Issue 21)
         ItemJnlLine.Validate("Lot No.", LotNoSinRatio);
 
-        // [THEN] DUoM Ratio permanece sin cambios (valor previo conservado)
+        // [THEN] DUoM Ratio permanece sin cambios (el subscriber fue eliminado en Issue 21)
+        // La ratio real por lote se aplica en posting a nivel de ILE (ver T04–T10).
         LibraryAssert.AreEqual(0.40, ItemJnlLine."DUoM Ratio",
-            'T02: DUoM Ratio no debe cambiar cuando el lote no tiene ratio registrado');
+            'T02: DUoM Ratio no debe cambiar al validar Lot No. (subscriber eliminado, modelo 1:N)');
 
         // [THEN] DUoM Second Qty permanece sin cambios
         LibraryAssert.AreNearlyEqual(4.0, ItemJnlLine."DUoM Second Qty", 0.001,
-            'T02: DUoM Second Qty no debe cambiar cuando el lote no tiene ratio registrado');
+            'T02: DUoM Second Qty no debe cambiar al validar Lot No. (subscriber eliminado, modelo 1:N)');
     end;
 
     // -------------------------------------------------------------------------
-    // T03 — IJL, Fixed, lote CON ratio → DUoM Ratio NO sobreescrito
+    // T03 — IJL, Fixed, lote CON ratio → Validate("Lot No.") no cambia DUoM Ratio
+    //
+    // Test de regresión de diseño (Issue 21):
+    // Verifica que, en modo Fixed, validar el número de lote no interfiere con
+    // los campos DUoM. El ratio fijo (1,0) permanece inalterado porque no hay
+    // subscriber activo. En el flujo de posting, TryApplyLotRatioToILE tampoco
+    // aplica el ratio de lote en modo Fixed (el ratio fijo siempre prevalece).
     // -------------------------------------------------------------------------
 
     [Test]
@@ -168,12 +144,13 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         ItemJnlLine.Validate(Quantity, 5);
         ItemJnlLine.Modify(true);
 
-        // [WHEN] Se valida el campo Lot No. con ratio registrado
+        // [WHEN] Se valida el campo Lot No. — sin subscriber DUoM activo (eliminado en Issue 21)
         ItemJnlLine.Validate("Lot No.", LotNo);
 
-        // [THEN] DUoM Ratio NO sobreescrito — el ratio fijo (1,0) siempre prevalece en modo Fixed
+        // [THEN] DUoM Ratio NO sobreescrito — el ratio fijo (1,0) permanece inalterado
+        // (subscriber eliminado; en posting, TryApplyLotRatioToILE tampoco aplica en modo Fixed)
         LibraryAssert.AreEqual(1.0, ItemJnlLine."DUoM Ratio",
-            'T03: En modo Fixed, DUoM Ratio no debe ser sobreescrito por el ratio de lote');
+            'T03: En modo Fixed, DUoM Ratio no debe cambiar al validar Lot No.');
 
         // [THEN] DUoM Second Qty calculada con el ratio fijo: 5 × 1,0 = 5
         LibraryAssert.AreNearlyEqual(5.0, ItemJnlLine."DUoM Second Qty", 0.001,
@@ -642,80 +619,25 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T11 — IJL, Variable, lote CON ratio + precondiciones reforzadas
-    //        → DUoM Ratio y Second Qty pre-rellenados con ratio de lote
+    // T12 — Test unitario de bajo nivel: llamada directa a ApplyLotRatioToItemJournalLine
     //
-    // Versión reforzada de T01 que valida explícitamente:
-    //   - Precondición: la ratio del lote en BD es 0,38.
-    //   - Precondición: la línea parte de la ratio por defecto (0,40) antes de validar el lote.
-    //   - Postcondición: la ratio del lote (0,38) prevalece sobre la ratio por defecto (0,40).
-    //   - Postcondición: DUoM Second Qty = 10 × 0,38 = 3,8.
-    // -------------------------------------------------------------------------
-
-    [Test]
-    procedure T11_VariableMode_LotWithRatio_DUoMFieldsPreFilled()
-    var
-        Item: Record Item;
-        ItemJnlTemplate: Record "Item Journal Template";
-        ItemJnlBatch: Record "Item Journal Batch";
-        ItemJnlLine: Record "Item Journal Line";
-        DUoMLotRatio: Record "DUoM Lot Ratio";
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-        LibraryInventory: Codeunit "Library - Inventory";
-        LibraryAssert: Codeunit "Library Assert";
-        LotNo: Code[50];
-    begin
-        // [GIVEN] Artículo con DUoM Variable (ratio por defecto 0,40)
-        LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.40);
-
-        // [GIVEN] Ratio de lote registrado: (ItemNo, 'LOTE-T11') = 0,38
-        LotNo := 'LOTE-T11';
-        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 0.38);
-
-        // Precondición: verificar que la ratio del lote está correctamente registrada en BD
-        DUoMLotRatio.Get(Item."No.", LotNo);
-        LibraryAssert.AreNearlyEqual(0.38, DUoMLotRatio."Actual Ratio", 0.00001,
-            'T11: Precondición — la ratio registrada del lote debe ser 0,38.');
-
-        // [GIVEN] Item Journal Line para 10 unidades
-        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
-        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
-        LibraryInventory.CreateItemJournalLine(
-            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
-            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
-        ItemJnlLine.Validate(Quantity, 10);
-
-        // Precondición: la línea debe tener la ratio por defecto antes de validar el lote
-        LibraryAssert.AreNearlyEqual(0.40, ItemJnlLine."DUoM Ratio", 0.00001,
-            'T11: Precondición — antes de validar el lote, la línea debe tener la ratio por defecto 0,40.');
-        LibraryAssert.AreNearlyEqual(4.0, ItemJnlLine."DUoM Second Qty", 0.001,
-            'T11: Precondición — antes de validar el lote, DUoM Second Qty debe ser 10 × 0,40 = 4,0.');
-
-        // [WHEN] Se valida el campo Lot No. (dispara OnAfterValidateItemJnlLineLotNo)
-        ItemJnlLine.Validate("Lot No.", LotNo);
-
-        // [THEN] El campo Lot No. debe quedar informado en la línea
-        LibraryAssert.AreEqual(LotNo, ItemJnlLine."Lot No.",
-            'T11: Tras Validate("Lot No."), el lote debe quedar informado en la línea.');
-
-        // [THEN] DUoM Ratio sobreescrito con el ratio real del lote (0,38 prevalece sobre 0,40)
-        LibraryAssert.AreNearlyEqual(0.38, ItemJnlLine."DUoM Ratio", 0.00001,
-            'T11: DUoM Ratio debe ser 0,38 tras validar Lot No. con ratio registrado.');
-
-        // [THEN] DUoM Second Qty recalculada con el ratio de lote: 10 × 0,38 = 3,8
-        LibraryAssert.AreNearlyEqual(3.8, ItemJnlLine."DUoM Second Qty", 0.001,
-            'T11: DUoM Second Qty debe ser 10 × 0,38 = 3,8.');
-    end;
-
-    // -------------------------------------------------------------------------
-    // T12 — Llamada directa a ApplyLotRatioToItemJournalLine
-    //        → lógica interna separada del evento OnAfterValidateEvent[Lot No.]
+    // CLASIFICACIÓN: test unitario de helper interno (no es un escenario BC de integración real).
     //
-    // Si T12 falla: el problema está en TryApplyLotRatioIfExists, TryApplyLotRatioToRecord,
-    //              GetEffectiveSetup o DUoMLotRatio.Get (lógica interna).
-    // Si T12 pasa pero T11 falla: la lógica directa es correcta y el problema está en
-    //              el evento OnAfterValidateEvent o en la propagación de campos al llamante.
+    // Verifica la lógica interna del helper ApplyLotRatioToItemJournalLine en un
+    // escenario controlado de un único lote:
+    //   - El helper busca en DUoM Lot Ratio(Item No., Lot No.) y aplica la ratio.
+    //   - El resultado es correcto cuando se llama directamente sobre un IJL.
+    //
+    // NOTA sobre "Lot No." := LotNo (asignación directa, no Validate):
+    //   Esta asignación directa es válida aquí porque el test verifica la lógica
+    //   INTERNA del helper, no el flujo BC estándar de Item Tracking.
+    //   En un flujo BC real con artículos de trazabilidad de lote, los lotes se
+    //   asignan mediante Reservation Entries (ver T04–T10).
+    //   Usar Validate("Lot No.") con trazabilidad activa puede borrar el campo si
+    //   no existe Reservation Entry (comportamiento estándar de BC 27).
+    //
+    // El mecanismo productivo para aplicar ratios de lote es TryApplyLotRatioToILE
+    // llamado desde OnAfterInitItemLedgEntry (ver T04–T10).
     // -------------------------------------------------------------------------
 
     [Test]
@@ -746,17 +668,19 @@ codeunit 50217 "DUoM Lot Ratio Tests"
             ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
             "Item Ledger Entry Type"::Purchase, Item."No.", 0);
         ItemJnlLine.Validate(Quantity, 10);
+        // Asignación directa (no Validate) — válido aquí porque se prueba el helper directamente,
+        // no el flujo de Item Tracking estándar de BC. Ver comentario en la cabecera de T12.
         ItemJnlLine."Lot No." := LotNo;
 
-        // [WHEN] Se llama directamente a ApplyLotRatioToItemJournalLine (sin evento)
+        // [WHEN] Se llama directamente al helper ApplyLotRatioToItemJournalLine (sin evento BC)
         DUoMLotSubscribers.ApplyLotRatioToItemJournalLine(ItemJnlLine);
 
-        // [THEN] La llamada directa debe aplicar la ratio real del lote
+        // [THEN] El helper aplica la ratio real del lote registrada en DUoM Lot Ratio
         LibraryAssert.AreNearlyEqual(0.38, ItemJnlLine."DUoM Ratio", 0.00001,
-            'T12: La llamada directa debe aplicar la ratio real del lote.');
+            'T12: ApplyLotRatioToItemJournalLine debe aplicar la ratio del lote (0,38).');
 
         // [THEN] DUoM Second Qty recalculada con el ratio de lote: 10 × 0,38 = 3,8
         LibraryAssert.AreNearlyEqual(3.8, ItemJnlLine."DUoM Second Qty", 0.001,
-            'T12: La llamada directa debe recalcular DUoM Second Qty con la ratio del lote.');
+            'T12: ApplyLotRatioToItemJournalLine debe recalcular DUoM Second Qty (10 × 0,38 = 3,8).');
     end;
 }

@@ -105,11 +105,11 @@ already covers the need:
 | `DUoM Doc Transfer Helper` | 50105 | Helper centralizado de copia de campos DUoM entre líneas de documento |
 | `DUoM UoM Helper` | 50106 | Helper de UoM: `GetSecondUoMRoundingPrecision(ItemNo)` y `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` para obtener `Qty. Rounding Precision` de la tabla `Item Unit of Measure` |
 | `DUoM Setup Resolver` | 50107 | Centraliza la resolución jerárquica Item → Variante de la configuración DUoM efectiva. Todos los suscriptores y triggers deben llamar a `GetEffectiveSetup(ItemNo, VariantCode, ...)` |
-| `DUoM Lot Subscribers` | 50108 | Subscribers para integración DUoM con lotes. `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` (Lot No. es campo directo en tabla 83) — delega en `ApplyLotRatioToItemJournalLine` (público). Método público `TryApplyLotRatioToILE` llamado desde `DUoM Inventory Subscribers` (50104) en `OnAfterInitItemLedgEntry` para aplicar el ratio del lote específico a cada ILE. No asume 1 línea = 1 lote. |
+| `DUoM Lot Subscribers` | 50108 | Utilidades para integración DUoM con lotes. Método público `TryApplyLotRatioToILE` llamado desde `DUoM Inventory Subscribers` (50104) en `OnAfterInitItemLedgEntry` para aplicar el ratio del lote específico a cada ILE durante el posting. Helper interno `ApplyLotRatioToItemJournalLine` para escenarios controlados de un único lote (uso en tests unitarios de bajo nivel). El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` fue **eliminado** (Issue 21) por asumir incorrectamente 1 línea = 1 lote. |
 
 ---
 
-## Modelo 1:N — Línea origen como agregado (Issue 20)
+## Modelo 1:N — Línea origen como agregado (Issue 20, refactorizado Issue 21)
 
 **DUoM nunca asume que 1 línea de documento BC equivale a 1 lote.** El modelo correcto es:
 
@@ -137,7 +137,17 @@ Línea origen (Purchase Line, Sales Line, IJL)  →  N lotes (vía Item Tracking
   es la cantidad correcta para el ILE: en multi-lote, es el total de la línea, no el del lote.
 - La distribución correcta de DUoM entre lotes requiere el ratio de lote (`DUoM Lot Ratio`)
   o el cálculo proporcional basado en `Abs(ILE.Quantity) × DUoM Ratio`.
+- **`Item Journal Line`."Lot No." no es la fuente de verdad de la ratio DUoM por lote.**
+  Usar `Validate("Lot No.")` en IJL como mecanismo para pre-rellenar DUoM es incorrecto
+  porque asume 1 línea = 1 lote. La fuente de verdad real es el ILE de cada lote
+  generado durante el posting (ver `TryApplyLotRatioToILE`).
 
+### Historial de decisión
+
+- **Issue 13:** implementación inicial del subscriber `OnAfterValidateEvent[Lot No.]` en IJL.
+- **Issue 20:** consolidación del modelo 1:N; corrección del bug de copia en AlwaysVariable.
+- **Issue 21:** eliminación del subscriber `OnAfterValidateEvent[Lot No.]` porque asumía
+  1 línea = 1 lote. El mecanismo productivo principal es `TryApplyLotRatioToILE` en posting.
 
 ## Resolución de configuración por variante
 

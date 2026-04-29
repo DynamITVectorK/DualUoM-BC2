@@ -122,7 +122,7 @@ de la infraestructura estándar de trazabilidad:
 
 El único caso donde `Lot No.` **sí** es campo directo es `Item Journal Line` (tabla 83).
 
-### Regla de diseño: línea origen como agregado — modelo 1:N (Issue 20)
+### Regla de diseño: línea origen como agregado — modelo 1:N (Issue 20, refactorizado Issue 21)
 
 **DUoM no asume que 1 línea origen = 1 lote.**
 
@@ -136,17 +136,13 @@ El modelo correcto de Business Central es:
 - Cada **ILE por lote** contiene la segunda cantidad y el ratio **específicos de ese lote**.
 - El **total DUoM de la línea** debe ser coherente con la suma de las cantidades DUoM
   de todos los ILEs generados para esa línea.
+- **`Item Journal Line`."Lot No." no es la fuente de verdad de la ratio DUoM por lote.**
+  La ratio real por lote se almacena en `DUoM Lot Ratio` (50102) y se aplica a nivel de ILE.
 
-### Flujo de integración implementado
+### Flujo de integración implementado (mecanismo productivo único)
 
 ```
-Caso A — Item Journal Line (Lot No. campo directo):
-  Usuario valida Lot No. en IJL
-  → OnAfterValidateEvent[Lot No.] en Table "Item Journal Line"
-  → DUoM Lot Subscribers (50108): busca DUoM Lot Ratio(Item No., Lot No.)
-  → Si existe y modo ≠ Fixed: sobreescribe DUoM Ratio + recalcula DUoM Second Qty
-
-Caso B — Purchase/Sales Line o IJL con N lotes vía Item Tracking:
+Purchase/Sales Line o IJL con N lotes vía Item Tracking:
   Usuario asigna N lotes en "Item Tracking Lines" (estándar BC)
   → Lotes persisten en Reservation Entry (flujo estándar, sin intervención DUoM)
   → Al contabilizar: BC divide la línea por lote y crea un ILE por lote
@@ -159,6 +155,11 @@ Caso B — Purchase/Sales Line o IJL con N lotes vía Item Tracking:
         ILE.DUoM Ratio = LotActualRatio
         ILE.DUoM Second Qty = Abs(ILE.Quantity) × LotActualRatio
 ```
+
+> **Nota Issue 21:** El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line`
+> (que pre-rellenaba DUoM Ratio/Second Qty al validar Lot No.) fue eliminado porque asumía
+> incorrectamente que 1 línea = 1 lote. El mecanismo productivo principal es el flujo de
+> posting descrito arriba (TryApplyLotRatioToILE en OnAfterInitItemLedgEntry).
 
 ### Comportamiento por modo de conversión
 

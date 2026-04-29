@@ -1,21 +1,32 @@
 /// <summary>
 /// Suscriptores de eventos para la integración DUoM con lotes.
 ///
-/// Caso A — Item Journal Line (Lot No. es campo directo en tabla 83):
-///   Suscriptor OnAfterValidateEvent[Lot No.] en Table "Item Journal Line".
-///   Cuando el usuario valida Lot No. en un IJL, pre-rellena DUoM Ratio y
-///   DUoM Second Qty desde DUoM Lot Ratio (50102) si existe registro para
-///   (Item No., Lot No.) y el modo de conversión no es Fixed.
+/// ARQUITECTURA N:1 — Modelo correcto de Business Central (Issue 20, refactorizado Issue 21):
+///   DUoM no asume que 1 línea origen = 1 lote.
+///   Una línea de documento BC puede tener N lotes asignados vía Item Tracking.
+///   La ratio DUoM real es dato de lote/tracking, no dato de línea.
+///   Los campos DUoM de la línea origen son totales agregados o derivados.
 ///
-/// Caso B — Purchase/Sales Line (N lotes vía Item Tracking, Lot No. no es campo
-///   directo en tabla 39/37 en BC 27):
+/// Mecanismo productivo principal — Caso B (correcto):
+///   Purchase/Sales Line o IJL con N lotes vía Item Tracking.
 ///   La asignación de lotes persiste en Reservation Entry (flujo estándar).
 ///   Al contabilizar, BC crea un ILE por lote con Lot No. específico en el IJL.
 ///   DUoM Inventory Subscribers (50104) llama a TryApplyLotRatioToILE desde
-///   OnAfterInitItemLedgEntry para aplicar el ratio de lote al ILE.
+///   OnAfterInitItemLedgEntry para aplicar el ratio de lote a cada ILE individual.
+///
+/// NOTA — OnAfterValidateEvent[Lot No.] en Item Journal Line (eliminado, Issue 21):
+///   El subscriber que pre-rellenaba DUoM Ratio/Second Qty al validar Lot No. en IJL
+///   fue ELIMINADO porque asumía incorrectamente que 1 línea = 1 lote = 1 ratio.
+///   En BC 27, una IJL puede tener N lotes (vía Item Tracking / Reservation Entry).
+///   Usar validación de Lot No. como única fuente de ratio DUoM no es válido.
+///   La ratio real por lote se aplica en OnAfterInitItemLedgEntry → TryApplyLotRatioToILE.
+///
+/// Helper de utilidad (escenarios controlados de un único lote):
+///   ApplyLotRatioToItemJournalLine: función pública para uso directo desde tests unitarios
+///   de bajo nivel o escenarios donde se garantiza 1 línea = 1 lote (fuera del flujo
+///   productivo principal). NO es el mecanismo de producción para N lotes.
 ///
 /// Signatures verificadas BC 27 / runtime 15:
-///   - Item Journal Line (tabla 83): Lot No. (field 5407) es campo directo.
 ///   - Item Ledger Entry (tabla 32): DUoM Ratio y DUoM Second Qty vía tableextension 50113.
 /// </summary>
 codeunit 50108 "DUoM Lot Subscribers"
@@ -23,34 +34,19 @@ codeunit 50108 "DUoM Lot Subscribers"
     Access = Public;
 
     /// <summary>
-    /// Pre-rellena DUoM Ratio y DUoM Second Qty en un Item Journal Line cuando el
-    /// usuario valida el campo Lot No.
-    /// Publisher: Table "Item Journal Line" (tabla 83), campo Lot No. (field 5407).
-    /// Evento elegido: OnAfterValidateEvent, porque Lot No. ES campo directo en IJL
-    /// (a diferencia de Purchase Line y Sales Line donde no es campo directo en BC 27).
-    /// Firma verificada: BC 27 / runtime 15 — Item Journal Line tiene Lot No. como campo propio.
+    /// UTILIDAD INTERNA — Escenarios controlados de un único lote.
+    /// Aplica el ratio de lote a los campos DUoM de un Item Journal Line cuando
+    /// se garantiza que la línea corresponde a exactamente un lote.
     ///
-    /// Patrón de asignación de campos de tableextension en suscriptores de evento BC 27:
-    ///   La asignación directa (:=) sobre Rec en un suscriptor OnAfterValidateEvent
-    ///   propaga los cambios al registro llamante a través del parámetro var Rec,
-    ///   tal y como ocurre con el suscriptor OnAfterValidateItemJnlLineQty.
-    ///   NO se utiliza Rec.Modify(false) porque en BC 27 esa llamada realiza
-    ///   un refresco implícito del buffer desde la BD antes de escribir, lo que
-    ///   sobrescribiría los valores asignados con := (p.ej. 0,38) con los valores
-    ///   anteriores almacenados en BD (p.ej. 0,40), deshaciendo el cambio deseado.
-    /// Delegación: el subscriber delega en ApplyLotRatioToItemJournalLine para
-    ///   permitir llamada directa desde tests (T12) y aislar la lógica del evento.
-    /// </summary>
-    [EventSubscriber(ObjectType::Table, Database::"Item Journal Line", 'OnAfterValidateEvent', 'Lot No.', false, false)]
-    local procedure OnAfterValidateItemJnlLineLotNo(var Rec: Record "Item Journal Line"; var xRec: Record "Item Journal Line")
-    begin
-        ApplyLotRatioToItemJournalLine(Rec);
-    end;
-
-    /// <summary>
-    /// Aplica el ratio de lote a los campos DUoM de un Item Journal Line.
-    /// Función reutilizable que permite llamada directa desde tests para aislar
-    /// la lógica de aplicación del evento OnAfterValidateEvent[Lot No.].
+    /// ADVERTENCIA ARQUITECTÓNICA: Este método NO es el mecanismo productivo principal
+    /// para la integración DUoM con lotes. En Business Central, una IJL puede tener N
+    /// lotes asignados vía Item Tracking. Para el flujo productivo real, la ratio DUoM
+    /// se aplica por lote en OnAfterInitItemLedgEntry → TryApplyLotRatioToILE.
+    ///
+    /// Uso legítimo: tests unitarios de bajo nivel que verifican la lógica interna
+    /// del helper (T12 en DUoM Lot Ratio Tests). No usar como sustituto del flujo
+    /// de posting estándar con Item Tracking.
+    ///
     /// Devuelve true si se encontró y aplicó una ratio de lote; false en caso contrario.
     /// </summary>
     /// <param name="ItemJnlLine">Línea de diario a modificar (var — se sobrescriben DUoM Ratio y DUoM Second Qty).</param>
