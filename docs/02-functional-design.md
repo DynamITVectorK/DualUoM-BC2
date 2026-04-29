@@ -285,16 +285,20 @@ historical analysis is possible without recalculation.
 
 ---
 
-## Lot-Specific Real Ratio
+## Ratio real por lote — Resumen para módulo Inventario
 
-When item tracking by lot is active, the real conversion ratio for a given lot can
-differ from the default. The actual weighed ratio is:
+El ratio real por lote se almacena en la tabla `DUoM Lot Ratio` (50102) y se aplica
+automáticamente a cada `Item Ledger Entry` (ILE) durante la contabilización, según
+el mecanismo `TryApplyLotRatioToILE` en `OnAfterInitItemLedgEntry`. Este mecanismo
+es el punto único de verdad para la ratio DUoM real por lote.
 
-- entered by the user at receipt (warehouse or purchase)
-- stored against the lot number (Item Tracking extension)
-- used as the default for all subsequent transactions involving that lot
+> **Importante:** los campos DUoM de la línea origen (Diario de productos, línea de compra
+> o venta) son **totales agregados**. La ratio real por lote queda en el ILE de cada lote,
+> no en la línea origen. Ver la sección anterior "Regla de diseño: línea origen como
+> agregado — modelo 1:N" para el detalle completo.
 
-This is a Phase 2 feature. In MVP, the ratio is stored on the document line only.
+Para el registro y mantenimiento de ratios de lote, véase la tabla `DUoM Lot Ratio` (50102)
+accesible desde la acción **DUoM Lot Ratios** en la página `DUoM Item Setup`.
 
 ---
 

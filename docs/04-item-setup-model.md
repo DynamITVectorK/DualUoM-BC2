@@ -103,15 +103,19 @@ and by `DUoM Lot Subscribers` (codeunit 50108) for the Lot level:
 2. If VariantCode is not empty, check DUoM Item Variant Setup (50101).
    If a record exists → use its fields (Second UoM Code, Conversion Mode, Fixed Ratio).
 3. Otherwise → use the item-level fields from DUoM Item Setup.
-4. When Lot No. is validated on an Item Journal Line (Variable / AlwaysVariable only):
-   Check DUoM Lot Ratio (50102) for (Item No., Lot No.).
-   If a record exists → overwrite DUoM Ratio with the actual lot ratio and recalculate DUoM Second Qty.
-   Fixed mode: lot ratio is NEVER applied.
-5. When posting creates an ILE (OnAfterInitItemLedgEntry):
+4. When posting creates an ILE (OnAfterInitItemLedgEntry):
    DUoM Inventory Subscribers (50104) calls TryApplyLotRatioToILE from DUoM Lot Subscribers (50108).
    ILE.DUoM Second Qty = Abs(ILE.Quantity) × ILE.DUoM Ratio (proportional per lot).
    If lot has a registered ratio and mode ≠ Fixed → ILE.DUoM Ratio overridden with lot ratio.
+   Fixed mode: lot ratio is NEVER applied.
 ```
+
+> **Nota arquitectónica (Issue 21):** No existe ningún subscriber que pre-rellene campos DUoM
+> al validar `Lot No.` en una línea de documento. El mecanismo productivo correcto para aplicar
+> el ratio de lote es `TryApplyLotRatioToILE` durante el posting, NO en el momento de la
+> validación del campo `Lot No.`. La línea origen mantiene valores DUoM como **total agregado**;
+> la ratio real por lote queda en el ILE de cada lote generado durante la contabilización.
+> `Item Journal Line."Lot No."` no es la fuente de verdad del ratio DUoM por lote.
 
 ---
 

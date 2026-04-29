@@ -1,5 +1,5 @@
 # Informe de Alineación de Documentación
-_Generado: 2026-04-22_
+_Generado: 2026-04-22 — Actualizado: 2026-04-29 (Issues 13, 20, 21)_
 
 ## Resumen
 
@@ -9,7 +9,7 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 
 ---
 
-## Cambios realizados
+## Cambios realizados — Auditoría 2026-04-22 (Issues hasta TDD Audit)
 
 | Archivo modificado | Qué cambió | Motivo |
 |--------------------|------------|--------|
@@ -32,11 +32,28 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 
 ---
 
+## Cambios realizados — Auditoría 2026-04-29 (Issues 13, 20, 21)
+
+| Archivo modificado | Qué cambió | Motivo |
+|--------------------|------------|--------|
+| `docs/02-functional-design.md` | Eliminada/reemplazada la sección duplicada "Lot-Specific Real Ratio" al final del documento que decía "Phase 2 feature" | El feature está implementado (Issue 13). La sección estaba desactualizada; ya existe una sección completa más arriba. |
+| `docs/04-item-setup-model.md` | Actualizado paso 4 de la jerarquía de resolución: eliminada la descripción del subscriber de validación `Lot No.` en IJL; reemplazado por la arquitectura correcta (TryApplyLotRatioToILE en posting) | El subscriber fue eliminado en Issue 21. La descripción anterior era engañosa. |
+| `docs/manual-usuario.md` | Sección 9.4 reescrita: eliminado el flujo de pre-relleno automático al validar Lot No. (subscriber inexistente); descripción correcta del mecanismo de posting | El subscriber que pre-rellenaba campos DUoM al validar Lot No. fue eliminado en Issue 21. |
+| `docs/manual-usuario.md` | FAQ "¿Se puede usar DUoM con seguimiento de lotes?" actualizada: eliminada afirmación de pre-relleno en Diario de productos al asignar lote | Misma causa: el subscriber fue eliminado en Issue 21. |
+| `docs/manual-usuario.md` | FAQ "¿El ratio de lote se aplica en los pedidos de compra o venta?" corregida | Eliminada afirmación de que en IJL se pre-rellena; descripción correcta del mecanismo de posting en todos los flujos. |
+| `docs/manual-usuario.md` | Apéndice: notas de DUoM Ratio y DUoM Second Qty del Diario de productos corregidas | Eliminada afirmación "Se pre-rellena desde ratio de lote si existe". |
+| `docs/manual-usuario.md` | Versión actualizada a v1.4; pie de página actualizado | Reflejar Issues 20 y 21 completados. |
+| `docs/05-testing-strategy.md` | Nota sobre T01/T02/T03 actualizada: T01 fue eliminado en Issue 21; T02/T03 son tests de regresión de diseño (verifican que Lot No. validate NO interfiere con campos DUoM) | Referencia a T01 era incorrecta tras Issue 21. |
+| `docs/TestCoverageAudit.md` | Añadido codeunit 50217 (DUoM Lot Ratio Tests, 9 tests T02–T10+T12) a "Estado Actual del Test Suite" | Codeunit no estaba en la tabla de estado. |
+| `docs/TestCoverageAudit.md` | Actualizada descripción de cobertura de DUoM Lot Ratio (table 50102) y DUoM Lot Subscribers (cu 50108) en la matriz | La descripción anterior mencionaba "pre-rellenado en líneas" que ya no aplica (Issue 21). |
+| `docs/audit/alignment-report.md` | Actualizado inventario: añadida table 50102, codeunit 50108, pages 50102; permission sets con DUoM Lot Ratio; rangos de ID actualizados | Objetos implementados en Issues 13, 20, 21 no estaban en el inventario. |
+
+---
+
 ## Elementos marcados como Planificados (en docs pero aún no en código)
 
 | Archivo doc | Elemento | Notas |
 |-------------|----------|-------|
-| `docs/06-backlog.md` | Issue 13 — Ratio real por lote (Integración Item Tracking) | Diseño anterior (MVP) fue especulativo; código removido 2026-04-22. Phase 2 requiere discovery de Item Tracking Lines. |
 | `docs/06-backlog.md` | Issue 14 — Warehouse Receipt and Shipment DUoM Fields | No implementado; correcto que figure como pendiente |
 | `docs/06-backlog.md` | Issue 15 — Directed Put-Away and Pick DUoM Fields | No implementado; correcto que figure como pendiente |
 | `docs/06-backlog.md` | Issue 16 — Return Orders DUoM | No implementado; correcto que figure como pendiente |
@@ -60,6 +77,16 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 | `docs/TestCoverageAudit.md` | Tabla "Estado Actual del Test Suite" (resumen de los 16 codeunits) | Todos los codeunits en `test/src/codeunit/` |
 | `docs/audit/alignment-report.md` | Este informe de auditoría | Requerido por el issue de alineación docs-código |
 
+**Incorporado en actualización 2026-04-29 (Issues 13, 20, 21):**
+
+| Archivo doc | Elemento añadido | Objeto AL fuente |
+|-------------|-----------------|-----------------|
+| `docs/audit/alignment-report.md` | Inventario: table 50102 `DUoM Lot Ratio` | `app/src/table/DUoMLotRatio.Table.al` (50102) |
+| `docs/audit/alignment-report.md` | Inventario: codeunit 50108 `DUoM Lot Subscribers` | `app/src/codeunit/DUoMLotSubscribers.Codeunit.al` (50108) |
+| `docs/audit/alignment-report.md` | Inventario: page 50102 `DUoM Lot Ratio List` | `app/src/page/DUoMLotRatioList.Page.al` (50102) |
+| `docs/audit/alignment-report.md` | Inventario: permission sets actualizados con DUoM Lot Ratio = RIMD | `app/src/permissionset/DUoMAll.PermissionSet.al`, `test/src/permissionset/DUoMTestAll.PermissionSet.al` |
+| `docs/TestCoverageAudit.md` | Fila codeunit 50217 `DUoM Lot Ratio Tests` en Estado del Test Suite | `test/src/codeunit/DUoMLotRatioTests.Codeunit.al` |
+
 ---
 
 ## Inventario de objetos AL verificado
@@ -70,6 +97,7 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 |----|--------|--------------|
 | table 50100 | `DUoM Item Setup` | Item No. (PK), Dual UoM Enabled, Second UoM Code, Conversion Mode, Fixed Ratio |
 | table 50101 | `DUoM Item Variant Setup` | Item No. (PK), Variant Code (PK), Second UoM Code, Conversion Mode, Fixed Ratio |
+| table 50102 | `DUoM Lot Ratio` | Item No. (PK), Lot No. (PK), Actual Ratio (> 0), Description |
 
 ### Enums
 
@@ -88,6 +116,7 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 | 50105 | `DUoM Doc Transfer Helper` | Internal | CopyFromPurchLineToPurchRcptLine, CopyFromSalesLineToShipLine, CopyFromPurchLineToPurchInvLine, CopyFromPurchLineToPurchCrMemoLine, CopyFromSalesLineToSalesInvLine, CopyFromSalesLineToSalesCrMemoLine |
 | 50106 | `DUoM UoM Helper` | Public | `GetSecondUoMRoundingPrecision(ItemNo)`, `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` |
 | 50107 | `DUoM Setup Resolver` | Public | `GetEffectiveSetup(ItemNo, VariantCode, var SecondUoMCode, var ConversionMode, var FixedRatio): Boolean` |
+| 50108 | `DUoM Lot Subscribers` | Internal | Método público `TryApplyLotRatioToILE` (llamado desde 50104 en OnAfterInitItemLedgEntry). Helper interno `ApplyLotRatioToItemJournalLine` (solo uso en tests de bajo nivel). El subscriber OnAfterValidateEvent[Lot No.] en IJL fue eliminado en Issue 21. |
 
 ### TableExtensions
 
@@ -128,19 +157,19 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 
 | ID | Nombre | Tablas |
 |----|--------|--------|
-| permissionset 50100 | `DUoM - All` | tabledata "DUoM Item Setup" = RIMD; tabledata "DUoM Item Variant Setup" = RIMD; tabledata "Value Entry" = R |
-| permissionset 50200 | `DUoM - Test All` | tabledata "DUoM Item Setup" = RIMD; tabledata "DUoM Item Variant Setup" = RIMD; tabledata "Value Entry" = R |
+| permissionset 50100 | `DUoM - All` | tabledata "DUoM Item Setup" = RIMD; tabledata "DUoM Item Variant Setup" = RIMD; tabledata "DUoM Lot Ratio" = RIMD; tabledata "Value Entry" = R |
+| permissionset 50200 | `DUoM - Test All` | tabledata "DUoM Item Setup" = RIMD; tabledata "DUoM Item Variant Setup" = RIMD; tabledata "DUoM Lot Ratio" = RIMD; tabledata "Value Entry" = R |
 
 ### Rangos de ID realmente utilizados
 
 | Tipo | IDs usados |
 |------|------------|
-| Tables (app) | 50100–50101 |
+| Tables (app) | 50100–50102 |
 | Enums (app) | 50100 |
-| Codeunits (app) | 50101–50107 |
-| Pages (app) | 50100–50101 |
+| Codeunits (app) | 50101–50108 |
+| Pages (app) | 50100–50102 |
 | TableExtensions (app) | 50100, 50110–50121 |
 | PageExtensions (app) | 50100–50111 |
 | PermissionSets (app) | 50100 |
-| Test Codeunits | 50201–50216 (excl. 50208 helper) |
+| Test Codeunits | 50201–50217 (excl. 50208 helper) |
 | PermissionSets (test) | 50200 |

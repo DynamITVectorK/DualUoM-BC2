@@ -1,6 +1,6 @@
 # Auditoría de Cobertura de Tests — DualUoM-BC
 
-> **Fecha de auditoría:** 2026-04-20
+> **Fecha de auditoría:** 2026-04-20 — Actualizado: 2026-04-29 (Issues 13, 20, 21)
 > **Estado del repositorio auditado:** Phase 1 MVP completada
 
 ---
@@ -101,8 +101,8 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Doc Transfer Helper (cu 50105) | ❌ Ninguno directo | ✅ 50209, 50210, 50216 | **Indirecta** | Cubierto vía E2E; sin tests unitarios aislados (GAP P2) |
 | DUoM UoM Helper (cu 50106) | ✅ 50213 | Indirecta | **Completa** | 7 tests unitarios directos (GAP P0-01 cerrado) |
 | DUoM Setup Resolver (cu 50107) | ✅ 50211 | — | **Completa** | Jerarquía Item→Variante cubierta |
-| DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 y pre-rellenado en líneas cubiertos |
-| DUoM Lot Subscribers (cu 50108) | ✅ 50217 | — | **Completa** | Fixed, Variable, sin ratio, SalesLine, ItemJnlLine cubiertos |
+| DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 cubierta; aplicación de ratio durante posting cubierta (T04–T10) |
+| DUoM Lot Subscribers (cu 50108) | ✅ 50217 | — | **Completa** | Mecanismo TryApplyLotRatioToILE (posting) cubierto en T04–T10. T02/T03 son tests de regresión de diseño (No pre-relleno en Lot No. validate). T12 cubre el helper directo. |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
 | DUoM permissionset 50100 | — | — | **N/A** | Verificado implícitamente por tests E2E con TestPermissions |
@@ -195,7 +195,7 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 
 ## Estado Actual del Test Suite
 
-> **Última actualización:** auditoría de alineación docs-código — 2026-04-22
+> **Última actualización:** auditoría de alineación docs-código — 2026-04-29 (Issues 13, 20, 21)
 
 | Codeunit | ID | Tests | Estado |
 |----------|----|-------|--------|
@@ -215,3 +215,4 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 | DUoM Variable Mode Post Tests | 50214 | 4 tests | ✅ |
 | DUoM Variant Del Tests | 50215 | 3 tests | ✅ |
 | DUoM Cost Price Tests | 50216 | 8 tests (T01–T08) | ✅ |
+| DUoM Lot Ratio Tests | 50217 | 9 tests (T02–T10, T12) | ✅ |

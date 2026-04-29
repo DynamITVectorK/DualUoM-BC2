@@ -95,11 +95,15 @@ de BC cuando existe un helper de librería equivalente.
 >    `LibraryItemTracking.CreateItemJournalLineItemTracking` del flujo estándar.
 >    `Qty` debe ser positiva (user-facing); el signo se aplica automáticamente según Entry Type.
 >
-> Los tests que solo validan el campo `Lot No.` (subscriber T01/T02/T03, sin contabilizar)
-> **no** deben activar lot tracking en el artículo: BC 27 limpiaría el campo `"Lot No."` si
-> no existe Reservation Entry de respaldo. Con `"Lot No."` vacío, el subscriber de lotes
-> (50108) sale inmediatamente (`if LotNo = '' then exit`) sin aplicar el ratio de lote,
-> y `DUoM Ratio` queda en el valor genérico del artículo en lugar del ratio específico del lote.
+> Los tests que solo validan el campo `Lot No.` en IJL (como T02/T03 en `DUoMLotRatioTests`,
+> sin contabilizar) **no** deben activar lot tracking en el artículo: BC 27 limpiaría el
+> campo `"Lot No."` si no existe Reservation Entry de respaldo.
+>
+> **Nota arquitectónica (Issue 21):** No existe ningún subscriber productivo que pre-rellene
+> campos DUoM al validar `"Lot No."` en un Item Journal Line. El test T01 (que validaba ese
+> comportamiento) fue eliminado. Los tests T02/T03 verifican como regresión de diseño que
+> validar `"Lot No."` **NO interfiere** con campos DUoM (comportamiento correcto). El
+> mecanismo productivo de aplicación del ratio de lote es `TryApplyLotRatioToILE` en posting.
 
 ### Excepciones justificadas (documentadas en código)
 
