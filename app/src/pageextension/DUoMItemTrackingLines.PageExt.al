@@ -8,7 +8,7 @@
 /// Both fields are editable so the user can review and override values per lot assignment.
 /// For items without DUoM enabled the columns are shown empty (no conditional hide).
 /// </summary>
-pageextension 50111 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
+pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 {
     layout
     {

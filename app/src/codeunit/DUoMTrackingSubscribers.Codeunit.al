@@ -18,11 +18,13 @@
 /// RecalcTrackingSpecSecondQty). No hay lógica de negocio directamente en el suscriptor.
 ///
 /// Propagación a Reservation Entry (RF-04):
-///   La propagación directa desde Tracking Specification hacia Reservation Entry no se
-///   implementa en este issue por falta de un evento seguro con los parámetros necesarios
-///   en BC 27. Los campos DUoM en Reservation Entry quedan como limitación conocida y
-///   serán abordados en una tarea futura N-lotes. La ratio real por lote se aplica
-///   al ILE durante el posting vía TryApplyLotRatioToILE (DUoM Lot Subscribers, 50108).
+///   La propagación directa desde Tracking Specification hacia Reservation Entry NO se
+///   implementa: el evento OnAfterCopyTrackingFromTrackingSpec en BC 27 no expone
+///   un parámetro "var Rec: Record Reservation Entry" modificable que permita copiar
+///   campos de extensión de forma segura (AL0282). Los campos DUoM en Reservation Entry
+///   quedan como limitación conocida y serán abordados en una tarea futura N-lotes.
+///   La ratio real por lote se aplica al ILE durante el posting vía
+///   TryApplyLotRatioToILE (DUoM Lot Subscribers, 50108).
 ///
 /// Signatures verificadas BC 27 / runtime 15:
 ///   - Tracking Specification (tabla 6500): OnAfterValidateEvent para Lot No. y
@@ -62,23 +64,6 @@ codeunit 50109 "DUoM Tracking Subscribers"
         if Rec."DUoM Ratio" = 0 then
             exit;
         RecalcTrackingSpecSecondQty(Rec);
-    end;
-
-    // Publisher: Table "Reservation Entry" (337), Event: OnAfterCopyTrackingFromTrackingSpec
-    // Verificado contra BC 27 Symbol Reference — 2026-04-29
-    // Motivo: propagar DUoM Second Qty y DUoM Ratio desde el buffer Tracking Specification
-    // (tabla 6500) a la Reservation Entry persistida (tabla 337) en el momento en que
-    // Item Tracking Lines confirma el volcado. El evento se publica en el procedimiento
-    // ReservationEntry.CopyTrackingFromSpec(TrackingSpecification), que es el mecanismo
-    // estándar BC para transferir datos de tracking del buffer al registro persistido.
-    [EventSubscriber(ObjectType::Table, Database::"Reservation Entry",
-                     'OnAfterCopyTrackingFromTrackingSpec', '', false, false)]
-    local procedure OnAfterCopyTrackingFromTrackingSpec(
-        var ReservEntry: Record "Reservation Entry";
-        TrackingSpecification: Record "Tracking Specification")
-    begin
-        ReservEntry."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
-        ReservEntry."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
     end;
 
     /// <summary>
