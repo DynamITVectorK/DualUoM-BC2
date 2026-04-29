@@ -479,6 +479,36 @@ asignar un único lote con su ratio DUoM. En Business Central real:
 - `docs/02-functional-design.md`, `docs/03-technical-architecture.md`, `docs/06-backlog.md`
 - `docs/issues/issue-21-lot-ratio-1n-refactor.md`
 
+### Issue 22 — DUoM operativo en Item Tracking Lines (seguimiento de lotes)
+
+**Objetivo:** mostrar y hacer operativos los campos `DUoM Second Qty` y `DUoM Ratio` en
+la página estándar **Item Tracking Lines** (page 6510) de Business Central, donde el
+usuario asigna lotes a una línea de documento.
+
+Alcance:
+- TableExtension `DUoM Tracking Spec Ext` (50122) sobre `Tracking Specification` (6500)
+  con campos `DUoM Second Qty` y `DUoM Ratio`.
+- PageExtension `DUoM Item Tracking Lines` (50111) sobre `Item Tracking Lines` (page 6510):
+  columnas `DUoM Ratio` y `DUoM Second Qty` en el repeater.
+- Nuevo codeunit `DUoM Tracking Subscribers` (50109): suscriptor `OnAfterValidateEvent`
+  para `Lot No.` en `Tracking Specification` → pre-rellena `DUoM Ratio` desde `DUoM Lot Ratio`
+  y recalcula `DUoM Second Qty`.
+- Suscriptor `OnAfterValidateEvent` para `Quantity (Base)` en `Tracking Specification` →
+  recálculo de `DUoM Second Qty` al cambiar la cantidad del lote.
+- Propagación de `DUoM Second Qty` y `DUoM Ratio` desde `Tracking Specification` hacia
+  `Reservation Entry` (337) al confirmar Item Tracking Lines (si existe evento seguro en
+  BC 27; si no, documentar limitación).
+- Actualizar permission sets si se requieren permisos sobre nuevas tablas.
+- Tests TDD (`DUoM Item Tracking Tests`, codeunit 50218): mínimo 5 tests (T01–T05).
+- Documentación y XLF actualizados en el mismo PR.
+
+**Dependencias:** Issues 13, 20 y 21 completados (DUoM Lot Ratio, modelo 1:N).
+**Nota:** Verificar en BC 27 Symbol Reference que `Tracking Specification` (6500) admite
+extensions PTE, que `Lot No.` es campo directo en esa tabla y que el nombre exacto de la
+página es `"Item Tracking Lines"` antes de crear cualquier objeto.
+
+**Ver:** `docs/issues/issue-22-item-tracking-lines-duom.md` para el diseño detallado.
+
 ### Issue 14 — Warehouse Basic Documents DUoM Fields
 
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
@@ -638,14 +668,17 @@ Posting hacia movimientos e históricos
   **Issue 11b:** `DUoM Variant Tests` usa ID 50211.
   **IDs libres para Phase 2:** 50212+ para nuevos codeunits de test.
 - **Rango de IDs de objetos de producción:** 50100–50199.
-  IDs ya asignados en Phase 1 + Issues 11/11b:
-  - tablas: 50100 (`DUoM Item Setup`), 50101 (`DUoM Item Variant Setup`)
+  IDs ya asignados en Phase 1 + Issues 11/11b/12/13:
+  - tablas: 50100 (`DUoM Item Setup`), 50101 (`DUoM Item Variant Setup`), 50102 (`DUoM Lot Ratio`)
   - enums: 50100
-  - codeunits: 50101–50107 (50107 = `DUoM Setup Resolver`)
-  - pages: 50100 (`DUoM Item Setup`), 50101 (`DUoM Variant Setup List`)
-  - pageextensions: 50100–50109
-  - tableextensions: 50100, 50110–50120 (50120 = `DUoM Item Variant Ext`)
-  IDs libres para Phase 2 (Issue 12+): tableextensions 50121+, codeunits 50108+, pages 50102+.
+  - codeunits: 50101–50108 (50107 = `DUoM Setup Resolver`, 50108 = `DUoM Lot Subscribers`)
+  - pages: 50100 (`DUoM Item Setup`), 50101 (`DUoM Variant Setup List`), 50102 (`DUoM Lot Ratio List`)
+  - pageextensions: 50100–50110
+  - tableextensions: 50100, 50110–50121 (50121 = `DUoM Value Entry Ext`)
+  IDs propuestos para Issue 22: tableextension 50122 (`DUoM Tracking Spec Ext`),
+  pageextension 50111 (`DUoM Item Tracking Lines`), codeunit 50109 (`DUoM Tracking Subscribers`),
+  test codeunit 50218 (`DUoM Item Tracking Tests`).
+  IDs libres para Issue 14+: tableextensions 50123+, codeunits 50110+, pages 50103+.
 - **Eventos BC 27 — referencia de firma verificada:**
   - Purch. Rcpt. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Rcpt. Line"` — var ÚLTIMO
   - Purch. Inv. Line init: `OnAfterInitFromPurchLine` en Table `"Purch. Inv. Line"` — var ÚLTIMO
