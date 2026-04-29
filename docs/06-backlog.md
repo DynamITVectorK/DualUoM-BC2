@@ -489,7 +489,7 @@ Alcance implementado:
 - TableExtension `DUoM Tracking Spec Ext` (50122) sobre `Tracking Specification` (6500)
   con campos `DUoM Second Qty` y `DUoM Ratio`. El trigger `OnValidate` de `DUoM Ratio`
   recalcula `DUoM Second Qty` usando `DUoM Calc Engine.ComputeSecondQtyRounded`.
-- PageExtension `DUoM Item Tracking Lines` (50111) sobre `Item Tracking Lines` (page 6510):
+- PageExtension `DUoM Item Tracking Lines` (50112) sobre `Item Tracking Lines` (page 6510):
   columnas `DUoM Ratio` y `DUoM Second Qty` en el repeater, después de `Quantity (Base)`.
   `CaptionClass` muestra el código de la segunda UoM cuando está disponible.
 - Codeunit `DUoM Tracking Subscribers` (50109): suscriptor `OnAfterValidateEvent`
@@ -498,7 +498,10 @@ Alcance implementado:
   `DUoM Second Qty` cuando cambia la cantidad del lote.
   - Modo Fixed: siempre usa el ratio fijo del artículo; ratio de lote NO aplica.
   - Variable/AlwaysVariable: aplica ratio del lote si existe en `DUoM Lot Ratio`.
-- Tests TDD (`DUoM Item Tracking Tests`, codeunit 50218): 5 tests T01–T05.
+- Tests TDD (`DUoM Item Tracking Tests`, codeunit 50218): 7 tests T01–T07.
+  T01–T04, T07: unitarios sobre Tracking Specification buffer.
+  T05: E2E coherencia Tracking Spec → ILE (1 lote).
+  T06: E2E modelo 1:N (1 línea IJL → 2 lotes → 2 ILEs con ratios independientes).
 - XLF actualizados (en-US y es-ES) con los nuevos textos de la page extension y
   table extension.
 
@@ -512,7 +515,7 @@ Alcance implementado:
 
 **Deliverables:**
 - `DUoMTrackingSpecExt.TableExt.al` (tableextension 50122)
-- `DUoMItemTrackingLines.PageExt.al` (pageextension 50111)
+- `DUoMItemTrackingLines.PageExt.al` (pageextension 50112)
 - `DUoMTrackingSubscribers.Codeunit.al` (codeunit 50109)
 - `DUoMItemTrackingTests.Codeunit.al` (test codeunit 50218) — 5 tests
 - `DualUoM-BC.en-US.xlf`, `DualUoM-BC.es-ES.xlf` — trans-units añadidos
@@ -686,7 +689,7 @@ Posting hacia movimientos e históricos
   - pageextensions: 50100–50110
   - tableextensions: 50100, 50110–50121 (50121 = `DUoM Value Entry Ext`)
   IDs propuestos para Issue 22: tableextension 50122 (`DUoM Tracking Spec Ext`),
-  pageextension 50111 (`DUoM Item Tracking Lines`), codeunit 50109 (`DUoM Tracking Subscribers`),
+  pageextension 50112 (`DUoM Item Tracking Lines`), codeunit 50109 (`DUoM Tracking Subscribers`),
   test codeunit 50218 (`DUoM Item Tracking Tests`).
   IDs libres para Issue 14+: tableextensions 50123+, codeunits 50110+, pages 50103+.
 - **Eventos BC 27 — referencia de firma verificada:**

@@ -1,20 +1,14 @@
 /// <summary>
 /// Extends the Reservation Entry table (337) with Dual Unit of Measure fields.
-/// When the user confirms Item Tracking Lines (page 6510), BC calls
-/// ReservationEntry.CopyTrackingFromSpec(TrackingSpecification), which publishes
-/// OnAfterCopyTrackingFromTrackingSpec. DUoM Tracking Subscribers (50109) subscribes
-/// to that event and copies DUoM Second Qty and DUoM Ratio from the buffer entry
-/// (Tracking Specification 6500) to the persisted Reservation Entry (337).
 ///
-/// This is the standard BC extension mechanism for propagating custom fields
-/// from Tracking Specification to Reservation Entry — same pattern used by
-/// Package No. Information, CD Tracking (RU), and other BC localizations.
+/// Note: The automatic propagation from Tracking Specification (6500) to Reservation Entry
+/// (337) is NOT implemented because the BC 27 event OnAfterCopyTrackingFromTrackingSpec
+/// does not expose a modifiable "var Rec: Record Reservation Entry" parameter for extension
+/// fields (AL0282). The fields are defined here for future use when a safe propagation
+/// mechanism is available (tarea futura N-lotes).
 ///
-/// Signatures verificadas BC 27 / runtime 15:
-///   - Reservation Entry (table 337): OnAfterCopyTrackingFromTrackingSpec event
-///     published in procedure CopyTrackingFromSpec(TrackingSpecification).
-///   - Event fires whenever BC code creates/updates a Reservation Entry from
-///     a Tracking Specification buffer, including Item Tracking Lines confirmation.
+/// The DUoM ratio per lot is applied to the Item Ledger Entry during posting via
+/// TryApplyLotRatioToILE (DUoM Lot Subscribers, 50108).
 /// </summary>
 tableextension 50123 "DUoM Reservation Entry Ext" extends "Reservation Entry"
 {
