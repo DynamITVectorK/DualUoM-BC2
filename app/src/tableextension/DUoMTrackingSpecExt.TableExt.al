@@ -44,9 +44,12 @@ tableextension 50122 "DUoM Tracking Spec Ext" extends "Tracking Specification"
                          SecondUoMCode, Mode, FixedRatio) then
                     exit;
                 if Mode = Mode::AlwaysVariable then
-                    // AlwaysVariable: el usuario introduce DUoM Second Qty manualmente en cada línea.
-                    // El recálculo via DUoM Ratio se reserva al subscriber OnAfterValidateEvent 'Lot No.'
-                    // que aplica el ratio específico del lote. El trigger genérico no recalcula aquí.
+                    // AlwaysVariable: este trigger genérico de DUoM Ratio no recalcula DUoM Second Qty,
+                    // ya que en este modo el subscriber OnAfterValidateEvent 'Lot No.' aplica el ratio
+                    // del lote automáticamente si existe en DUoM Lot Ratio, y el usuario puede además
+                    // introducir DUoM Second Qty manualmente en la línea de tracking.
+                    // Si el usuario edita DUoM Ratio directamente, el subscriber de 'Lot No.' no se activa;
+                    // el recálculo manual queda a cargo del subscriber de 'Quantity (Base)'.
                     exit;
                 RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(
                     Rec."Item No.", SecondUoMCode);
