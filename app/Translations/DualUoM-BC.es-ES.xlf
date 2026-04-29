@@ -812,6 +812,46 @@
           <note from="Xliff Generator" annotates="general" priority="3">Page DUoM Item Setup - Action DUoMLotRatios - Property ToolTip</note>
         </trans-unit>
 
+        <!-- ═══════════════════════════════════════════════════════════════════
+             PageExtension 50111  DUoM Item Tracking Lines (Issue 22)
+             PENDING: PageExtension hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 3556583441 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio for this lot tracking line. Filled automatically from the registered DUoM Lot Ratio (Variable mode) or the item Fixed Ratio (Fixed mode). Can be overridden manually.</source>
+          <target state="translated">Especifica el ratio de conversión para esta línea de seguimiento de lote. Se rellena automáticamente desde el Ratio DUoM de Lote registrado (modo Variable) o el Ratio Fijo del artículo (modo Fijo). Puede sobreescribirse manualmente.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field on Item Tracking Lines; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Tracking Lines - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 3556583441 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this lot tracking line in the second unit of measure. Computed automatically from Quantity (Base) and DUoM Ratio.</source>
+          <target state="translated">Especifica la cantidad secundaria para esta línea de seguimiento de lote en la segunda unidad de medida. Se calcula automáticamente a partir de Cantidad (Base) y Ratio DUoM.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Item Tracking Lines; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Tracking Lines - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 3556583441 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="translated">Cdad. dual 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Tracking Lines - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TableExtension 50122  DUoM Tracking Spec Ext (Issue 22)
+             PENDING: TableExtension hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 3248773591 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="translated">Cdad. dual 2ª UdM</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Tracking Spec Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 3248773591 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="translated">Ratio DUoM</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Tracking Spec Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+
       </group>
     </body>
   </file>

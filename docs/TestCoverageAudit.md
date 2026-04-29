@@ -34,6 +34,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | tableextension 50119 | Sales Cr.Memo Line | TableExt |
 | tableextension 50120 | Item Variant (cascade delete) | TableExt |
 | tableextension 50121 | DUoM Value Entry Ext (Value Entry) | TableExt |
+| tableextension 50122 | DUoM Tracking Spec Ext (Tracking Specification) | TableExt |
 | codeunit 50101 | DUoM Calc Engine | Codeunit |
 | codeunit 50102 | DUoM Purchase Subscribers | Codeunit |
 | codeunit 50103 | DUoM Sales Subscribers | Codeunit |
@@ -42,10 +43,11 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | codeunit 50106 | DUoM UoM Helper | Codeunit |
 | codeunit 50107 | DUoM Setup Resolver | Codeunit |
 | codeunit 50108 | DUoM Lot Subscribers | Codeunit |
+| codeunit 50109 | DUoM Tracking Subscribers | Codeunit |
 | page 50100 | DUoM Item Setup | Page |
 | page 50101 | DUoM Variant Setup List | Page |
 | page 50102 | DUoM Lot Ratio List | Page |
-| pageextension 50100–50111 | Varios (campos DUoM en forms) | PageExt |
+| pageextension 50100–50111 | Varios (campos DUoM en forms, incl. Item Tracking Lines) | PageExt |
 | permissionset 50100 | DUoM - All | PermissionSet |
 
 ---
@@ -71,6 +73,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | 50215 | DUoM Variant Del Tests | Item Variant TableExt (cascade delete de DUoM Item Variant Setup) |
 | 50216 | DUoM Cost Price Tests | DUoM Unit Cost / DUoM Unit Price, propagación a históricos, DUoM Second Qty en Value Entry |
 | 50217 | DUoM Lot Ratio Tests | DUoM Lot Ratio (table), DUoM Lot Subscribers (Issue 13) |
+| 50218 | DUoM Item Tracking Tests | DUoM Tracking Subscribers, DUoM Tracking Spec Ext, DUoM Item Tracking Lines (Issue 22) |
 
 ---
 

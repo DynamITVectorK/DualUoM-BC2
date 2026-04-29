@@ -29,7 +29,7 @@ el gap entre la gestión de lotes estándar de BC y la solución DualUoM.
 - **Issue 13 (DUoM Lot Ratio):** ✅ tabla `DUoM Lot Ratio` (50102) + `TryApplyLotRatioToILE`.
 - **Issues 20/21 (modelo 1:N):** ✅ arquitectura 1 línea = N lotes consolidada; subscriber
   de `Item Journal Line."Lot No."` eliminado (asunción incorrecta 1:1).
-- **Issue 22 (este):** ❌ pendiente.
+- **Issue 22 (este):** ✅ IMPLEMENTADO — 2026-04-29.
 
 ### Motivación funcional
 
@@ -364,6 +364,53 @@ Confirmar el nombre exacto de la página en BC 27 antes de crear la pageextensio
 - `docs/02-functional-design.md`: sección "Lot-Specific Real Ratio".
 - `docs/03-technical-architecture.md`: sección "Modelo 1:N".
 - `docs/06-backlog.md`: tarea futura "Arquitectura DUoM por lote sobre Item Tracking (N lotes reales)".
+
+---
+
+## 13. Estado de implementación
+
+**Estado:** ✅ IMPLEMENTADO — 2026-04-29
+
+### Objetos creados
+
+| Objeto | Tipo | ID | Archivo |
+|--------|------|----|---------|
+| `DUoM Tracking Spec Ext` | tableextension | 50122 | `app/src/tableextension/DUoMTrackingSpecExt.TableExt.al` |
+| `DUoM Item Tracking Lines` | pageextension | 50111 | `app/src/pageextension/DUoMItemTrackingLines.PageExt.al` |
+| `DUoM Tracking Subscribers` | codeunit | 50109 | `app/src/codeunit/DUoMTrackingSubscribers.Codeunit.al` |
+| `DUoM Item Tracking Tests` | test codeunit | 50218 | `test/src/codeunit/DUoMItemTrackingTests.Codeunit.al` |
+
+### Decisiones de implementación
+
+1. **`Tracking Specification` (6500) es extensible:** confirmado procediendo con tableextension 50122.
+
+2. **Comportamiento por modo en `Lot No.` subscriber (RT-03):**
+   - Fixed: aplica ratio fijo del artículo (lote no sobreescribe).
+   - Variable/AlwaysVariable: aplica ratio del lote si existe; si no, deja campos sin cambios.
+
+3. **`Quantity (Base)` subscriber (RT-04):** solo recalcula si `DUoM Ratio ≠ 0`,
+   evitando cálculos inútiles en líneas sin DUoM configurado.
+
+4. **Propagación a `Reservation Entry` (RF-04 / RT-05):**
+   No implementada. No se identificó un evento seguro en BC 27 con los parámetros
+   necesarios (`Tracking Specification` + `Reservation Entry` en la misma firma).
+   La consistencia DUoM se garantiza en el posting vía `TryApplyLotRatioToILE`
+   (codeunit 50108). Documentada como limitación conocida y tarea futura N-lotes.
+
+5. **Permission sets (RT-06):** No se requieren entradas explícitas para
+   `Tracking Specification` (tabla estándar) ni `Reservation Entry` (solo lectura
+   implícita en subscribers). La tabla `DUoM Lot Ratio` (50102) ya está cubierta.
+
+6. **Tests T01–T05 usando Tracking Specification in-memory:**
+   Los tests T01–T04 usan registros `Tracking Specification` sin `Insert()` para
+   aislar la lógica de los subscribers. T05 verifica coherencia E2E entre el valor
+   calculado en el buffer y el ILE resultante del posting.
+
+### Limitaciones conocidas
+
+- **RF-04 — Propagación a Reservation Entry:** los campos DUoM de `Tracking Specification`
+  no se copian automáticamente a `Reservation Entry` al confirmar Item Tracking Lines.
+  Los datos DUoM del lote se aplican durante el posting via `TryApplyLotRatioToILE`.
 
 ---
 
