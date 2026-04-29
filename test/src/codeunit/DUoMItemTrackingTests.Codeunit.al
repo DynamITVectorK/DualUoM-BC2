@@ -8,13 +8,15 @@
 ///   T03 — Fixed mode + lote CON ratio → Validate("Lot No.") usa ratio fijo (no ratio de lote)
 ///   T04 — Cambio de Quantity (Base) con DUoM Ratio establecido → DUoM Second Qty recalculada
 ///   T05 — E2E: compra con lote asignado via Item Tracking → ILE con DUoM Second Qty correcto
+///   T06 — Modelo 1:N: una línea IJL, dos lotes con ratios distintas → cada ILE con su ratio
+///   T07 — Artículo sin DUoM activo → Validate("Lot No.") sin error, campos DUoM = 0
 ///
 /// Arquitectura de tests:
-///   T01–T04: tests unitarios sobre el buffer Tracking Specification (in-memory, sin Insert).
-///            Verifican los suscriptores OnAfterValidateEvent directamente a través del
-///            mecanismo estándar de Validate() sobre un registro local.
-///   T05:     test de integración E2E usando Purchase Order + Library - Item Tracking.
-///            Verifica coherencia entre el ratio de lote y el ILE resultante del posting.
+///   T01–T04, T07: tests unitarios sobre el buffer Tracking Specification (in-memory, sin Insert).
+///                 Verifican los suscriptores OnAfterValidateEvent directamente.
+///   T05–T06:      tests de integración E2E usando IJL + Library - Item Tracking.
+///                 Verifican coherencia entre tracking y ILE resultante del posting.
+///                 T06 demuestra el modelo 1:N (1 línea origen = N lotes = N ILEs con ratio propio).
 /// </summary>
 codeunit 50218 "DUoM Item Tracking Tests"
 {
@@ -256,5 +258,115 @@ codeunit 50218 "DUoM Item Tracking Tests"
             'ILE DUoM Second Qty debe ser coherente con el valor calculado en Tracking Specification.');
         LibraryAssert.AreEqual(0.38, ILE."DUoM Ratio",
             'ILE DUoM Ratio debe coincidir con el ratio del lote.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T06 — Modelo 1:N: una línea IJL, dos lotes con ratios distintas →
+    //        cada ILE recibe su propio DUoM Ratio y DUoM Second Qty
+    //
+    // Verifica que el modelo 1 línea = N lotes funciona correctamente:
+    // una única IJL con dos lotes asignados vía Item Tracking produce dos ILEs,
+    // cada uno con el ratio específico de su lote y su DUoM Second Qty calculada
+    // de forma independiente (Abs(ILE.Quantity) × ratio del lote).
+    //
+    // Este test demuestra explícitamente que NO se asume 1 línea = 1 lote.
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TwoLots_OneIJLLine_EachILEHasLotSpecificRatio()
+    var
+        Item: Record Item;
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNoA: Code[50];
+        LotNoB: Code[50];
+    begin
+        // [GIVEN] Artículo con DUoM Variable (ratio de fallback 0,40)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0.40);
+
+        // [GIVEN] Dos lotes con ratios distintas: A = 0,38 (5 uds); B = 0,42 (5 uds)
+        LotNoA := 'LOT-T06A';
+        LotNoB := 'LOT-T06B';
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoA, 0.38);
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNoB, 0.42);
+
+        // [GIVEN] Item Tracking habilitado para el artículo
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] UNA sola línea IJL para 10 unidades (modelo 1:N — 1 línea, N lotes)
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
+        ItemJnlLine.Validate(Quantity, 10);
+        ItemJnlLine.Modify(true);
+
+        // [GIVEN] Asignar DOS lotes a la MISMA línea vía Item Tracking
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoA, 5);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNoB, 5);
+
+        // [WHEN] Se contabiliza la línea
+        LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
+
+        // [THEN] ILE para LOT-T06A: DUoM Ratio = 0,38; DUoM Second Qty = 5 × 0,38 = 1,90
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Lot No.", LotNoA);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T06: Se esperaba ILE para LOT-T06A.');
+        LibraryAssert.AreEqual(0.38, ILE."DUoM Ratio",
+            'T06: ILE LOT-T06A — DUoM Ratio debe ser el ratio de lote (0,38).');
+        LibraryAssert.AreNearlyEqual(1.90, ILE."DUoM Second Qty", 0.001,
+            'T06: ILE LOT-T06A — DUoM Second Qty debe ser 5 × 0,38 = 1,90.');
+
+        // [THEN] ILE para LOT-T06B: DUoM Ratio = 0,42; DUoM Second Qty = 5 × 0,42 = 2,10
+        ILE.SetRange("Lot No.", LotNoB);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'T06: Se esperaba ILE para LOT-T06B.');
+        LibraryAssert.AreEqual(0.42, ILE."DUoM Ratio",
+            'T06: ILE LOT-T06B — DUoM Ratio debe ser el ratio de lote (0,42).');
+        LibraryAssert.AreNearlyEqual(2.10, ILE."DUoM Second Qty", 0.001,
+            'T06: ILE LOT-T06B — DUoM Second Qty debe ser 5 × 0,42 = 2,10.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T07 — Artículo sin DUoM activo → Validate("Lot No.") sin error, campos DUoM = 0
+    //
+    // Verifica que cuando el artículo no tiene DUoM Item Setup (o DUoM no está habilitado),
+    // el suscriptor sale rápidamente sin producir error y sin modificar los campos DUoM,
+    // que permanecen en sus valores por defecto (0).
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingSpec_NoDUoMSetup_NoError_DUoMFieldsZero()
+    var
+        Item: Record Item;
+        TrackingSpec: Record "Tracking Specification";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo SIN DUoM Item Setup (DUoM no está activo)
+        LibraryInventory.CreateItem(Item);
+        // Intencionalmente NO se llama a CreateItemSetup para este artículo.
+
+        // [GIVEN] Tracking Specification con Item No. y Quantity (Base) = 10
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Quantity (Base)" := 10;
+
+        // [WHEN] Validate Lot No. (el suscriptor debe salir sin error ni modificación)
+        TrackingSpec.Validate("Lot No.", 'LOT-T07');
+
+        // [THEN] DUoM Ratio permanece en 0 (sin DUoM setup, no se calcula ratio)
+        LibraryAssert.AreEqual(0, TrackingSpec."DUoM Ratio",
+            'T07: Sin DUoM activo, DUoM Ratio debe permanecer en 0.');
+
+        // [THEN] DUoM Second Qty permanece en 0 (sin DUoM setup, no se calcula)
+        LibraryAssert.AreEqual(0, TrackingSpec."DUoM Second Qty",
+            'T07: Sin DUoM activo, DUoM Second Qty debe permanecer en 0.');
     end;
 }

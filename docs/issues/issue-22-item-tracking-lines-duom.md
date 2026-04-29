@@ -261,7 +261,7 @@ Actualizar en el mismo PR:
 - [x] Suscriptor `OnAfterValidateEvent` para `Lot No.` implementado y verificado en BC 27.
 - [x] Suscriptor `OnAfterValidateEvent` para `Quantity (Base)` implementado y verificado.
 - [ ] Propagación a `Reservation Entry` — **NO implementada**: `OnAfterCopyTrackingFromTrackingSpec` no expone `var Rec` modificable en BC 27 (AL0282). Limitación conocida, tarea futura N-lotes.
-- [ ] T01–T05 pasando en CI.
+- [ ] T01–T07 pasando en CI.
 
 ### Calidad
 
@@ -407,10 +407,13 @@ Confirmar el nombre exacto de la página en BC 27 antes de crear la pageextensio
    en `DUoMAll.PermissionSet.al` y `DUoMTestAll.PermissionSet.al` para cubrir el
    acceso de escritura a los campos DUoM en `Reservation Entry` desde el subscriber.
 
-6. **Tests T01–T05 usando Tracking Specification in-memory:**
-   Los tests T01–T04 usan registros `Tracking Specification` sin `Insert()` para
-   aislar la lógica de los subscribers. T05 verifica coherencia E2E entre el valor
-   calculado en el buffer y el ILE resultante del posting.
+6. **Tests T01–T07 usando Tracking Specification in-memory y posting E2E:**
+   Los tests T01–T04 y T07 usan registros `Tracking Specification` sin `Insert()` para
+   aislar la lógica de los subscribers. T05 y T06 verifican coherencia E2E:
+   T05 verifica coherencia entre buffer y ILE con un lote; T06 verifica el modelo
+   1:N (1 línea IJL → 2 lotes → 2 ILEs cada uno con su ratio correcto), demostrando
+   explícitamente que no se asume 1 línea = 1 lote. T07 verifica que artículos sin
+   DUoM activo no producen errores (salida rápida del subscriber).
 
 ---
 

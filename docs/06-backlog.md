@@ -498,7 +498,10 @@ Alcance implementado:
   `DUoM Second Qty` cuando cambia la cantidad del lote.
   - Modo Fixed: siempre usa el ratio fijo del artículo; ratio de lote NO aplica.
   - Variable/AlwaysVariable: aplica ratio del lote si existe en `DUoM Lot Ratio`.
-- Tests TDD (`DUoM Item Tracking Tests`, codeunit 50218): 5 tests T01–T05.
+- Tests TDD (`DUoM Item Tracking Tests`, codeunit 50218): 7 tests T01–T07.
+  T01–T04, T07: unitarios sobre Tracking Specification buffer.
+  T05: E2E coherencia Tracking Spec → ILE (1 lote).
+  T06: E2E modelo 1:N (1 línea IJL → 2 lotes → 2 ILEs con ratios independientes).
 - XLF actualizados (en-US y es-ES) con los nuevos textos de la page extension y
   table extension.
 
