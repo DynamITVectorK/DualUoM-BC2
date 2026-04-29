@@ -479,35 +479,45 @@ asignar un único lote con su ratio DUoM. En Business Central real:
 - `docs/02-functional-design.md`, `docs/03-technical-architecture.md`, `docs/06-backlog.md`
 - `docs/issues/issue-21-lot-ratio-1n-refactor.md`
 
-### Issue 22 — DUoM operativo en Item Tracking Lines (seguimiento de lotes)
+### Issue 22 — DUoM operativo en Item Tracking Lines (seguimiento de lotes) ✅ IMPLEMENTADO
 
 **Objetivo:** mostrar y hacer operativos los campos `DUoM Second Qty` y `DUoM Ratio` en
 la página estándar **Item Tracking Lines** (page 6510) de Business Central, donde el
 usuario asigna lotes a una línea de documento.
 
-Alcance:
+Alcance implementado:
 - TableExtension `DUoM Tracking Spec Ext` (50122) sobre `Tracking Specification` (6500)
-  con campos `DUoM Second Qty` y `DUoM Ratio`.
+  con campos `DUoM Second Qty` y `DUoM Ratio`. El trigger `OnValidate` de `DUoM Ratio`
+  recalcula `DUoM Second Qty` usando `DUoM Calc Engine.ComputeSecondQtyRounded`.
 - PageExtension `DUoM Item Tracking Lines` (50111) sobre `Item Tracking Lines` (page 6510):
-  columnas `DUoM Ratio` y `DUoM Second Qty` en el repeater.
-- Nuevo codeunit `DUoM Tracking Subscribers` (50109): suscriptor `OnAfterValidateEvent`
+  columnas `DUoM Ratio` y `DUoM Second Qty` en el repeater, después de `Quantity (Base)`.
+  `CaptionClass` muestra el código de la segunda UoM cuando está disponible.
+- Codeunit `DUoM Tracking Subscribers` (50109): suscriptor `OnAfterValidateEvent`
   para `Lot No.` en `Tracking Specification` → pre-rellena `DUoM Ratio` desde `DUoM Lot Ratio`
-  y recalcula `DUoM Second Qty`.
-- Suscriptor `OnAfterValidateEvent` para `Quantity (Base)` en `Tracking Specification` →
-  recálculo de `DUoM Second Qty` al cambiar la cantidad del lote.
-- Propagación de `DUoM Second Qty` y `DUoM Ratio` desde `Tracking Specification` hacia
-  `Reservation Entry` (337) al confirmar Item Tracking Lines (si existe evento seguro en
-  BC 27; si no, documentar limitación).
-- Actualizar permission sets si se requieren permisos sobre nuevas tablas.
-- Tests TDD (`DUoM Item Tracking Tests`, codeunit 50218): mínimo 5 tests (T01–T05).
-- Documentación y XLF actualizados en el mismo PR.
+  y recalcula `DUoM Second Qty`. Suscriptor para `Quantity (Base)` → recalcula
+  `DUoM Second Qty` cuando cambia la cantidad del lote.
+  - Modo Fixed: siempre usa el ratio fijo del artículo; ratio de lote NO aplica.
+  - Variable/AlwaysVariable: aplica ratio del lote si existe en `DUoM Lot Ratio`.
+- Tests TDD (`DUoM Item Tracking Tests`, codeunit 50218): 5 tests T01–T05.
+- XLF actualizados (en-US y es-ES) con los nuevos textos de la page extension y
+  table extension.
 
-**Dependencias:** Issues 13, 20 y 21 completados (DUoM Lot Ratio, modelo 1:N).
-**Nota:** Verificar en BC 27 Symbol Reference que `Tracking Specification` (6500) admite
-extensions PTE, que `Lot No.` es campo directo en esa tabla y que el nombre exacto de la
-página es `"Item Tracking Lines"` antes de crear cualquier objeto.
+**Limitación conocida (RT-05 — Propagación a Reservation Entry):**
+  No se implementa la propagación directa desde `Tracking Specification` hacia
+  `Reservation Entry` (337) en este issue por falta de un evento seguro verificado
+  en BC 27 con los parámetros necesarios. Los campos DUoM quedan disponibles en el
+  buffer de `Item Tracking Lines` durante la sesión interactiva. El ratio real por lote
+  se aplica al ILE durante el posting vía `TryApplyLotRatioToILE` (codeunit 50108).
+  Esta limitación queda documentada para una tarea futura N-lotes.
 
-**Ver:** `docs/issues/issue-22-item-tracking-lines-duom.md` para el diseño detallado.
+**Deliverables:**
+- `DUoMTrackingSpecExt.TableExt.al` (tableextension 50122)
+- `DUoMItemTrackingLines.PageExt.al` (pageextension 50111)
+- `DUoMTrackingSubscribers.Codeunit.al` (codeunit 50109)
+- `DUoMItemTrackingTests.Codeunit.al` (test codeunit 50218) — 5 tests
+- `DualUoM-BC.en-US.xlf`, `DualUoM-BC.es-ES.xlf` — trans-units añadidos
+- `docs/03-technical-architecture.md`, `docs/06-backlog.md`, `docs/TestCoverageAudit.md`
+- `docs/issues/issue-22-item-tracking-lines-duom.md`
 
 ### Issue 14 — Warehouse Basic Documents DUoM Fields
 

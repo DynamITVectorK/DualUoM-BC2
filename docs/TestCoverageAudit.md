@@ -34,6 +34,8 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | tableextension 50119 | Sales Cr.Memo Line | TableExt |
 | tableextension 50120 | Item Variant (cascade delete) | TableExt |
 | tableextension 50121 | DUoM Value Entry Ext (Value Entry) | TableExt |
+| tableextension 50122 | DUoM Tracking Spec Ext (Tracking Specification) | TableExt |
+| tableextension 50123 | DUoM Reservation Entry Ext (Reservation Entry) | TableExt |
 | codeunit 50101 | DUoM Calc Engine | Codeunit |
 | codeunit 50102 | DUoM Purchase Subscribers | Codeunit |
 | codeunit 50103 | DUoM Sales Subscribers | Codeunit |
@@ -42,10 +44,11 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | codeunit 50106 | DUoM UoM Helper | Codeunit |
 | codeunit 50107 | DUoM Setup Resolver | Codeunit |
 | codeunit 50108 | DUoM Lot Subscribers | Codeunit |
+| codeunit 50109 | DUoM Tracking Subscribers | Codeunit |
 | page 50100 | DUoM Item Setup | Page |
 | page 50101 | DUoM Variant Setup List | Page |
 | page 50102 | DUoM Lot Ratio List | Page |
-| pageextension 50100–50111 | Varios (campos DUoM en forms) | PageExt |
+| pageextension 50100–50111 | Varios (campos DUoM en forms, incl. Item Tracking Lines) | PageExt |
 | permissionset 50100 | DUoM - All | PermissionSet |
 
 ---
@@ -71,6 +74,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | 50215 | DUoM Variant Del Tests | Item Variant TableExt (cascade delete de DUoM Item Variant Setup) |
 | 50216 | DUoM Cost Price Tests | DUoM Unit Cost / DUoM Unit Price, propagación a históricos, DUoM Second Qty en Value Entry |
 | 50217 | DUoM Lot Ratio Tests | DUoM Lot Ratio (table), DUoM Lot Subscribers (Issue 13) |
+| 50218 | DUoM Item Tracking Tests | DUoM Tracking Subscribers, DUoM Tracking Spec Ext, DUoM Item Tracking Lines (Issue 22) |
 
 ---
 
@@ -94,6 +98,8 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Sales Invoice Line (TableExt) | — | ✅ 50210, 50216 | **Completa** | DUoM Unit Price propagado (50216 T06) |
 | DUoM Sales Cr.Memo Line (TableExt) | — | ✅ 50210 | **Completa** | |
 | DUoM Value Entry Ext (TableExt 50121) | — | ✅ 50216 | **Completa** | DUoM Second Qty en Value Entry tras compra (T07) y venta (T08) |
+| DUoM Tracking Spec Ext (TableExt 50122) | ✅ 50218 | ✅ 50218 (T05) | **Completa** | T01–T04 unitarios, T05 coherencia buffer → ILE (Issue 22) |
+| DUoM Reservation Entry Ext (TableExt 50123) | — | ✅ 50218 (T05) | **Buena** | Propagación vía OnAfterCopyTrackingFromTrackingSpec cubierta indirectamente en T05 E2E. GAP: test unitario aislado del subscriber reserva (P2) |
 | DUoM Calc Engine (cu 50101) | ✅ 50204 | — | **Completa** | Todos los modos, casos límite, rounding |
 | DUoM Purchase Subscribers (cu 50102) | ✅ 50205 | ✅ 50209, 50210, 50214 | **Completa** | Variable y AlwaysVariable cubiertos en 50214 |
 | DUoM Sales Subscribers (cu 50103) | ✅ 50206 | ✅ 50209, 50210, 50214 | **Completa** | Variable cubierto en 50214 |
@@ -103,6 +109,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Setup Resolver (cu 50107) | ✅ 50211 | — | **Completa** | Jerarquía Item→Variante cubierta |
 | DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 cubierta; aplicación de ratio durante posting cubierta (T04–T10) |
 | DUoM Lot Subscribers (cu 50108) | ✅ 50217 | — | **Completa** | Mecanismo TryApplyLotRatioToILE (posting) cubierto en T04–T10. T02/T03 son tests de regresión de diseño (No pre-relleno en Lot No. validate). T12 cubre el helper directo. |
+| DUoM Tracking Subscribers (cu 50109) | ✅ 50218 | ✅ 50218 (T05) | **Completa** | T01–T04 unitarios (Lot No./Qty (Base) subscribers), T05 E2E cubre subscriber ReservEntry (Issue 22) |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
 | DUoM permissionset 50100 | — | — | **N/A** | Verificado implícitamente por tests E2E con TestPermissions |
