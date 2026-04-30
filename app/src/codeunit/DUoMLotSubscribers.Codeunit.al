@@ -7,19 +7,16 @@
 ///   La ratio DUoM real es dato de lote/tracking, no dato de línea.
 ///   Los campos DUoM de la línea origen son totales agregados o derivados.
 ///
-/// Mecanismo productivo principal — Caso B (correcto):
-///   Purchase/Sales Line o IJL con N lotes vía Item Tracking.
-///   La asignación de lotes persiste en Reservation Entry (flujo estándar).
-///   Al contabilizar, BC crea un ILE por lote con Lot No. específico en el IJL.
-///   DUoM Inventory Subscribers (50104) llama a TryApplyLotRatioToILE desde
-///   OnAfterInitItemLedgEntry para aplicar el ratio de lote a cada ILE individual.
+/// Mecanismo productivo principal — Patrón OnAfterCopyTracking* (Issue 23):
+///   El flujo productivo de ILE CON Item Tracking sigue el patrón de Package Management (6516):
+///   Tracking Specification → Item Journal Line → Item Ledger Entry.
+///   Implementado en DUoM Tracking Copy Subscribers (50110).
+///   DUoM Inventory Subscribers (50104) cubre el flujo SIN Item Tracking vía
+///   OnAfterInitItemLedgEntry (restaurado en Issue 23, sin llamada a TryApplyLotRatioToILE).
 ///
-/// NOTA — OnAfterValidateEvent[Lot No.] en Item Journal Line (eliminado, Issue 21):
-///   El subscriber que pre-rellenaba DUoM Ratio/Second Qty al validar Lot No. en IJL
-///   fue ELIMINADO porque asumía incorrectamente que 1 línea = 1 lote = 1 ratio.
-///   En BC 27, una IJL puede tener N lotes (vía Item Tracking / Reservation Entry).
-///   Usar validación de Lot No. como única fuente de ratio DUoM no es válido.
-///   La ratio real por lote se aplica en OnAfterInitItemLedgEntry → TryApplyLotRatioToILE.
+/// NOTA — TryApplyLotRatioToILE (ya no se invoca desde el flujo de posting):
+///   TryApplyLotRatioToILE ya no se invoca desde ningún subscriber de posting.
+///   Se conserva exclusivamente para tests unitarios de bajo nivel (T12 en DUoMLotRatioTests).
 ///
 /// Helper de utilidad (escenarios controlados de un único lote):
 ///   ApplyLotRatioToItemJournalLine: función pública para uso directo desde tests unitarios
@@ -80,8 +77,10 @@ codeunit 50108 "DUoM Lot Subscribers"
 
     /// <summary>
     /// Aplica el ratio de lote específico al Item Ledger Entry durante la contabilización.
-    /// Llamado desde DUoM Inventory Subscribers (50104) en OnAfterInitItemLedgEntry
-    /// para sobrescribir DUoM Ratio y DUoM Second Qty con el ratio real del lote.
+    ///
+    /// NOTA: ya no es llamado desde el flujo de posting.
+    /// El mecanismo productivo es el patrón OnAfterCopyTracking* en
+    /// DUoM Tracking Copy Subscribers (50110). Se mantiene para tests de bajo nivel.
     /// </summary>
     /// <param name="ItemLedgEntry">ILE a modificar (var — se sobrescriben los campos DUoM).</param>
     /// <param name="ItemJournalLine">IJL del que se obtiene Item No., Lot No. y Variant Code.</param>
