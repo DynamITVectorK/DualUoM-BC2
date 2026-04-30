@@ -522,6 +522,42 @@ Alcance implementado:
 - `docs/03-technical-architecture.md`, `docs/06-backlog.md`, `docs/TestCoverageAudit.md`
 - `docs/issues/issue-22-item-tracking-lines-duom.md`
 
+### Issue 23 — fix: propagar DUoM Ratio al ILE usando OnAfterCopyTracking* ✅ IMPLEMENTADO
+
+**Objetivo:** reemplazar el mecanismo previo (`OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE`)
+por el patrón estándar de BC 27 para propagar campos de tracking al ILE.
+
+**Causa:** el mecanismo anterior dependía de `DUoM Lot Ratio (50102)`. No funcionaba
+cuando el usuario introducía el ratio directamente en `Item Tracking Lines` sin
+pre-registro en 50102.
+
+**Solución:** nuevo codeunit `DUoM Tracking Copy Subscribers` (50110) con tres
+suscriptores siguiendo el patrón de `Package Management (6516)`:
+- `OnAfterCopyTrackingFromSpec` (Table IJL): propaga DUoM Ratio de TrackingSpec a IJL.
+- `OnAfterCopyTrackingFromItemJnlLine` (Table ILE): recalcula DUoM Second Qty exacta
+  del lote con `Abs(ILE.Quantity) × DUoM Ratio`.
+- `OnAfterCopyTrackingFromItemLedgEntry` (Table IJL): flujo inverso (devoluciones).
+
+**Deliverables:**
+- `DUoMTrackingCopySubscribers.Codeunit.al` (codeunit 50110)
+- `DUoMInventorySubscribers.Codeunit.al` (50104) — simplificado (sin TryApplyLotRatioToILE)
+- `docs/issues/issue-23-tracking-copy-subscribers.md`
+
+### Issue 171 — test: cobertura ILE Variable/AlwaysVariable y multi-lote desde Purchase Order ✅ IMPLEMENTADO
+
+**Objetivo:** cerrar tres huecos en la cobertura de tests del ILE:
+1. Modo Variable y AlwaysVariable sin lotes en `DUoMILEIntegrationTests` (50209).
+2. Fixed/Variable con lotes desde Purchase Order (no desde Item Journal).
+3. Comentario incorrecto en `SalesPosting_FixedMode_ILEHasDUoMFields`.
+
+**Deliverables:**
+- `DUoMTestHelpers.Codeunit.al` (50208): nuevo helper `AssignLotWithDUoMRatioToPurchLine`
+  que crea Reservation Entry + Tracking Specification con DUoM Ratio para una Purchase Line.
+- `DUoMILEIntegrationTests.Codeunit.al` (50209): comentario corregido + 6 nuevos tests
+  (Tests 1–5 de integración + test unitario del helper).
+- `docs/issues/issue-171-ILE-coverage-variable-multilot.md`
+- `docs/06-backlog.md`
+
 ### Issue 14 — Warehouse Basic Documents DUoM Fields
 
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.

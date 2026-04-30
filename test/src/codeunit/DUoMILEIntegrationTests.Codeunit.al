@@ -137,7 +137,9 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibrarySales.PostSalesDocument(SalesHeader, true, false);
 
         // [THEN] The resulting Sale ILE contains the correct DUoM fields
-        // Note: DUoM Second Qty is copied from Sales Line (positive value) without sign adjustment
+        // DUoM Second Qty = Abs(ILE.Quantity) x DUoM Ratio = 10 x 0.8 = 8
+        // ILE.Quantity es negativo en ventas; se usa Abs() para el recálculo.
+        // El valor coincide con Sales Line pero la fuente es el recálculo, no la copia directa.
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
         LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un Item Ledger Entry de venta tras la contabilización del pedido de venta');
@@ -274,5 +276,337 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un Item Ledger Entry para el artículo sin configuración DUoM');
         LibraryAssert.AreEqual(0, ILE."DUoM Second Qty", 'ILE DUoM Second Qty must be 0 for an item without DUoM setup');
         LibraryAssert.AreEqual(0, ILE."DUoM Ratio", 'ILE DUoM Ratio must be 0 for an item without DUoM setup');
+    end;
+
+    // -------------------------------------------------------------------------
+    // TEST 1 — Variable sin lotes, compra → ILE
+    // Verifica que el modo Variable propaga DUoM Ratio y DUoM Second Qty al ILE
+    // mediante el flujo estándar sin Item Tracking.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchasePosting_VariableMode_ILEHasDUoMFields()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo modo Variable, ratio por defecto 1.5
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 1.5);
+
+        // [GIVEN] Pedido de compra 10 uds; DUoM Ratio = 1.5 autocomputado en la línea
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+
+        // [WHEN] Se registra (solo recepción)
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [THEN] ILE: DUoM Ratio = 1.5 · DUoM Second Qty = 15
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'T1: Se esperaba un ILE de compra para modo Variable sin lotes');
+        LibraryAssert.AreNearlyEqual(1.5, ILE."DUoM Ratio", 0.001,
+            'T1: ILE DUoM Ratio debe ser 1.5 (modo Variable)');
+        LibraryAssert.AreNearlyEqual(15, ILE."DUoM Second Qty", 0.001,
+            'T1: ILE DUoM Second Qty debe ser 10 × 1.5 = 15');
+    end;
+
+    // -------------------------------------------------------------------------
+    // TEST 2 — AlwaysVariable sin lotes, compra → ILE
+    // Verifica que los valores DUoM introducidos manualmente en AlwaysVariable
+    // se propagan correctamente al ILE.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchasePosting_AlwaysVarMode_ILEHasDUoMFields()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo modo AlwaysVariable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::AlwaysVariable, 0);
+
+        // [GIVEN] Pedido de compra 10 uds; DUoM Ratio = 1.8 introducido manualmente
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine."DUoM Ratio" := 1.8;
+        PurchLine."DUoM Second Qty" := 18;
+        PurchLine.Modify(true);
+
+        // [WHEN] Se registra (solo recepción)
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [THEN] ILE: DUoM Ratio = 1.8 · DUoM Second Qty = 18
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'T2: Se esperaba un ILE de compra para modo AlwaysVariable');
+        LibraryAssert.AreNearlyEqual(1.8, ILE."DUoM Ratio", 0.001,
+            'T2: ILE DUoM Ratio debe ser 1.8 (introducido manualmente)');
+        LibraryAssert.AreNearlyEqual(18, ILE."DUoM Second Qty", 0.001,
+            'T2: ILE DUoM Second Qty = Abs(10) × 1.8 = 18');
+    end;
+
+    // -------------------------------------------------------------------------
+    // TEST 3 — Variable sin lotes, venta → ILE
+    // Verifica que DUoM Second Qty se recalcula con Abs(ILE.Quantity) × Ratio
+    // (ILE.Quantity es negativo en ventas).
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure SalesPosting_VariableMode_ILEHasDUoMFields()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        Customer: Record Customer;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo modo Variable, ratio 1.5; stock creado via Purchase Order
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 1.5);
+
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 100);
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [GIVEN] Pedido de venta 10 uds; DUoM Ratio = 1.5 autocomputado en la línea
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order,
+            Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader,
+            SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 10);
+        SalesLine.Modify(true);
+
+        // [WHEN] Se registra (solo envío)
+        LibrarySales.PostSalesDocument(SalesHeader, true, false);
+
+        // [THEN] ILE Sale: DUoM Ratio = 1.5 · DUoM Second Qty = Abs(ILE.Quantity) × 1.5 = 15
+        // NOTA: DUoM Second Qty se recalcula con Abs(ILE.Quantity) × Ratio, no se copia
+        // de Sales Line. ILE.Quantity es negativo en ventas.
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'T3: Se esperaba un ILE de venta para modo Variable');
+        LibraryAssert.AreNearlyEqual(1.5, ILE."DUoM Ratio", 0.001,
+            'T3: ILE Sale DUoM Ratio debe ser 1.5 (modo Variable)');
+        LibraryAssert.AreNearlyEqual(15, ILE."DUoM Second Qty", 0.001,
+            'T3: ILE Sale DUoM Second Qty = Abs(−10) × 1.5 = 15');
+    end;
+
+    // -------------------------------------------------------------------------
+    // TEST 4 — Fixed, un lote desde Purchase Order → ILE
+    // Verifica que el ratio fijo se propaga correctamente al ILE cuando hay
+    // Item Tracking asignado en el pedido de compra.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchaseLotPosting_FixedMode_ILEHasDUoMFields()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+    begin
+        // [GIVEN] Artículo modo Fixed, ratio 0.8; Item Tracking Code con lotes habilitado
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Fixed, 0.8);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        LotNo := 'LOT-ILE4';
+
+        // [GIVEN] Pedido de compra 10 uds; un lote asignado en Item Tracking Lines
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNo, 10, 0.8);
+
+        // [WHEN] Se registra (solo recepción)
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [THEN] ILE Lote: DUoM Ratio = 0.8 · DUoM Second Qty = 10 × 0.8 = 8
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
+        ILE.SetRange("Lot No.", LotNo);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'T4: Se esperaba un ILE de compra para el lote LOT-ILE4');
+        LibraryAssert.AreNearlyEqual(0.8, ILE."DUoM Ratio", 0.001,
+            'T4: ILE DUoM Ratio debe ser 0.8 (modo Fixed)');
+        LibraryAssert.AreNearlyEqual(8, ILE."DUoM Second Qty", 0.001,
+            'T4: ILE DUoM Second Qty = 10 × 0.8 = 8');
+    end;
+
+    // -------------------------------------------------------------------------
+    // TEST 5 — Variable, dos lotes desde Purchase Order, ratios distintos → dos ILEs
+    // Verifica el mecanismo OnAfterCopyTrackingFromSpec: el ratio de cada lote viene
+    // de Tracking Specification (escrito por AssignLotWithDUoMRatioToPurchLine),
+    // NO de DUoM Lot Ratio (50102). No se pre-registran ratios en DUoM Lot Ratio.
+    // Si este test pasa con DUoM Lot Ratio vacío, el mecanismo es correcto.
+    // Si requiere DUoM Lot Ratio para pasar, el mecanismo está incompleto (Issue 23).
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure PurchaseTwoLots_VarMode_EachILEHasLotRatio()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMLotRatioRec: Record "DUoM Lot Ratio";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNoA: Code[50];
+        LotNoB: Code[50];
+    begin
+        // [GIVEN] Artículo modo Variable sin ratio fijo; Item Tracking habilitado
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        LotNoA := 'LOT-ILE5A';
+        LotNoB := 'LOT-ILE5B';
+
+        // [GIVEN] DUoM Lot Ratio (50102) vacío para ambos lotes
+        LibraryAssert.IsFalse(DUoMLotRatioRec.Get(Item."No.", LotNoA),
+            'T5: DUoM Lot Ratio NO debe existir para Lote A');
+        LibraryAssert.IsFalse(DUoMLotRatioRec.Get(Item."No.", LotNoB),
+            'T5: DUoM Lot Ratio NO debe existir para Lote B');
+
+        // [GIVEN] Pedido de compra 10 uds; dos lotes con ratios distintos en tracking
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+        // Lote A: 6 uds · DUoM Ratio = 1.2 (introducido en tracking)
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNoA, 6, 1.2);
+        // Lote B: 4 uds · DUoM Ratio = 1.8 (introducido en tracking)
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNoB, 4, 1.8);
+
+        // [WHEN] Se registra (solo recepción)
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [THEN] ILE Lote A: DUoM Ratio = 1.2 · DUoM Second Qty = 6 × 1.2 = 7.2
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
+        ILE.SetRange("Lot No.", LotNoA);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'T5: Se esperaba un ILE de compra para Lote A');
+        LibraryAssert.AreNearlyEqual(1.2, ILE."DUoM Ratio", 0.001,
+            'T5: ILE Lote A DUoM Ratio debe ser 1.2');
+        LibraryAssert.AreNearlyEqual(7.2, ILE."DUoM Second Qty", 0.001,
+            'T5: ILE Lote A DUoM Second Qty = 6 × 1.2 = 7.2');
+
+        // [THEN] ILE Lote B: DUoM Ratio = 1.8 · DUoM Second Qty = 4 × 1.8 = 7.2
+        ILE.SetRange("Lot No.", LotNoB);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'T5: Se esperaba un ILE de compra para Lote B');
+        LibraryAssert.AreNearlyEqual(1.8, ILE."DUoM Ratio", 0.001,
+            'T5: ILE Lote B DUoM Ratio debe ser 1.8');
+        LibraryAssert.AreNearlyEqual(7.2, ILE."DUoM Second Qty", 0.001,
+            'T5: ILE Lote B DUoM Second Qty = 4 × 1.8 = 7.2');
+    end;
+
+    // -------------------------------------------------------------------------
+    // TEST UNITARIO HELPER — AssignLotWithDUoMRatioToPurchLine
+    // Verifica que el helper escribe correctamente DUoM Ratio y DUoM Second Qty
+    // en la Tracking Specification permanente (requerido por la norma del proyecto).
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure AssignLotWithDUoMRatio_WritesTrackingSpec()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable habilitado; lot tracking activo
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] Pedido de compra con una línea de 10 unidades
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+
+        // [WHEN] Se asigna un lote con DUoM Ratio a la Purchase Line
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOT-UNIT-T', 10, 1.5);
+
+        // [THEN] Existe un Tracking Specification con DUoM Ratio correcto
+        TrackingSpec.SetRange("Item No.", Item."No.");
+        TrackingSpec.SetRange("Lot No.", 'LOT-UNIT-T');
+        LibraryAssert.IsTrue(TrackingSpec.FindFirst(),
+            'Se esperaba un Tracking Specification para el lote asignado con DUoM Ratio');
+        LibraryAssert.AreNearlyEqual(1.5, TrackingSpec."DUoM Ratio", 0.001,
+            'Tracking Specification: DUoM Ratio debe ser 1.5');
+        LibraryAssert.AreNearlyEqual(15, TrackingSpec."DUoM Second Qty", 0.001,
+            'Tracking Specification: DUoM Second Qty debe ser 10 × 1.5 = 15');
     end;
 }
