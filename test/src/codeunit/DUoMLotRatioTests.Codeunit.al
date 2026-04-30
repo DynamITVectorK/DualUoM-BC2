@@ -705,7 +705,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     // -------------------------------------------------------------------------
 
     [Test]
-    procedure IJLPosting_TwoLots_NoLotRatioDB_ProportionalSecondQty()
+    procedure T13_TwoLots_NoLotRatioDB_ProportionalSecondQty()
     var
         Item: Record Item;
         ItemJnlTemplate: Record "Item Journal Template";
@@ -779,7 +779,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     // -------------------------------------------------------------------------
 
     [Test]
-    procedure IJLPosting_AlwaysVar_ManualRatioOnIJL_ILEHasRatio()
+    procedure T14_AlwaysVar_ManualRatioOnIJL_ILEHasRatio()
     var
         Item: Record Item;
         ItemJnlTemplate: Record "Item Journal Template";
