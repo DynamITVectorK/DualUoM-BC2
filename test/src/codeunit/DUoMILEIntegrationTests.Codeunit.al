@@ -542,6 +542,7 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
 
         // [THEN] ILE Lote A: DUoM Ratio = 1.2 · DUoM Second Qty = 6 × 1.2 = 7.2
+        // (6 uds Lote A con ratio 1.2 — diferente base y ratio que Lote B)
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
         ILE.SetRange("Lot No.", LotNoA);
@@ -553,6 +554,8 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'T5: ILE Lote A DUoM Second Qty = 6 × 1.2 = 7.2');
 
         // [THEN] ILE Lote B: DUoM Ratio = 1.8 · DUoM Second Qty = 4 × 1.8 = 7.2
+        // (4 uds Lote B con ratio 1.8 — coincide numéricamente con Lote A pero
+        //  base y ratio son distintos: verifica que cada ILE usa su propio ratio)
         ILE.SetRange("Lot No.", LotNoB);
         LibraryAssert.IsTrue(ILE.FindFirst(),
             'T5: Se esperaba un ILE de compra para Lote B');
