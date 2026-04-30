@@ -8,15 +8,14 @@
 ///   Los campos DUoM de la línea origen son totales agregados o derivados.
 ///
 /// Mecanismo productivo principal — Patrón OnAfterCopyTracking* (Issue 23):
-///   El flujo productivo de ILE sigue el patrón de Codeunit 6516 "Package Management":
+///   El flujo productivo de ILE CON Item Tracking sigue el patrón de Package Management (6516):
 ///   Tracking Specification → Item Journal Line → Item Ledger Entry.
 ///   Implementado en DUoM Tracking Copy Subscribers (50110).
-///   DUoM Inventory Subscribers (50104) establece DUoM Ratio en el IJL desde la
-///   línea de documento (Purchase/Sales Line) antes de que arranque el split de lotes.
+///   DUoM Inventory Subscribers (50104) cubre el flujo SIN Item Tracking vía
+///   OnAfterInitItemLedgEntry (restaurado en Issue 23, sin llamada a TryApplyLotRatioToILE).
 ///
-/// NOTA — TryApplyLotRatioToILE (mecanismo anterior, eliminado del flujo de posting):
-///   El subscriber OnAfterInitItemLedgEntry ha sido eliminado de DUoMInventorySubscribers
-///   (Issue 23). TryApplyLotRatioToILE ya no se invoca desde ningún subscriber de posting.
+/// NOTA — TryApplyLotRatioToILE (ya no se invoca desde el flujo de posting):
+///   TryApplyLotRatioToILE ya no se invoca desde ningún subscriber de posting.
 ///   Se conserva exclusivamente para tests unitarios de bajo nivel (T12 en DUoMLotRatioTests).
 ///
 /// Helper de utilidad (escenarios controlados de un único lote):

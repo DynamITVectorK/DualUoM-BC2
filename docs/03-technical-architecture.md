@@ -125,24 +125,34 @@ Línea origen (Purchase Line, Sales Line, IJL)  →  N lotes (vía Item Tracking
                                                   ↓ DUoM Ratio por lote
 ```
 
-### Flujo de propagación al ILE (patrón OnAfterCopyTracking*, Issue 23)
+### Flujo de propagación al ILE (mecanismos paralelos, Issue 23)
 
-El flujo productivo de ILE sigue exactamente el patrón de `Codeunit 6516 "Package Management"`:
+Dos mecanismos paralelos cubren los dos paths de posting:
 
+**SIN Item Tracking** (artículos sin lotes):
+```
+IJL (DUoM Ratio del artículo/variante)
+  → Codeunit "Item Jnl.-Post Line" · OnAfterInitItemLedgEntry   [50104]
+      ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
+      ↓ ILE.DUoM Second Qty = Abs(ILE.Quantity) × Ratio  (o IJL.DUoM Second Qty si ratio = 0)
+Item Ledger Entry  ✓
+```
+
+**CON Item Tracking** (por lote — patrón de `Package Management (6516)`):
 ```
 Tracking Specification (con DUoM Ratio del lote)
-  → Table "Item Journal Line" · OnAfterCopyTrackingFromSpec
+  → Table "Item Journal Line" · OnAfterCopyTrackingFromSpec      [50110]
       ↓ IJL.DUoM Ratio = ratio del lote (si TrackingSpec.DUoM Ratio ≠ 0)
 Item Journal Line
-  → Table "Item Ledger Entry" · OnAfterCopyTrackingFromItemJnlLine
+  → Table "Item Ledger Entry" · OnAfterCopyTrackingFromItemJnlLine [50110]
       ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
       ↓ ILE.DUoM Second Qty = Abs(ILE.Quantity) × IJL.DUoM Ratio
 Item Ledger Entry  ✓
 ```
 
-Implementado en `DUoM Tracking Copy Subscribers` (50110).
-
-`OnAfterInitItemLedgEntry` ha sido **eliminado** — ya no participa en el flujo de posting.
+Los dos paths coexisten sin conflicto: cuando hay Item Tracking activo, `OnAfterInitItemLedgEntry`
+copia primero los valores del IJL original; después `ILECopyTrackingFromItemJnlLine` sobrescribe
+con el ratio específico del lote (más preciso). La sobreescritura posterior siempre prevalece.
 
 `DUoM Lot Ratio (50102)` ya no interviene directamente en el posting. Sigue siendo la
 fuente para pre-rellenar el DUoM Ratio en la UI de `Item Tracking Lines` (via `DUoM Tracking
@@ -178,8 +188,9 @@ Subscribers`, codeunit 50109) al asignar un lote en recepciones posteriores.
 - **Issue 20:** consolidación del modelo 1:N; corrección del bug de copia en AlwaysVariable.
 - **Issue 21:** eliminación del subscriber `OnAfterValidateEvent[Lot No.]` porque asumía
   1 línea = 1 lote. El mecanismo productivo principal pasó a ser `OnAfterInitItemLedgEntry`.
-- **Issue 23:** sustitución de `OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE` por el
-  patrón `OnAfterCopyTracking*` de `Package Management (6516)`. Codeunit 50110.
+- **Issue 23:** añadido patrón `OnAfterCopyTracking*` de `Package Management (6516)` (codeunit
+  50110) para el flujo CON Item Tracking. `OnAfterInitItemLedgEntry` restaurado simplificado
+  (sin `TryApplyLotRatioToILE`) para el flujo SIN Item Tracking.
 
 ## Resolución de configuración por variante
 

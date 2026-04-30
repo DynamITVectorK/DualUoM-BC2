@@ -26,16 +26,22 @@
 ///   The actual field-copy logic is centralized in DUoM Doc Transfer Helper (50105).
 ///
 /// Propagation strategy for ILE:
-///   DUoM fields are propagated to the ILE following the OnAfterCopyTracking* pattern
-///   of Codeunit 6516 "Package Management" (codeunit 50110 "DUoM Tracking Copy Subs"):
-///   - For Purchase/Sales posting: OnPostItemJnlLineOnAfterCopyDocumentFields copies
-///     DUoM fields from Purchase/Sales Line to Item Journal Line.
-///   - For manual Item Journal postings: OnAfterValidateItemJnlLineQty auto-computes
-///     DUoM fields when Quantity is validated through the UI.
-///   DUoM Tracking Copy Subscribers (50110) then propagates the IJL values to the ILE
-///   via OnAfterCopyTrackingFromItemJnlLine on Table "Item Ledger Entry", computing
-///   DUoM Second Qty = Abs(ILE.Quantity) × DUoM Ratio per lot.
-///   OnAfterInitItemLedgEntry has been removed — no longer needed.
+///   Two parallel mechanisms cover both paths:
+///
+///   SIN Item Tracking (artículos sin lotes / sin trazabilidad activa):
+///     OnPostItemJnlLineOnAfterCopyDocumentFields → Purchase/Sales Line → IJL  (ya existe)
+///     OnAfterInitItemLedgEntry → IJL → ILE  (copia campos DUoM del IJL antes del Insert)
+///     Este subscriber siempre se dispara, con o sin tracking activo.
+///
+///   CON Item Tracking (por lote, BC llama CopyTrackingFromItemJnlLine solo cuando hay Lot/Serial):
+///     OnAfterCopyTrackingFromSpec → TrackingSpec → IJL  (refinamiento por lote)
+///     OnAfterCopyTrackingFromItemJnlLine → IJL → ILE  (codeunit 50110)
+///     Estos subscribers solo se disparan cuando hay tracking activo (Lot No. / Serial No.).
+///     ILECopyTrackingFromItemJnlLine sobrescribe lo que OnAfterInitItemLedgEntry copió,
+///     aplicando Abs(ILE.Quantity) × Ratio específico del lote.
+///
+///   IMPORTANTE: OnAfterInitItemLedgEntry no llama a TryApplyLotRatioToILE.
+///   La lógica de lote específico la gestiona codeunit 50110 exclusivamente.
 ///
 /// Estrategia de propagación para Value Entry:
 ///   OnAfterInitValueEntry en Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
@@ -205,6 +211,45 @@ codeunit 50104 "DUoM Inventory Subscribers"
         DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
     begin
         DUoMDocTransferHelper.CopyFromSalesLineToSalesCrMemoLine(SalesLine, SalesCrMemoLine);
+    end;
+
+    /// <summary>
+    /// Inicializa campos DUoM en el nuevo Item Ledger Entry desde el Item Journal Line
+    /// antes del Insert() — sin llamada a Modify().
+    ///
+    /// Este subscriber cubre el flujo SIN Item Tracking (artículos sin lotes):
+    ///   OnAfterCopyTrackingFromItemJnlLine (codeunit 50110) no se dispara cuando
+    ///   BC no llama CopyTrackingFromItemJnlLine() porque no hay tracking activo.
+    ///   Este subscriber garantiza que DUoM Ratio y DUoM Second Qty lleguen al ILE
+    ///   para artículos sin trazabilidad de lote o serie.
+    ///
+    /// Para artículos CON Item Tracking (Lot No. / Serial No.):
+    ///   ILECopyTrackingFromItemJnlLine (codeunit 50110) se dispara después de este
+    ///   subscriber y sobrescribe con Abs(ILE.Quantity) × Ratio específico del lote.
+    ///   La coexistencia es correcta — la sobreescritura posterior es siempre más precisa.
+    ///
+    /// Lógica simplificada (sin llamada a TryApplyLotRatioToILE):
+    ///   La lógica de ratio de lote específico la gestiona codeunit 50110 exclusivamente.
+    ///
+    /// Publisher: Codeunit "Item Jnl.-Post Line", evento OnAfterInitItemLedgEntry.
+    /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al).
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitItemLedgEntry', '', false, false)]
+    local procedure OnAfterInitItemLedgEntry(var NewItemLedgEntry: Record "Item Ledger Entry"; var ItemJournalLine: Record "Item Journal Line"; var ItemLedgEntryNo: Integer)
+    begin
+        if (ItemJournalLine."DUoM Ratio" = 0) and (ItemJournalLine."DUoM Second Qty" = 0) then
+            exit;
+        NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
+        if ItemJournalLine."DUoM Ratio" <> 0 then
+            // Recalcular con la cantidad exacta del ILE para que el valor sea siempre
+            // proporcional a la cantidad contabilizada (correcto también en multi-lote
+            // antes de que 50110 sobrescriba con el ratio específico del lote).
+            NewItemLedgEntry."DUoM Second Qty" :=
+                Abs(NewItemLedgEntry.Quantity) * ItemJournalLine."DUoM Ratio"
+        else
+            // AlwaysVariable sin ratio: copiar DUoM Second Qty directamente desde IJL.
+            // Solo alcanzable en flujo sin Item Tracking (ratio = 0, sin lote).
+            NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
     end;
 
     /// <summary>

@@ -47,10 +47,12 @@ Item Ledger Entry
   con tres subscribers: `IJLCopyTrackingFromSpec`, `ILECopyTrackingFromItemJnlLine`,
   `IJLCopyTrackingFromItemLedgEntry`.
 
-- **Eliminado** subscriber `OnAfterInitItemLedgEntry` de `DUoMInventorySubscribers` (50104).
+- **Restaurado** subscriber `OnAfterInitItemLedgEntry` en `DUoMInventorySubscribers` (50104),
+  simplificado (sin llamada a `TryApplyLotRatioToILE`). Necesario para artículos sin Item
+  Tracking donde `OnAfterCopyTrackingFromItemJnlLine` no se dispara.
 
-- **Actualizada** cabecera de `DUoMInventorySubscribers` para reflejar el nuevo
-  mecanismo de propagación al ILE.
+- **Actualizada** cabecera de `DUoMInventorySubscribers` para documentar los dos mecanismos
+  paralelos (SIN y CON Item Tracking).
 
 - **Añadido** comentario NOTA a `TryApplyLotRatioToILE` en `DUoMLotSubscribers` (50108)
   indicando que ya no se llama desde el flujo de posting.
