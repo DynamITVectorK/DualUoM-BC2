@@ -168,24 +168,85 @@ Item Ledger Entry  ✓
 |------|---------------------------------------------|
 | Fixed | Ratio de lote NO aplicado. El ratio fijo siempre prevalece. |
 | Variable | Si existe ratio de lote → sobrescribe DUoM Ratio + recalcula DUoM Second Qty |
-| AlwaysVariable + ratio de lote | Si existe ratio de lote → sobrescribe DUoM Ratio + recalcula DUoM Second Qty |
-| AlwaysVariable sin ratio de lote, sin Lot No. | Copia DUoM Second Qty directamente desde IJL (flujo sin trazabilidad de lote) |
-| AlwaysVariable sin ratio de lote, con Lot No. | ILE DUoM Second Qty = 0. Ver limitación conocida. |
+| AlwaysVariable + ratio de lote en `DUoM Lot Ratio` | Ratio de lote → `ILE.DUoM Second Qty = Abs(ILE.Quantity) × ratio_lote` |
+| AlwaysVariable + sin ratio de lote + ratio manual en IJL (≠ 0) | Ratio manual → `ILE.DUoM Second Qty = Abs(ILE.Quantity) × ratio_manual`. Ver T14. |
+| AlwaysVariable + sin ratio de lote + sin Lot No. | Copia `DUoM Second Qty` directamente desde IJL (flujo sin trazabilidad de lote) |
+| AlwaysVariable + sin ratio de lote + con Lot No. + `DUoM Ratio = 0` | `ILE.DUoM Second Qty = 0`. Distribución imposible. Ver T10 y limitación conocida. |
 
-### Limitación conocida: AlwaysVariable + multi-lote sin ratio de lote
+### Política AlwaysVariable + lotes (decisión definitiva — Issue 177)
 
-Cuando se contabiliza con modo AlwaysVariable, asignación de N lotes y **sin** ratio
-de lote registrado en `DUoM Lot Ratio` (50102):
+Cuando un artículo está en modo `AlwaysVariable` y se contabiliza con uno o más lotes,
+el comportamiento del ILE depende de dos factores independientes: la existencia de ratio
+de lote registrado en `DUoM Lot Ratio` (50102) y la existencia de ratio manual en el
+campo `DUoM Ratio` del Item Journal Line.
+
+| # | Ratio de lote en `DUoM Lot Ratio` | Ratio manual en `IJL.DUoM Ratio` | Lot No. asignado | Resultado `ILE.DUoM Second Qty` | Test |
+|---|-----------------------------------|----------------------------------|------------------|---------------------------------|------|
+| 1 | ✅ Sí | — (prevalece el ratio de lote) | ✅ Sí | `Abs(ILE.Quantity) × ratio_lote` | T08–T09 |
+| 2 | ❌ No | ✅ Sí (introducido manualmente) | ✅ Sí | `Abs(ILE.Quantity) × ratio_manual` | T14 |
+| 3 | ❌ No | ❌ No (`DUoM Ratio = 0`) | ❌ No | `IJL.DUoM Second Qty` (copia directa) | — |
+| 4 | ❌ No | ❌ No (`DUoM Ratio = 0`) | ✅ Sí | `0` (distribución imposible) | T10 |
+
+#### Rationale de la política
+
+1. **Ratio de lote prevalece (caso 1):** Cuando existe un registro en `DUoM Lot Ratio` (50102)
+   para el par `(Artículo, Lote)`, ese ratio se usa siempre. Es la fuente más precisa
+   disponible (ratio real medido). Implementado en `ILECopyTrackingFromItemJnlLine`
+   (codeunit 50110) con fallback a `OnAfterInitItemLedgEntry` (codeunit 50104).
+
+2. **Ratio manual operativo (caso 2 — T14):** Cuando no existe ratio de lote en 50102
+   pero el usuario ha introducido un `DUoM Ratio` manualmente en el IJL (p. ej. vía el
+   formulario de Item Tracking Lines), ese ratio manual se usa para calcular la segunda
+   cantidad proporcional del ILE. Esto permite operaciones puntuales sin necesidad de
+   registrar el ratio en `DUoM Lot Ratio`.
+
+3. **Copia directa sin lote (caso 3):** Cuando no hay ratio de ningún tipo y tampoco
+   hay asignación de lote, la segunda cantidad del IJL se copia directamente al ILE.
+   Representa el escenario habitual de AlwaysVariable en líneas sin trazabilidad de lote.
+
+4. **Reset a 0 con lote sin ratio (caso 4 — T10):** Cuando hay lote asignado pero no
+   existe ratio (ni en 50102 ni manual), no es posible distribuir automáticamente la
+   segunda cantidad total de la línea entre los ILEs de cada lote. Se usa `0` en lugar
+   de copiar el total (que sería incorrecto para cada ILE individual en un escenario
+   multi-lote).
+
+#### Implementación en AL
+
+La política se implementa en `OnAfterInitItemLedgEntry` (codeunit 50104,
+`DUoM Inventory Subscribers`):
+
+```al
+// AlwaysVariable + Lot No. + DUoM Ratio = 0 → ILE = 0 (T10)
+// AlwaysVariable + Lot No. + DUoM Ratio ≠ 0 → caída al cálculo general (T14)
+if ItemJournalLine."Lot No." <> '' then
+    if DUoMSetupResolver.GetEffectiveSetup(...) then
+        if ConversionMode = ConversionMode::AlwaysVariable then
+            if ItemJournalLine."DUoM Ratio" = 0 then
+                exit;  // caso 4: ILE queda en 0
+// caso 2: si DUoM Ratio ≠ 0, continúa y calcula Abs(ILE.Qty) × DUoM Ratio
+```
+
+### Limitación conocida: AlwaysVariable + multi-lote sin ratio de lote ni ratio manual (caso 4)
+
+Cuando se contabiliza con modo AlwaysVariable, asignación de N lotes, **sin** ratio
+de lote registrado en `DUoM Lot Ratio` (50102) y **sin** ratio manual en `IJL.DUoM Ratio`:
 
 - La cantidad DUoM de la línea origen fue introducida manualmente por el usuario como total.
 - Al dividir la línea por lotes, no es posible distribuir automáticamente el total entre
   los lotes sin un ratio de lote que proporcione la regla de distribución.
-- **Resultado:** el ILE de cada lote queda con `DUoM Second Qty = 0`.
-- **Solución recomendada:** registrar el ratio de lote en `DUoM Lot Ratio` para el artículo
-  y los lotes correspondientes, o usar el modo Variable con un ratio por defecto.
+- **Resultado:** el ILE de cada lote queda con `DUoM Second Qty = 0` (caso 4 de la tabla).
+- **Soluciones:**
+  - Registrar el ratio de lote en `DUoM Lot Ratio` antes de contabilizar (caso 1).
+  - Introducir el `DUoM Ratio` manualmente en el IJL si el ratio es el mismo para todos
+    los lotes de la línea (caso 2 — T14).
+  - Usar el modo Variable con un ratio por defecto.
 
 Esta limitación está documentada y es preferible a copiar incorrectamente el total de la
 línea a cada ILE (que era el comportamiento anterior, eliminado en Issue 20).
+
+> **Nota:** Si existe un único lote con `DUoM Ratio` manual introducido en el IJL,
+> el caso 2 aplica y el ILE recibe la segunda cantidad calculada correctamente (T14).
+> La limitación del caso 4 sólo aplica cuando `DUoM Ratio = 0` en presencia de lote.
 
 ---
 

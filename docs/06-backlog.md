@@ -37,6 +37,8 @@ GitHub Copilot Coding Agent.
 | 24 | fix: regresiones en propagación DUoM al ILE tras refactor OnAfterCopyTracking |
 | 154 | fix: ratio real por lote no se aplica al validar Lot No. en Item Journal Line |
 | 171 | test: cobertura ILE Variable/AlwaysVariable y multi-lote desde Purchase Order |
+| 177 | fix: T14 AlwaysVariable + ratio manual en IJL → ILE DUoM Second Qty = 25 |
+| 180 | docs: política definitiva AlwaysVariable + lotes en docs troncales |
 
 ### Próximo issue pendiente
 
