@@ -5,12 +5,13 @@
 > Este documento fue la propuesta de tarea para Issue 13. La implementación se realizó
 > en la fecha prevista incluyendo Issues 13, 20 y 21, que refactorizaron el modelo de
 > lotes de 1:1 a 1:N y consolidaron la arquitectura correcta `TryApplyLotRatioToILE`.
+> Posteriormente se completaron también Issues 22, 23, 24 y 154 relacionados con lotes.
 >
 > El **próximo issue pendiente** es **Issue 14 — Warehouse Basic Documents DUoM Fields**
 > (soporte de campos DUoM en Warehouse Receipt/Shipment Lines).
 >
-> Ver `docs/06-backlog.md` para el estado actualizado del backlog y la tarea futura
-> de arquitectura DUoM por lote sobre Item Tracking (N lotes reales).
+> Ver `docs/06-backlog.md` sección "Estado vigente (fuente de verdad)" para el listado
+> completo de issues completados y la priorización actualizada.
 
 ## 1. Título propuesto
 
@@ -40,8 +41,8 @@ AlwaysVariable).
 - **Issue 12 (Coste/Precio):** ✅ implementado — `DUoM Unit Cost` en líneas de compra,
   `DUoM Unit Price` en líneas de venta, `DUoM Value Entry Ext` (50121),
   `DUoM Cost Price Tests` (50216).
-- **Issue 13 (Lote):** ❌ pendiente — ningún objeto `DUoM Lot Ratio` existe todavía en
-  el repositorio.
+- **Issue 13 (Lote):** ✅ COMPLETADO — `DUoM Lot Ratio` (50102), `DUoM Lot Subscribers` (50108),
+  `DUoM Lot Ratio Tests` (50217) y documentación completa implementados.
 
 ### Motivación funcional
 

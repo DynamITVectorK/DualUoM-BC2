@@ -4,8 +4,56 @@ Backlog ordenado para la entrega incremental y controlada del proyecto.
 Cada issue está delimitado para poder ser implementado en un único issue enfocado por
 GitHub Copilot Coding Agent.
 
-> **Estado actualizado:** 2026-04-20 — sincronizado con el estado real de los objetos
-> implementados en el repositorio.
+---
+
+## Estado vigente (fuente de verdad)
+
+> **Última actualización:** 2026-05-01
+
+### Issues completados ✅
+
+| Issue | Título |
+|-------|--------|
+| 1 | Project Governance Baseline |
+| 2 | DUoM Calculation Engine |
+| 3 | Item DUoM Setup Table and Page |
+| 4 | Purchase Line DUoM Fields |
+| 5 | Purchase Posting — ILE Second Qty |
+| 6 | Sales Line DUoM Fields |
+| 7 | Sales Posting — ILE Second Qty |
+| 8 | Item Journal DUoM Fields and Posting |
+| 9 | Campos DUoM en líneas de documentos registrados + tests E2E Phase 1 |
+| 10 | Propagar DUoM a históricos de facturas y abonos |
+| Auditoría TDD | Revisión de cobertura de pruebas |
+| 11 | Aplicar Rounding Precision de la UoM secundaria |
+| 11b | Soporte Item Variants (jerarquía Item → Variant) |
+| BUG-01 | Qty. Rounding Precision no visible ni editable en Item Units of Measure |
+| 12 | Modelo de coste/precio en doble UoM |
+| 13 | Ratio real por lote con Item Tracking |
+| 20 | Eliminar asunciones 1:1 línea/lote y consolidar modelo 1:N |
+| 21 | Refactorizar DUoM Lot Ratio: eliminar asunción incorrecta 1 línea = 1 lote |
+| 22 | DUoM operativo en Item Tracking Lines |
+| 23 | fix: propagar DUoM Ratio al ILE usando OnAfterCopyTracking* |
+| 24 | fix: regresiones en propagación DUoM al ILE tras refactor OnAfterCopyTracking |
+| 154 | fix: ratio real por lote no se aplica al validar Lot No. en Item Journal Line |
+| 171 | test: cobertura ILE Variable/AlwaysVariable y multi-lote desde Purchase Order |
+
+### Próximo issue pendiente
+
+> **Issue 14 — Warehouse Basic Documents DUoM Fields**
+>
+> Extender los documentos de entrada y salida de almacén básico (`Warehouse Receipt Line`,
+> `Warehouse Shipment Line`) con campos DUoM. Ver detalle en la sección correspondiente de Phase 2.
+
+### Pendientes (en orden)
+
+| Issue | Título | Fase |
+|-------|--------|------|
+| 14 | Warehouse Basic Documents DUoM Fields | Phase 2 |
+| 15 | Directed Put-Away and Pick DUoM Fields | Phase 2 |
+| 16 | Documentos de devolución DUoM | Phase 2 |
+| 17 | Physical Inventory DUoM | Phase 2 |
+| 18 | Reporting Extensions | Phase 2 |
 
 ---
 
@@ -195,10 +243,6 @@ Resultado:
 ---
 
 ## Phase 2 — Funcionalidad extendida
-
-> **Siguiente issue recomendado:** Issue 12 — Modelo de coste/precio en doble UoM.
-> Es independiente de warehouse y lotes, por lo que puede comenzarse inmediatamente
-> una vez completado Issue 11.
 
 ### Issue 11b — Soporte Item Variants (jerarquía Item → Variant) ✅ IMPLEMENTADO
 
