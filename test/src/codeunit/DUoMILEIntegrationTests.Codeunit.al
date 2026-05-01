@@ -488,11 +488,12 @@ codeunit 50209 "DUoM ILE Integration Tests"
 
     // -------------------------------------------------------------------------
     // TEST 5 — Variable, dos lotes desde Purchase Order, ratios distintos → dos ILEs
-    // Verifica el mecanismo OnAfterCopyTrackingFromSpec: el ratio de cada lote viene
-    // de Tracking Specification (escrito por AssignLotWithDUoMRatioToPurchLine),
-    // NO de DUoM Lot Ratio (50102). No se pre-registran ratios en DUoM Lot Ratio.
-    // Si este test pasa con DUoM Lot Ratio vacío, el mecanismo es correcto.
-    // Si requiere DUoM Lot Ratio para pasar, el mecanismo está incompleto (Issue 23).
+    // Verifica la cadena ReservEntry → TrackingSpec (OnAfterCopyTrackingFromReservEntry)
+    // → IJL (OnAfterCopyTrackingFromSpec) → ILE (ILECopyTrackingFromItemJnlLine).
+    // El ratio de cada lote viene de Reservation Entry (escrito por
+    // AssignLotWithDUoMRatioToPurchLine), NO de DUoM Lot Ratio (50102).
+    // No se pre-registran ratios en DUoM Lot Ratio.
+    // Si este test pasa con DUoM Lot Ratio vacío, la cadena de tracking es correcta.
     // -------------------------------------------------------------------------
 
     [Test]
@@ -565,51 +566,4 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'T5: ILE Lote B DUoM Second Qty = 4 × 1.8 = 7.2');
     end;
 
-    // -------------------------------------------------------------------------
-    // TEST UNITARIO HELPER — AssignLotWithDUoMRatioToPurchLine
-    // Verifica que el helper escribe correctamente DUoM Ratio y DUoM Second Qty
-    // en la Tracking Specification permanente (requerido por la norma del proyecto).
-    // -------------------------------------------------------------------------
-
-    [Test]
-    procedure AssignLotWithDUoMRatio_WritesTrackingSpec()
-    var
-        Item: Record Item;
-        Vendor: Record Vendor;
-        PurchHeader: Record "Purchase Header";
-        PurchLine: Record "Purchase Line";
-        TrackingSpec: Record "Tracking Specification";
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-        LibraryInventory: Codeunit "Library - Inventory";
-        LibraryPurchase: Codeunit "Library - Purchase";
-        LibraryAssert: Codeunit "Library Assert";
-    begin
-        // [GIVEN] Artículo con DUoM Variable habilitado; lot tracking activo
-        LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
-            "DUoM Conversion Mode"::Variable, 0);
-        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
-
-        // [GIVEN] Pedido de compra con una línea de 10 unidades
-        LibraryPurchase.CreateVendor(Vendor);
-        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
-            Vendor."No.");
-        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
-            PurchLine.Type::Item, Item."No.", 0);
-        PurchLine.Validate(Quantity, 10);
-        PurchLine.Modify(true);
-
-        // [WHEN] Se asigna un lote con DUoM Ratio a la Purchase Line
-        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOT-UNIT-T', 10, 1.5);
-
-        // [THEN] Existe un Tracking Specification con DUoM Ratio correcto
-        TrackingSpec.SetRange("Item No.", Item."No.");
-        TrackingSpec.SetRange("Lot No.", 'LOT-UNIT-T');
-        LibraryAssert.IsTrue(TrackingSpec.FindFirst(),
-            'Se esperaba un Tracking Specification para el lote asignado con DUoM Ratio');
-        LibraryAssert.AreNearlyEqual(1.5, TrackingSpec."DUoM Ratio", 0.001,
-            'Tracking Specification: DUoM Ratio debe ser 1.5');
-        LibraryAssert.AreNearlyEqual(15, TrackingSpec."DUoM Second Qty", 0.001,
-            'Tracking Specification: DUoM Second Qty debe ser 10 × 1.5 = 15');
-    end;
 }

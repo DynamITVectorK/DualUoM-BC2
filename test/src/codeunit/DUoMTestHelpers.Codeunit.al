@@ -175,29 +175,29 @@ codeunit 50208 "DUoM Test Helpers"
 
     /// <summary>
     /// Asigna un lote a una Purchase Line y escribe DUoM Ratio en la
-    /// Tracking Specification permanente correspondiente.
+    /// Reservation Entry correspondiente.
     ///
     /// Crea una Reservation Entry (como AssignLotToItemJnlLine para Item Journal
-    /// Lines) e inserta también una Tracking Specification permanente con el
-    /// DUoM Ratio indicado, para que el mecanismo OnAfterCopyTrackingFromSpec
+    /// Lines) con DUoM Ratio incluido, para que el mecanismo
+    /// OnAfterCopyTrackingFromReservEntry → OnAfterCopyTrackingFromSpec
     /// lo propague al ILE durante la contabilización del pedido de compra.
     ///
     /// Justificación de implementación directa:
     ///   LibraryItemTracking.CreatePurchaseOrderItemTracking no existe en
     ///   Tests-TestLibraries 27.0.0.0; se opera directamente sobre
-    ///   Reservation Entry y Tracking Specification.
+    ///   Reservation Entry.
     ///
-    /// Verifica el mecanismo OnAfterCopyTrackingFromSpec (Issue 23):
-    ///   Si los tests con este helper pasan sin registros en DUoM Lot Ratio
-    ///   (50102), la cadena TrackingSpec → IJL → ILE es correcta para
-    ///   Purchase Orders con Item Tracking.
+    /// NOTA: No insertar en Tracking Specification desde tests.
+    ///   BC construye ese buffer internamente desde Reservation Entry durante el
+    ///   posting. El subscriber TrackingSpecCopyTrackingFromReservEntry (50110)
+    ///   transporta DUoM Ratio de ReservEntry al buffer de TrackingSpec.
+    ///   Insertar manualmente en TrackingSpec causa colisiones de Entry No.
     ///
     /// Parámetros:
     ///   PurchLine  — Purchase Line a la que asignar la trazabilidad de lote.
     ///   LotNo      — Número de lote a asignar.
     ///   Qty        — Cantidad positiva (inbound).
-    ///   DUoMRatio  — Ratio DUoM a registrar en Reservation Entry y Tracking
-    ///                Specification.
+    ///   DUoMRatio  — Ratio DUoM a registrar en Reservation Entry.
     /// </summary>
     procedure AssignLotWithDUoMRatioToPurchLine(
         var PurchLine: Record "Purchase Line";
@@ -206,11 +206,11 @@ codeunit 50208 "DUoM Test Helpers"
         DUoMRatio: Decimal)
     var
         ReservEntry: Record "Reservation Entry";
-        TrackingSpec: Record "Tracking Specification";
         NextEntryNo: Integer;
     begin
-        // Paso 1: Reservation Entry — asignación de lote para que BC reconozca
-        // el tracking durante el posting del pedido de compra.
+        // Paso 1: Reservation Entry — asignación de lote con DUoM Ratio para que BC
+        // reconozca el tracking durante el posting del pedido de compra y
+        // TrackingSpecCopyTrackingFromReservEntry propague el ratio al buffer TrackingSpec.
         ReservEntry.LockTable();
         if ReservEntry.FindLast() then
             NextEntryNo := ReservEntry."Entry No." + 1
@@ -236,31 +236,5 @@ codeunit 50208 "DUoM Test Helpers"
         ReservEntry."DUoM Ratio" := DUoMRatio;
         ReservEntry."DUoM Second Qty" := Qty * DUoMRatio;
         ReservEntry.Insert(true);
-
-        // Paso 2: Tracking Specification permanente con DUoM Ratio, para que
-        // OnAfterCopyTrackingFromSpec propague el ratio al IJL → ILE en el posting.
-        TrackingSpec.LockTable();
-        if TrackingSpec.FindLast() then
-            NextEntryNo := TrackingSpec."Entry No." + 1
-        else
-            NextEntryNo := 1;
-        TrackingSpec.Init();
-        TrackingSpec."Entry No." := NextEntryNo;
-        TrackingSpec."Item No." := PurchLine."No.";
-        TrackingSpec."Variant Code" := PurchLine."Variant Code";
-        TrackingSpec."Location Code" := PurchLine."Location Code";
-        TrackingSpec."Lot No." := LotNo;
-        TrackingSpec."Quantity (Base)" := Qty;
-        TrackingSpec."Qty. to Handle (Base)" := Qty;
-        TrackingSpec."Qty. to Invoice (Base)" := Qty;
-        TrackingSpec."Source Type" := Database::"Purchase Line";
-        TrackingSpec."Source Subtype" := PurchLine."Document Type".AsInteger();
-        TrackingSpec."Source ID" := PurchLine."Document No.";
-        TrackingSpec."Source Batch Name" := '';
-        TrackingSpec."Source Prod. Order Line" := 0;
-        TrackingSpec."Source Ref. No." := PurchLine."Line No.";
-        TrackingSpec."DUoM Ratio" := DUoMRatio;
-        TrackingSpec."DUoM Second Qty" := Qty * DUoMRatio;
-        TrackingSpec.Insert(false);
     end;
 }
