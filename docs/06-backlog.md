@@ -638,6 +638,9 @@ BC construye ese buffer desde `Reservation Entry` — no hay que insertarlo desd
 
 ### Issue 14 — Warehouse Basic Documents DUoM Fields
 
+**Blueprint técnico:** ver `docs/09-wms-advanced-design.md` — diseño completo de objetos,
+mapa de propagación, eventos candidatos BC 27, riesgos SaaS y estrategia de tests.
+
 **Objetivo:** extender los documentos de entrada y salida de almacén básico con campos DUoM.
 
 Alcance:
@@ -649,17 +652,22 @@ Alcance:
 - Propagación desde `Warehouse Receipt Line` / `Warehouse Shipment Line` hacia `ILE` al
   contabilizar (a través del camino `Warehouse Entry` si procede, o directo a `Item Journal Line`).
 - Actualizar permission sets.
-- Tests TDD:
-  - Crear un Warehouse Receipt desde un Purchase Order con DUoM → verificar campos propagados.
-  - Contabilizar Warehouse Receipt → verificar ILE con `DUoM Second Qty`.
-  - Crear un Warehouse Shipment desde un Sales Order con DUoM → verificar campos.
-  - Contabilizar Warehouse Shipment → verificar ILE.
+- Tests TDD (ver matriz en `docs/09-wms-advanced-design.md` sección 6.3):
+  - T01: Crear un Warehouse Receipt desde un Purchase Order con DUoM → verificar campos propagados.
+  - T02: Contabilizar Warehouse Receipt (Fixed) → verificar ILE con `DUoM Second Qty`.
+  - T03: Contabilizar Warehouse Receipt (Variable) → verificar ILE.
+  - T04: Crear un Warehouse Shipment desde un Sales Order con DUoM → verificar campos.
+  - T05: Contabilizar Warehouse Shipment (Fixed) → verificar ILE.
+  - T06: Artículo sin DUoM activo → sin impacto en flujo estándar BC.
 
 **Dependencias:** Issues 1–11 completados. Issue 12 recomendado antes para consistencia de coste.
 **Nota:** Verificar nombres exactos de páginas BC 27 antes de crear page extensions
 (`Warehouse Receipt Subform`, `Warehouse Shipment Subform`) usando el BC Symbol Reference.
 
 ### Issue 15 — Directed Put-Away and Pick DUoM Fields
+
+**Blueprint técnico:** ver `docs/09-wms-advanced-design.md` — diseño completo de objetos,
+mapa de propagación (saltos 6/7), eventos candidatos BC 27 y estrategia de tests.
 
 **Objetivo:** extender los documentos de actividad de almacén dirigido (put-away y pick)
 con campos DUoM para seguimiento de segunda cantidad en movimientos internos.
@@ -669,9 +677,12 @@ Alcance:
 - Page extension en el subformulario de put-away/pick para mostrar los campos (solo lectura).
 - Propagación desde `Warehouse Receipt Line` / `Warehouse Shipment Line` al crear las
   líneas de actividad (evento adecuado de BC 27, a verificar).
-- Tests TDD:
-  - Crear put-away desde Warehouse Receipt con DUoM → verificar campos en actividad.
-  - Crear pick desde Warehouse Shipment con DUoM → verificar campos.
+- Tests TDD (ver matriz en `docs/09-wms-advanced-design.md` sección 6.4):
+  - T01: Crear put-away desde Warehouse Receipt con DUoM → verificar campos en actividad.
+  - T02: Crear pick desde Warehouse Shipment con DUoM → verificar campos.
+  - T03: Put-Away + Post Receipt → ILE correcto (E2E).
+  - T04: Pick + Post Shipment → ILE correcto (E2E).
+  - T05: Sin DUoM activo → sin impacto en flujo BC.
 
 **Dependencias:** Issue 14 completado.
 
