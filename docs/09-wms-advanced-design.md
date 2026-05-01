@@ -554,11 +554,11 @@ end;
 |--------|------|------------|-------------|
 | `DUoM Whse. Activity Line Ext` | tableextension | 50125 | Campos DUoM en Warehouse Activity Line |
 | `DUoM Whse. Activity Subform` | pageextension | TBD | Columnas DUoM en subformulario actividad |
-| `DUoM Directed WMS Subscripers` | codeunit | 50110 | Subscribers para put-away/pick (≤30 chars) |
+| `DUoM Directed WMS Subscribers` | codeunit | 50110 | Subscribers para put-away/pick (≤30 chars) |
 | `DUoM Directed WMS Tests` | test codeunit | 50219 | Tests T01–T05 |
 
 > **Nombre del codeunit:** verificar que el nombre no exceda 30 caracteres.
-> `DUoM Directed WMS Subscripers` = 31 chars → ajustar. Sugerencia: `DUoM Directed Subscribers` (25 chars).
+> `DUoM Directed WMS Subscribers` = 31 chars → ajustar. Sugerencia: `DUoM Directed Subscribers` (25 chars).
 
 ### Incremento 3 — Phase 3/Futuro: Warehouse Entry + Posted Lines
 
