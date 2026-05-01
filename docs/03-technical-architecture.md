@@ -297,6 +297,10 @@ y dan acceso al var record ANTES del Insert(), evitando la necesidad de llamar a
 Toda la lógica de copia está centralizada en `DUoM Doc Transfer Helper` (50105).
 Los subscribers en `DUoM Inventory Subscribers` (50104) son "thin" — sólo validan y delegan.
 
+> **Referencia completa:** para la matriz detallada de todos los flujos de propagación
+> (origen → destino por tabla), campos DUoM persistidos, fuente de verdad por caso de uso
+> y limitaciones conocidas, ver **`docs/10-persistence-matrix.md`**.
+
 ---
 
 ## Testing-First Expectations

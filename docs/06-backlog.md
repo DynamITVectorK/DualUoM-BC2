@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-01
+> **Última actualización:** 2026-05-01 (issue P2-persistence completado)
 
 ### Issues completados ✅
 
@@ -39,6 +39,7 @@ GitHub Copilot Coding Agent.
 | 171 | test: cobertura ILE Variable/AlwaysVariable y multi-lote desde Purchase Order |
 | 177 | fix: T14 AlwaysVariable + ratio manual en IJL → ILE DUoM Second Qty = 25 |
 | 180 | docs: política definitiva AlwaysVariable + lotes en docs troncales |
+| P2-persistence | docs: matriz de persistencia DUoM por flujo y tabla (source of truth) |
 
 ### Próximo issue pendiente
 
