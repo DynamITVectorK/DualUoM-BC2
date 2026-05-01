@@ -36,7 +36,7 @@ Before adding any new field, table or logic, consider whether a standard BC mech
 already covers the need:
 
 - Use existing `Item Unit of Measure` table for fixed ratio base data
-- Use existing `Item Tracking` infrastructure for lot linkage (Phase 2)
+- Use existing `Item Tracking` infrastructure for lot linkage (implemented in Phase 1 — Issues 13, 20, 21, 22, 23)
 - Use existing `Warehouse Activity Line` structure for warehouse extensions (Phase 2)
 - Only extend or add when standard BC genuinely cannot support the requirement
 
