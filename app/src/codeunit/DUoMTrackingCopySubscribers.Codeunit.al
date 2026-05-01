@@ -107,9 +107,11 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     //      de lote correcto está en 50102 (0,38/0,41/0,42).
     //   2. IJL.DUoM Ratio: si no existe ratio de lote en 50102, se usa el ratio del IJL
     //      (puede venir de TrackingSpec via OnAfterCopyTrackingFromReservEntry → PurchaseTwoLots,
-    //      o del ratio del artículo para T13/T14).
-    //   3. AlwaysVariable + Lot No. sin ratio: resetear ILE.DUoM Second Qty = 0.
-    //      El total de la línea no es válido por ILE individual. Ver T10.
+    //      o del ratio del artículo para T13). Para AlwaysVariable + Lot con ratio manual,
+    //      OnAfterInitItemLedgEntry ya calculó el ILE correcto (T14); este subscriber
+    //      no sobrescribe si el split IJL llega con ambos campos en 0 (guard exit).
+    //   3. AlwaysVariable + Lot No. sin ratio (DUoM Ratio = 0 en split IJL): resetear
+    //      ILE.DUoM Second Qty = 0. El total no es válido por ILE individual. Ver T10.
     [EventSubscriber(ObjectType::Table, Database::"Item Ledger Entry",
         'OnAfterCopyTrackingFromItemJnlLine', '', false, false)]
     local procedure ILECopyTrackingFromItemJnlLine(

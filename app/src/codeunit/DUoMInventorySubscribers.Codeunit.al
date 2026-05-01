@@ -237,8 +237,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
     ///   el fallback a DUoM Lot Ratio se aplica siempre que haya Lot No. y ratio en 50102.
     ///
     /// Lógica de prioridad:
-    ///   1. AlwaysVariable + Lot No.: el total de la línea no es válido por ILE individual.
-    ///      ILE.DUoM Second Qty queda en 0 (T10). ILECopyTrackingFromItemJnlLine consolida.
+    ///   1. AlwaysVariable + Lot No. + DUoM Ratio = 0: el total de la línea no es válido
+    ///      por ILE individual. ILE.DUoM Second Qty queda en 0. Ver T10.
+    ///   1b. AlwaysVariable + Lot No. + DUoM Ratio ≠ 0 (ratio manual en IJL): caída al
+    ///      cálculo general — ILE se calcula con Abs(Qty) × ratio. Ver T14.
     ///   2. DUoM Lot Ratio (50102) > ratio del IJL cuando hay Lot No. (fallback para flujo
     ///      PostItemJournalLine directo donde OnAfterCopyTrackingFromReservEntry no actúa).
     ///   3. Sin Lot No.: usa ratio del IJL directamente (flujo sin Item Tracking).
@@ -260,14 +262,16 @@ codeunit 50104 "DUoM Inventory Subscribers"
         if (ItemJournalLine."DUoM Ratio" = 0) and (ItemJournalLine."DUoM Second Qty" = 0) then
             exit;
 
-        // AlwaysVariable con lote: el total de la línea no es válido por ILE individual.
-        // ILE."DUoM Second Qty" queda en 0. ILECopyTrackingFromItemJnlLine consolida. Ver T10.
+        // AlwaysVariable con lote y sin ratio manual: el total de la línea no es válido
+        // por ILE individual. ILE."DUoM Second Qty" queda en 0. Ver T10.
+        // Excepción: si el IJL tiene DUoM Ratio manual (≠ 0), caída al cálculo general. Ver T14.
         if ItemJournalLine."Lot No." <> '' then
             if DUoMSetupResolver.GetEffectiveSetup(
                    ItemJournalLine."Item No.", ItemJournalLine."Variant Code",
                    SecondUoMCode, ConversionMode, FixedRatio) then
                 if ConversionMode = ConversionMode::AlwaysVariable then
-                    exit;
+                    if ItemJournalLine."DUoM Ratio" = 0 then
+                        exit;
 
         // Determinar ratio a aplicar.
         // Prioridad: ratio del lote en DUoM Lot Ratio (50102) > ratio del IJL.
