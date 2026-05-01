@@ -266,7 +266,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
             if DUoMSetupResolver.GetEffectiveSetup(
                    ItemJournalLine."Item No.", ItemJournalLine."Variant Code",
                    SecondUoMCode, ConversionMode, FixedRatio) then
-                if ConversionMode = "DUoM Conversion Mode"::"Always Variable" then
+                if ConversionMode = ConversionMode::AlwaysVariable then
                     exit;
 
         // Determinar ratio a aplicar.
