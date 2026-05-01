@@ -543,6 +543,38 @@ suscriptores siguiendo el patrón de `Package Management (6516)`:
 - `DUoMInventorySubscribers.Codeunit.al` (50104) — simplificado (sin TryApplyLotRatioToILE)
 - `docs/issues/issue-23-tracking-copy-subscribers.md`
 
+### Issue 24 — fix: regresiones en propagación DUoM al ILE tras refactor OnAfterCopyTracking ✅ IMPLEMENTADO
+
+**Objetivo:** corregir 10 regresiones introducidas por el refactor del Issue 23 en tres grupos.
+
+**Grupo 1 (T04, T05, T06, T08, T09):** ILE recibía ratio del artículo (0.40) en lugar del
+ratio de lote de `DUoM Lot Ratio (50102)` (0.38). Causa: `ILECopyTrackingFromItemJnlLine`
+no consultaba 50102 — usaba directamente `IJL.DUoM Ratio` (ratio del artículo).
+
+**Grupo 2 (T10):** ILE recibía `DUoM Second Qty = 8` en lugar de 0 para AlwaysVariable
+sin ratio de lote. Causa: `OnAfterInitItemLedgEntry` copiaba el total de la línea a cada
+ILE individual sin comprobar el modo.
+
+**Grupo 3 (PurchaseTwoLots):** Colisión de `Entry No.` en `Tracking Specification`.
+Causa: `AssignLotWithDUoMRatioToPurchLine` insertaba manualmente en `Tracking Specification`.
+BC construye ese buffer desde `Reservation Entry` — no hay que insertarlo desde tests.
+
+**Solución:**
+- Nuevo subscriber `OnAfterCopyTrackingFromReservEntry` en `DUoM Tracking Copy Subscribers` (50110):
+  propaga `DUoM Ratio` de `ReservEntry` al buffer de `TrackingSpec` durante el posting.
+- `ILECopyTrackingFromItemJnlLine` modificado: prioridad `DUoM Lot Ratio (50102) > IJL ratio`;
+  reset explícito a 0 para AlwaysVariable + Lot No. sin ratio.
+- `OnAfterInitItemLedgEntry` modificado: guard para AlwaysVariable + Lot No. + fallback a 50102.
+- `AssignLotWithDUoMRatioToPurchLine` simplificado: solo escribe en `Reservation Entry` (Paso 2 eliminado).
+- Test `AssignLotWithDUoMRatio_WritesTrackingSpec` eliminado (ya no aplica).
+
+**Deliverables:**
+- `app/src/codeunit/DUoMTrackingCopySubscribers.Codeunit.al` (50110)
+- `app/src/codeunit/DUoMInventorySubscribers.Codeunit.al` (50104)
+- `test/src/codeunit/DUoMTestHelpers.Codeunit.al` (50208)
+- `test/src/codeunit/DUoMILEIntegrationTests.Codeunit.al` (50209)
+- `docs/issues/issue-24-fix-ile-regression-tracking-refactor.md`
+
 ### Issue 171 — test: cobertura ILE Variable/AlwaysVariable y multi-lote desde Purchase Order ✅ IMPLEMENTADO
 
 **Objetivo:** cerrar tres huecos en la cobertura de tests del ILE:
@@ -552,9 +584,9 @@ suscriptores siguiendo el patrón de `Package Management (6516)`:
 
 **Deliverables:**
 - `DUoMTestHelpers.Codeunit.al` (50208): nuevo helper `AssignLotWithDUoMRatioToPurchLine`
-  que crea Reservation Entry + Tracking Specification con DUoM Ratio para una Purchase Line.
-- `DUoMILEIntegrationTests.Codeunit.al` (50209): comentario corregido + 6 nuevos tests
-  (Tests 1–5 de integración + test unitario del helper).
+  que crea Reservation Entry con DUoM Ratio para una Purchase Line.
+  (Nota: en Issue 24 se eliminó la inserción en Tracking Specification — solo ReservEntry.)
+- `DUoMILEIntegrationTests.Codeunit.al` (50209): comentario corregido + tests de integración.
 - `docs/issues/issue-171-ILE-coverage-variable-multilot.md`
 - `docs/06-backlog.md`
 

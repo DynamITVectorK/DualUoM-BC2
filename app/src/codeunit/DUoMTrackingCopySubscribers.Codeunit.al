@@ -2,21 +2,32 @@
 /// Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón OnAfterCopyTracking*
 /// de Codeunit 6516 "Package Management". Un subscriber por punto de copia entre tablas.
 ///
-/// Cadena directa (entradas de lote):
-///   Tracking Specification
+/// Cadena completa (entradas de lote desde Purchase/Sales con Item Tracking):
+///   Reservation Entry
+///     → Table "Tracking Specification" · OnAfterCopyTrackingFromReservEntry
+///         ↓
+///   Tracking Specification (buffer interno BC durante posting)
 ///     → Table "Item Journal Line" · OnAfterCopyTrackingFromSpec
 ///         ↓
-///   Item Journal Line
+///   Item Journal Line (split por lote)
 ///     → Table "Item Ledger Entry" · OnAfterCopyTrackingFromItemJnlLine
 ///         ↓
 ///   Item Ledger Entry  ✓
+///
+/// Cadena directa (ILE from IJL posted directly via IJL with Reservation Entries):
+///   Tracking Specification (buffer)
+///     → Item Journal Line · OnAfterCopyTrackingFromSpec
+///     → Item Ledger Entry · OnAfterCopyTrackingFromItemJnlLine  ✓
 ///
 /// Cadena inversa (salidas aplicadas contra entradas existentes, p.ej. devoluciones):
 ///   Item Ledger Entry
 ///     → Table "Item Journal Line" · OnAfterCopyTrackingFromItemLedgEntry
 ///
 /// Signatures verificadas BC 27 / runtime 15:
-///   Patrón de referencia: Codeunit 6516 "Package Management" líneas 774, 551, 768.
+///   Patrón de referencia: Codeunit 6516 "Package Management" líneas 121, 774, 551, 768.
+///   - OnAfterCopyTrackingFromReservEntry en Table "Tracking Specification" (6500):
+///     (var TrackingSpecification: Record "Tracking Specification";
+///      ReservEntry: Record "Reservation Entry")
 ///   - OnAfterCopyTrackingFromSpec en Table "Item Journal Line" (83):
 ///     (var ItemJournalLine: Record "Item Journal Line";
 ///      TrackingSpecification: Record "Tracking Specification")
@@ -32,10 +43,33 @@
 ///   (en DUoM Inventory Subscribers, 50104) establecen DUoM Ratio y DUoM Second Qty
 ///   en el IJL desde la línea de documento. Este codeunit refina esos valores a nivel
 ///   de lote específico cuando el Tracking Specification aporta un ratio distinto.
+///
+/// Prioridad de ratio en ILECopyTrackingFromItemJnlLine:
+///   DUoM Lot Ratio (50102) > IJL.DUoM Ratio (de TrackingSpec/artículo).
+///   Esto garantiza que T04–T08 (ratios registrados en 50102) prevalezcan sobre el ratio
+///   de artículo que puede estar en el IJL cuando la ReservEntry no tenía DUoM Ratio.
 /// </summary>
 codeunit 50110 "DUoM Tracking Copy Subscribers"
 {
     Access = Internal;
+
+    // ── Reservation Entry → Tracking Specification buffer ─────────────────────
+    // Publisher: Table "Tracking Specification" (6500), evento OnAfterCopyTrackingFromReservEntry.
+    // Patrón: Codeunit 6516 "Package Management" línea 121. Firma BC 27 confirmada.
+    // Motivo: BC construye el buffer de TrackingSpec desde ReservEntry durante el posting
+    // (Purchase/Sales Orders con Item Tracking). Sin este subscriber, DUoM Ratio de
+    // ReservEntry no llega al buffer y IJLCopyTrackingFromSpec recibe DUoM Ratio = 0.
+    // Guard implícito: si ReservEntry.DUoM Ratio = 0, TrackingSpec.DUoM Ratio queda en 0
+    // y IJLCopyTrackingFromSpec no actúa (guard "DUoM Ratio = 0 → exit"). Correcto.
+    [EventSubscriber(ObjectType::Table, Database::"Tracking Specification",
+        'OnAfterCopyTrackingFromReservEntry', '', false, false)]
+    local procedure TrackingSpecCopyTrackingFromReservEntry(
+        var TrackingSpecification: Record "Tracking Specification";
+        ReservEntry: Record "Reservation Entry")
+    begin
+        TrackingSpecification."DUoM Ratio" := ReservEntry."DUoM Ratio";
+        TrackingSpecification."DUoM Second Qty" := ReservEntry."DUoM Second Qty";
+    end;
 
     // ── Tracking Specification → Item Journal Line ────────────────────────────
     // Publisher: Table "Item Journal Line" (83), evento OnAfterCopyTrackingFromSpec.
@@ -61,31 +95,54 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     // Publisher: Table "Item Ledger Entry" (32), evento OnAfterCopyTrackingFromItemJnlLine.
     // Patrón: Codeunit 6516 "Package Management" línea 551. Firma BC 27 confirmada.
     // Motivo: BC llama esto antes de Insert() del ILE. ILE.Quantity ya está asignada.
-    // Recalcular DUoM Second Qty con Abs(ILE.Quantity) garantiza la cantidad exacta
-    // del lote (no proporcional de la línea total).
-    // Guard para AlwaysVariable sin ratio y con Lot No.: no copiar el total de la línea
-    // IJL a cada ILE individual (el total no es válido por lote). ILE queda en 0.
-    // Esto preserva el comportamiento de Issue 20 (T10).
+    //
+    // Orden de ejecución (BC 27): ILECopyTrackingFromItemJnlLine se dispara DESPUÉS de
+    // OnAfterInitItemLedgEntry. Este subscriber consolida el ratio final en el ILE,
+    // sobrescribiendo el valor provisional de OnAfterInitItemLedgEntry cuando corresponde.
+    //
+    // Lógica de prioridad:
+    //   1. DUoM Lot Ratio (50102): cuando el IJL tiene Lot No. y existe ratio de lote
+    //      registrado, se usa ese ratio (más preciso que el ratio del artículo/IJL).
+    //      Necesario para T04–T08: IJL hereda ratio del artículo (0,40) pero el ratio
+    //      de lote correcto está en 50102 (0,38/0,41/0,42).
+    //   2. IJL.DUoM Ratio: si no existe ratio de lote en 50102, se usa el ratio del IJL
+    //      (puede venir de TrackingSpec via OnAfterCopyTrackingFromReservEntry → PurchaseTwoLots,
+    //      o del ratio del artículo para T13/T14).
+    //   3. AlwaysVariable + Lot No. sin ratio: resetear ILE.DUoM Second Qty = 0.
+    //      El total de la línea no es válido por ILE individual. Ver T10.
     [EventSubscriber(ObjectType::Table, Database::"Item Ledger Entry",
         'OnAfterCopyTrackingFromItemJnlLine', '', false, false)]
     local procedure ILECopyTrackingFromItemJnlLine(
         var ItemLedgerEntry: Record "Item Ledger Entry";
         ItemJnlLine: Record "Item Journal Line")
+    var
+        DUoMLotRatio: Record "DUoM Lot Ratio";
+        AppliedRatio: Decimal;
     begin
         if (ItemJnlLine."DUoM Ratio" = 0) and (ItemJnlLine."DUoM Second Qty" = 0) then
             exit;
-        ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-        if ItemJnlLine."DUoM Ratio" <> 0 then
+        // Prioridad: DUoM Lot Ratio (50102) > IJL.DUoM Ratio.
+        // Resuelve el caso T04–T08 donde IJL tiene el ratio del artículo (0,40)
+        // pero el ratio de lote correcto está en 50102 (0,38/0,41/0,42).
+        AppliedRatio := ItemJnlLine."DUoM Ratio";
+        if ItemJnlLine."Lot No." <> '' then
+            if DUoMLotRatio.Get(ItemJnlLine."Item No.", ItemJnlLine."Lot No.") then
+                AppliedRatio := DUoMLotRatio."Actual Ratio";
+        ItemLedgerEntry."DUoM Ratio" := AppliedRatio;
+        if AppliedRatio <> 0 then
             // Recalcular con la cantidad exacta del ILE (lote), no la cantidad total del IJL.
             ItemLedgerEntry."DUoM Second Qty" :=
-                Abs(ItemLedgerEntry.Quantity) * ItemJnlLine."DUoM Ratio"
-        else
-            // AlwaysVariable sin ratio: copia directa solo cuando no hay Lot No. asignado
-            // (flujo sin trazabilidad de lote, IJL de línea única).
-            // Con Lot No. (multi-lote), el total de la línea no es válido por ILE individual;
-            // ILE.DUoM Second Qty queda en 0. Ver Issue 20 (T10).
+                Abs(ItemLedgerEntry.Quantity) * AppliedRatio
+        else begin
             if ItemJnlLine."Lot No." = '' then
-                ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty";
+                // AlwaysVariable sin lote: copia directa del total (flujo sin tracking).
+                ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty"
+            else
+                // AlwaysVariable + Lot No. sin ratio: total no válido por ILE individual.
+                // Resetear a 0 (corrige posible valor previo de OnAfterInitItemLedgEntry).
+                // Ver Issue 20 (T10).
+                ItemLedgerEntry."DUoM Second Qty" := 0;
+        end;
     end;
 
     // ── Item Ledger Entry → Item Journal Line (flujo inverso) ─────────────────
