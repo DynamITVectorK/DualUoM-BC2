@@ -566,4 +566,71 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'T5: ILE Lote B DUoM Second Qty = 4 × 1.8 = 7.2');
     end;
 
+    // -------------------------------------------------------------------------
+    // TEST UNITARIO HELPER — AssignLotWithDUoMRatioToPurchLine (sustituto de
+    // AssignLotWithDUoMRatio_WritesTrackingSpec, eliminado en Issue 24)
+    //
+    // Verifica el contrato actual del helper:
+    //   1. Escribe DUoM Ratio y DUoM Second Qty en la Reservation Entry.
+    //   2. NO inserta ningún registro en Tracking Specification.
+    //
+    // El segundo assert es la comprobación anti-regresión clave: garantiza que
+    // el helper no vuelva a insertar en TrackingSpec (lo que causaba colisiones
+    // de Entry No. en PurchaseTwoLots — Issue 24).
+    // -------------------------------------------------------------------------
+
+    [Test]
+    procedure AssignLotWithDUoMRatio_WritesReservEntry_NoTrackingSpec()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ReservEntry: Record "Reservation Entry";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+    begin
+        // [GIVEN] Artículo con DUoM Variable habilitado; lot tracking activo
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        LotNo := 'LOT-UNIT-T';
+
+        // [GIVEN] Pedido de compra con una línea de 10 unidades
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+
+        // [WHEN] Se asigna un lote con DUoM Ratio a la Purchase Line
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNo, 10, 1.5);
+
+        // [THEN] Existe una Reservation Entry con DUoM Ratio y DUoM Second Qty correctos
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange("Lot No.", LotNo);
+        LibraryAssert.IsTrue(ReservEntry.FindFirst(),
+            'Se esperaba una Reservation Entry para el lote asignado con DUoM Ratio');
+        LibraryAssert.AreNearlyEqual(1.5, ReservEntry."DUoM Ratio", 0.001,
+            'Reservation Entry: DUoM Ratio debe ser 1.5');
+        LibraryAssert.AreNearlyEqual(15, ReservEntry."DUoM Second Qty", 0.001,
+            'Reservation Entry: DUoM Second Qty debe ser 10 × 1.5 = 15');
+
+        // [THEN] NO existe ningún registro en Tracking Specification para ese lote.
+        // Anti-regresión Issue 24: el helper no debe insertar en TrackingSpec
+        // (causaba colisiones de Entry No. al llamarse dos veces — PurchaseTwoLots).
+        // BC construye el buffer de TrackingSpec internamente desde ReservEntry.
+        TrackingSpec.SetRange("Item No.", Item."No.");
+        TrackingSpec.SetRange("Lot No.", LotNo);
+        LibraryAssert.IsFalse(TrackingSpec.FindFirst(),
+            'NO debe existir Tracking Specification para el lote (el helper no debe insertar en TrackingSpec)');
+    end;
+
 }
