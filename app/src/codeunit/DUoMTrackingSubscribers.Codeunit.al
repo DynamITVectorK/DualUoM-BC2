@@ -17,15 +17,6 @@
 /// y delegan la lógica al helper centralizado (ApplyLotRatioToTrackingSpec,
 /// RecalcTrackingSpecSecondQty). No hay lógica de negocio directamente en el suscriptor.
 ///
-/// Propagación a Reservation Entry (RF-04):
-///   La propagación directa desde Tracking Specification hacia Reservation Entry NO se
-///   implementa: el evento OnAfterCopyTrackingFromTrackingSpec en BC 27 no expone
-///   un parámetro "var Rec: Record Reservation Entry" modificable que permita copiar
-///   campos de extensión de forma segura (AL0282). Los campos DUoM en Reservation Entry
-///   quedan como limitación conocida y serán abordados en una tarea futura N-lotes.
-///   La ratio real por lote se aplica al ILE durante el posting vía
-///   TryApplyLotRatioToILE (DUoM Lot Subscribers, 50108).
-///
 /// Signatures verificadas BC 27 / runtime 15:
 ///   - Tracking Specification (tabla 6500): OnAfterValidateEvent para Lot No. y
 ///     Quantity (Base) confirmados como eventos de campo directo en la tabla.

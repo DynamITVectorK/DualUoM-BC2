@@ -1,14 +1,12 @@
 /// <summary>
 /// Extends the Reservation Entry table (337) with Dual Unit of Measure fields.
 ///
-/// Note: The automatic propagation from Tracking Specification (6500) to Reservation Entry
-/// (337) is NOT implemented because the BC 27 event OnAfterCopyTrackingFromTrackingSpec
-/// does not expose a modifiable "var Rec: Record Reservation Entry" parameter for extension
-/// fields (AL0282). The fields are defined here for future use when a safe propagation
-/// mechanism is available (tarea futura N-lotes).
-///
-/// The DUoM ratio per lot is applied to the Item Ledger Entry during posting via
-/// TryApplyLotRatioToILE (DUoM Lot Subscribers, 50108).
+/// La propagación desde Tracking Specification (6500) hacia Reservation Entry (337)
+/// se implementa en DUoM Tracking Copy Subscribers (50110) vía el evento
+/// OnAfterCopyTrackingFromTrackingSpec en esta tabla, siguiendo el patrón de
+/// codeunit 6516 "Package Management". Este evento sí expone var ReservationEntry
+/// como parámetro modificable — la limitación AL0282 documentada anteriormente
+/// era incorrecta (se confundió con el evento homónimo en tabla Tracking Specification).
 /// </summary>
 tableextension 50123 "DUoM Reservation Entry Ext" extends "Reservation Entry"
 {

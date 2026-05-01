@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-01 (issue P2-persistence completado)
+> **Última actualización:** 2026-05-01 (issue 190 completado)
 
 ### Issues completados ✅
 
@@ -40,6 +40,7 @@ GitHub Copilot Coding Agent.
 | 177 | fix: T14 AlwaysVariable + ratio manual en IJL → ILE DUoM Second Qty = 25 |
 | 180 | docs: política definitiva AlwaysVariable + lotes en docs troncales |
 | P2-persistence | docs: matriz de persistencia DUoM por flujo y tabla (source of truth) |
+| 190 | fix: propagar DUoM Ratio y DUoM Second Qty a Reservation Entry usando `OnAfterCopyTrackingFromTrackingSpec` |
 
 ### Próximo issue pendiente
 
