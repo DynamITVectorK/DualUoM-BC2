@@ -2,6 +2,10 @@
 /// Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón OnAfterCopyTracking*
 /// de Codeunit 6516 "Package Management". Un subscriber por punto de copia entre tablas.
 ///
+/// Cadena Item Tracking Lines (usuario valida Lot No. en página 6510):
+///   Tracking Specification (buffer Item Tracking Lines)
+///     → Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec  ← NUEVO
+///
 /// Cadena completa (entradas de lote desde Purchase/Sales con Item Tracking):
 ///   Reservation Entry
 ///     → Table "Tracking Specification" · OnAfterCopyTrackingFromReservEntry
@@ -25,6 +29,10 @@
 ///
 /// Signatures verificadas BC 27 / runtime 15:
 ///   Patrón de referencia: Codeunit 6516 "Package Management" líneas 121, 774, 551, 768.
+///   - OnAfterCopyTrackingFromTrackingSpec en Table "Reservation Entry" (337):
+///     (var ReservationEntry: Record "Reservation Entry";
+///      TrackingSpecification: Record "Tracking Specification")
+///     Verificado contra Package Management (6516), procedure ReservationEntryCopyTrackingFromTrackingSpec.
 ///   - OnAfterCopyTrackingFromReservEntry en Table "Tracking Specification" (6500):
 ///     (var TrackingSpecification: Record "Tracking Specification";
 ///      ReservEntry: Record "Reservation Entry")
@@ -52,6 +60,24 @@
 codeunit 50110 "DUoM Tracking Copy Subscribers"
 {
     Access = Internal;
+
+    // ── Tracking Specification → Reservation Entry ────────────────────────────
+    // Publisher: Table "Reservation Entry" (337), evento OnAfterCopyTrackingFromTrackingSpec.
+    // Patrón: Codeunit 6516 "Package Management" — ReservationEntryCopyTrackingFromTrackingSpec.
+    // Firma BC 27 verificada contra Package Management:
+    //   (var ReservationEntry: Record "Reservation Entry"; TrackingSpecification: Record "Tracking Specification")
+    // Motivo: BC llama esto al cerrar Item Tracking Lines (Page 6510) para persistir el buffer
+    // Tracking Specification hacia Reservation Entry. Sin este subscriber, DUoM Ratio queda a 0
+    // en ReservEntry y al reabrir la página las columnas DUoM aparecen vacías.
+    [EventSubscriber(ObjectType::Table, Database::"Reservation Entry",
+        'OnAfterCopyTrackingFromTrackingSpec', '', false, false)]
+    local procedure ReservEntryOnAfterCopyTrackingFromTrackingSpec(
+        var ReservationEntry: Record "Reservation Entry";
+        TrackingSpecification: Record "Tracking Specification")
+    begin
+        ReservationEntry."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
+        ReservationEntry."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
+    end;
 
     // ── Reservation Entry → Tracking Specification buffer ─────────────────────
     // Publisher: Table "Tracking Specification" (6500), evento OnAfterCopyTrackingFromReservEntry.
