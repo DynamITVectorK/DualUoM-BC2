@@ -139,27 +139,28 @@ El modelo correcto de Business Central es:
 - **`Item Journal Line`."Lot No." no es la fuente de verdad de la ratio DUoM por lote.**
   La ratio real por lote se almacena en `DUoM Lot Ratio` (50102) y se aplica a nivel de ILE.
 
-### Flujo de integración implementado (mecanismo productivo único)
+### Flujo de integración implementado (Issues 13 → 20 → 21 → 23)
 
 ```
 Purchase/Sales Line o IJL con N lotes vía Item Tracking:
   Usuario asigna N lotes en "Item Tracking Lines" (estándar BC)
-  → Lotes persisten en Reservation Entry (flujo estándar, sin intervención DUoM)
-  → Al contabilizar: BC divide la línea por lote y crea un ILE por lote
-  → Para cada ILE: OnAfterInitItemLedgEntry(NewILE, ItemJnlLine, ...)
-    - ItemJnlLine.Lot No. = lote específico del ILE
-    - ItemJnlLine.Quantity = cantidad del lote (no el total de la línea)
-    - DUoM Ratio: copiado desde IJL (ratio del documento, puede ser ratio genérico)
-    - DUoM Second Qty: Abs(ILE.Quantity) × DUoM Ratio (proporcional al lote)
-    - TryApplyLotRatioToILE: si lote tiene ratio en DUoM Lot Ratio y modo ≠ Fixed →
-        ILE.DUoM Ratio = LotActualRatio
-        ILE.DUoM Second Qty = Abs(ILE.Quantity) × LotActualRatio
+  → DUoM Ratio pre-rellenado en Tracking Specification al asignar lote (codeunit 50109)
+  → Al contabilizar: BC construye Tracking Specification desde Reservation Entry
+      → codeunit 50110 (TrackingSpecCopyTrackingFromReservEntry) copia DUoM Ratio
+  → BC divide la línea por lote (split): un Item Journal Line por lote
+      → codeunit 50110 (IJLCopyTrackingFromSpec) copia DUoM Ratio de TrackingSpec al IJL
+  → Para cada ILE: codeunit 50110 (ILECopyTrackingFromItemJnlLine)
+      ↓ Prioridad: DUoM Lot Ratio (50102) > IJL.DUoM Ratio
+      ↓ ILE.DUoM Ratio = AppliedRatio
+      ↓ ILE.DUoM Second Qty = Abs(ILE.Quantity) × AppliedRatio
+Item Ledger Entry  ✓
 ```
 
-> **Nota Issue 21:** El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line`
-> (que pre-rellenaba DUoM Ratio/Second Qty al validar Lot No.) fue eliminado porque asumía
-> incorrectamente que 1 línea = 1 lote. El mecanismo productivo principal es el flujo de
-> posting descrito arriba (TryApplyLotRatioToILE en OnAfterInitItemLedgEntry).
+> **Nota Issues 21–23:** El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line`
+> fue eliminado (Issue 21) porque asumía incorrectamente 1 línea = 1 lote. El mecanismo
+> productivo pasó a ser el patrón `OnAfterCopyTracking*` de `Package Management (6516)`
+> (Issue 23, codeunit 50110 `DUoM Tracking Copy Subscribers`). Ver
+> `docs/03-technical-architecture.md` — sección "Modelo 1:N" para el historial completo.
 
 ### Comportamiento por modo de conversión
 
@@ -287,10 +288,13 @@ historical analysis is possible without recalculation.
 
 ## Ratio real por lote — Resumen para módulo Inventario
 
-El ratio real por lote se almacena en la tabla `DUoM Lot Ratio` (50102) y se aplica
-automáticamente a cada `Item Ledger Entry` (ILE) durante la contabilización, según
-el mecanismo `TryApplyLotRatioToILE` en `OnAfterInitItemLedgEntry`. Este mecanismo
-es el punto único de verdad para la ratio DUoM real por lote.
+El ratio real por lote se almacena en la tabla `DUoM Lot Ratio` (50102) y se pre-rellena
+automáticamente en `Tracking Specification` al asignar un lote en Item Tracking Lines
+(codeunit 50109 `DUoM Tracking Subscribers`). Durante la contabilización, el ratio llega
+al `Item Ledger Entry` mediante la cadena
+`Tracking Specification → Item Journal Line → Item Ledger Entry` implementada en
+codeunit 50110 (`DUoM Tracking Copy Subscribers`). Ver la sección anterior
+"Flujo de integración implementado" para el detalle completo.
 
 > **Importante:** los campos DUoM de la línea origen (Diario de productos, línea de compra
 > o venta) son **totales agregados**. La ratio real por lote queda en el ILE de cada lote,
