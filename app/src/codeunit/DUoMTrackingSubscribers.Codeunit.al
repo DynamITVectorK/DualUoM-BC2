@@ -8,10 +8,12 @@
 /// Comportamiento por modo:
 ///   Fixed:             DUoM Ratio = Fixed Ratio del artículo/variante. El ratio de
 ///                      lote registrado en DUoM Lot Ratio (50102) NO sobreescribe.
-///   Variable:          DUoM Ratio = ratio del lote si existe en DUoM Lot Ratio;
-///                      si no existe, DUoM Ratio permanece sin cambios.
-///   AlwaysVariable:    DUoM Ratio = ratio del lote si existe en DUoM Lot Ratio;
-///                      si no existe, DUoM Ratio permanece sin cambios.
+///   Variable:          Prioridad de ratio:
+///                        1. Ratio manual ya informado en Tracking Specification (≠ 0).
+///                        2. DUoM Lot Ratio para Item/Lot si existe.
+///                        3. DUoM Ratio de la Purchase Line origen (fallback) si DUoM Ratio = 0.
+///                        4. Sin cambios si no hay ratio disponible.
+///   AlwaysVariable:    Misma prioridad que Variable.
 ///
 /// Patrón thin subscriber: los suscriptores validan condiciones de salida rápida
 /// y delegan la lógica al helper centralizado (ApplyLotRatioToTrackingSpec,
@@ -61,7 +63,8 @@ codeunit 50109 "DUoM Tracking Subscribers"
     /// Aplica la ratio DUoM correspondiente a los campos del Tracking Specification.
     /// En modo Fixed: aplica el ratio fijo del artículo/variante.
     /// En modo Variable/AlwaysVariable: aplica el ratio del lote si existe en DUoM Lot Ratio;
-    /// si no existe, deja los campos DUoM sin cambios.
+    /// si no existe, usa el ratio de la Purchase Line origen como fallback cuando DUoM Ratio = 0;
+    /// si tampoco hay Purchase Line con ratio, deja los campos DUoM sin cambios.
     /// </summary>
     local procedure ApplyLotRatioToTrackingSpec(var TrackingSpec: Record "Tracking Specification")
     var
@@ -94,8 +97,14 @@ codeunit 50109 "DUoM Tracking Subscribers"
         end;
 
         // Variable / AlwaysVariable: aplica el ratio del lote si existe.
-        if not DUoMLotRatio.Get(TrackingSpec."Item No.", TrackingSpec."Lot No.") then
-            exit; // Sin ratio para este lote — campos DUoM sin cambios (T02).
+        if not DUoMLotRatio.Get(TrackingSpec."Item No.", TrackingSpec."Lot No.") then begin
+            // Sin ratio de lote para esta combinación artículo/lote:
+            // - Si ya hay un ratio manual en la línea (≠ 0), no sobrescribir.
+            // - Si DUoM Ratio = 0, intentar fallback desde la Purchase Line origen.
+            if TrackingSpec."DUoM Ratio" = 0 then
+                TryApplyPurchLineFallback(TrackingSpec, RoundingPrecision);
+            exit;
+        end;
 
         AppliedRatio := DUoMLotRatio."Actual Ratio";
         TrackingSpec."DUoM Ratio" := AppliedRatio;
@@ -128,5 +137,46 @@ codeunit 50109 "DUoM Tracking Subscribers"
 
         TrackingSpec."DUoM Second Qty" := Round(
             Abs(TrackingSpec."Quantity (Base)") * TrackingSpec."DUoM Ratio", RoundingPrecision);
+    end;
+
+    /// <summary>
+    /// Fallback: aplica el DUoM Ratio de la Purchase Line origen cuando no existe
+    /// ratio de lote en DUoM Lot Ratio y DUoM Ratio de la línea de tracking es cero.
+    ///
+    /// Solo aplica cuando:
+    ///   1. Source Type de la Tracking Specification es Purchase Line.
+    ///   2. La Purchase Line origen existe en base de datos y tiene DUoM Ratio > 0.
+    ///   3. DUoM Ratio en la Tracking Specification es 0 (sin ratio manual ni de lote previo).
+    ///
+    /// Prioridad de ratio: manual (≠ 0) > DUoM Lot Ratio > Purchase Line (este procedimiento).
+    /// Publisher: invocado desde ApplyLotRatioToTrackingSpec al validar Lot No.
+    /// Firma verificada: Purchase Line.Get(DocType, DocNo, LineNo) — BC 27 / runtime 15.
+    /// </summary>
+    local procedure TryApplyPurchLineFallback(
+        var TrackingSpec: Record "Tracking Specification";
+        RoundingPrecision: Decimal)
+    var
+        PurchLine: Record "Purchase Line";
+    begin
+        // Solo aplica cuando la fuente es una Purchase Line
+        if TrackingSpec."Source Type" <> Database::"Purchase Line" then
+            exit;
+
+        // Intentar recuperar la Purchase Line origen por su clave primaria
+        if not PurchLine.Get(
+                "Purchase Document Type".FromInteger(TrackingSpec."Source Subtype"),
+                TrackingSpec."Source ID",
+                TrackingSpec."Source Ref. No.") then
+            exit;
+
+        // Si la Purchase Line no tiene ratio DUoM, no hay fallback disponible
+        if PurchLine."DUoM Ratio" = 0 then
+            exit;
+
+        // Aplicar ratio de la Purchase Line como fallback
+        TrackingSpec."DUoM Ratio" := PurchLine."DUoM Ratio";
+        TrackingSpec."DUoM Second Qty" := Round(
+            Abs(TrackingSpec."Quantity (Base)") * PurchLine."DUoM Ratio",
+            RoundingPrecision);
     end;
 }

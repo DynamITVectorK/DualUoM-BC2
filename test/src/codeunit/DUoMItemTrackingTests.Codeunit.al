@@ -12,6 +12,12 @@
 ///   T07 — Artículo sin DUoM activo → Validate("Lot No.") sin error, campos DUoM = 0
 ///   T08 — Reservation Entry acepta DUoM Ratio propagado desde Tracking Specification
 ///   T09 — Round-trip: ReservEntry → TrackingSpec conserva DUoM Ratio
+///   T10 — ReservEntry.CopyTrackingFromReservEntry propaga DUoM Ratio
+///   T11 — Artículo sin DUoM activo: CopyTrackingFromReservEntry no establece DUoM
+///   T12 — Variable + sin ratio de lote + fuente Purchase Line → fallback a PurchLine.DUoM Ratio
+///   T13 — Variable + ratio de lote existe → ratio de lote gana sobre Purchase Line
+///   T14 — Variable + sin ratio de lote + ratio manual en tracking → no sobrescribir
+///   T15 — Múltiples lotes sin ratio → cada lote recibe fallback de la misma Purchase Line
 ///
 /// Arquitectura de tests:
 ///   T01–T04, T07–T09: tests unitarios sobre buffers in-memory (sin Insert).
@@ -20,6 +26,9 @@
 ///   T05–T06:          tests de integración E2E usando IJL + Library - Item Tracking.
 ///                     Verifican coherencia entre tracking y ILE resultante del posting.
 ///                     T06 demuestra el modelo 1:N (1 línea origen = N lotes = N ILEs con ratio propio).
+///   T12–T15:          tests unitarios del fallback Purchase Line (bugfix). Requieren
+///                     Purchase Line real en BD para que PurchLine.Get() tenga éxito.
+///                     Sin Insert de Tracking Specification (buffer in-memory + fuente real).
 /// </summary>
 codeunit 50218 "DUoM Item Tracking Tests"
 {
@@ -526,5 +535,253 @@ codeunit 50218 "DUoM Item Tracking Tests"
         // [THEN] DUoM Second Qty sigue siendo 0
         LibraryAssert.AreEqual(0, ToReservEntry."DUoM Second Qty",
             'DUoM Second Qty debe ser 0 para artículos sin DUoM activo.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T12 — Variable + sin ratio de lote + fuente Purchase Line → fallback a PurchLine
+    //
+    // Verifica el bugfix principal: cuando no existe DUoM Lot Ratio para el lote y
+    // DUoM Ratio de la línea es 0, el subscriber aplica como fallback el DUoM Ratio
+    // de la Purchase Line origen. Cubre el escenario reportado en el issue donde los
+    // campos DUoM quedaban a cero al asignar un lote nuevo sin ratio registrado.
+    //
+    // Fuente de fallback: Tracking Specification.Source Type/Subtype/ID/Ref. No.
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingSpec_Variable_NoLotRatio_PurchLineFallback_DUoMApplied()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+
+        // [GIVEN] Purchase Line con Quantity = 1 y DUoM Ratio = 1.25
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 1);
+        PurchLine."DUoM Ratio" := 1.25;
+        PurchLine.Modify(false);
+
+        // [GIVEN] Lote SIN ratio registrado en DUoM Lot Ratio
+        // (intencionalmente no se llama a CreateLotRatio para 'LOT-T12')
+
+        // [GIVEN] Tracking Specification apuntando a la Purchase Line, DUoM Ratio = 0
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Quantity (Base)" := 1;
+        TrackingSpec."Source Type" := Database::"Purchase Line";
+        TrackingSpec."Source Subtype" := PurchLine."Document Type".AsInteger();
+        TrackingSpec."Source ID" := PurchLine."Document No.";
+        TrackingSpec."Source Ref. No." := PurchLine."Line No.";
+
+        // [WHEN] Validate Lot No. = 'LOT-T12' (sin ratio de lote)
+        TrackingSpec.Validate("Lot No.", 'LOT-T12');
+
+        // [THEN] DUoM Ratio = 1.25 (fallback desde Purchase Line)
+        LibraryAssert.AreEqual(1.25, TrackingSpec."DUoM Ratio",
+            'T12: DUoM Ratio debe ser el de la Purchase Line (1.25) cuando no hay ratio de lote.');
+
+        // [THEN] DUoM Second Qty = 1 × 1.25 = 1.25
+        LibraryAssert.AreNearlyEqual(1.25, TrackingSpec."DUoM Second Qty", 0.001,
+            'T12: DUoM Second Qty debe ser Quantity (Base) × DUoM Ratio de Purchase Line.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T13 — Variable + ratio de lote existe → ratio de lote gana sobre Purchase Line
+    //
+    // Verifica que cuando existe DUoM Lot Ratio para el lote, este tiene prioridad
+    // sobre el DUoM Ratio de la Purchase Line (fallback). El fallback de Purchase Line
+    // solo se activa cuando no existe ratio de lote.
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingSpec_Variable_LotRatioExists_LotRatioWinsOverPurchLine()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+
+        // [GIVEN] Purchase Line con DUoM Ratio = 1.25
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 1);
+        PurchLine."DUoM Ratio" := 1.25;
+        PurchLine.Modify(false);
+
+        // [GIVEN] Ratio de lote registrado: 1.10 para (ItemNo, 'LOT-T13')
+        DUoMTestHelpers.CreateLotRatio(Item."No.", 'LOT-T13', 1.10);
+
+        // [GIVEN] Tracking Specification apuntando a la Purchase Line, DUoM Ratio = 0
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Quantity (Base)" := 1;
+        TrackingSpec."Source Type" := Database::"Purchase Line";
+        TrackingSpec."Source Subtype" := PurchLine."Document Type".AsInteger();
+        TrackingSpec."Source ID" := PurchLine."Document No.";
+        TrackingSpec."Source Ref. No." := PurchLine."Line No.";
+
+        // [WHEN] Validate Lot No. = 'LOT-T13' (con ratio de lote registrado)
+        TrackingSpec.Validate("Lot No.", 'LOT-T13');
+
+        // [THEN] DUoM Ratio = 1.10 (ratio de lote, NO el 1.25 de la Purchase Line)
+        LibraryAssert.AreEqual(1.10, TrackingSpec."DUoM Ratio",
+            'T13: DUoM Ratio debe ser el ratio de lote (1.10), no el de Purchase Line (1.25).');
+
+        // [THEN] DUoM Second Qty = 1 × 1.10 = 1.10
+        LibraryAssert.AreNearlyEqual(1.10, TrackingSpec."DUoM Second Qty", 0.001,
+            'T13: DUoM Second Qty debe calcularse con el ratio de lote (1.10).');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T14 — Variable + sin ratio de lote + ratio manual preexistente → no sobrescribir
+    //
+    // Verifica que si la línea de tracking ya tiene un DUoM Ratio introducido
+    // manualmente (≠ 0), el fallback de Purchase Line no lo sobrescribe.
+    // Regla: prioridad manual > DUoM Lot Ratio > Purchase Line.
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingSpec_Variable_ManualRatioSet_FallbackDoesNotOverwrite()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+
+        // [GIVEN] Purchase Line con DUoM Ratio = 1.25
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 1);
+        PurchLine."DUoM Ratio" := 1.25;
+        PurchLine.Modify(false);
+
+        // [GIVEN] Lote SIN ratio de lote
+        // (no se llama a CreateLotRatio para 'LOT-T14')
+
+        // [GIVEN] Tracking Specification con ratio manual 1.40 ya informado
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Quantity (Base)" := 2;
+        TrackingSpec."DUoM Ratio" := 1.40; // Ratio manual preexistente
+        TrackingSpec."Source Type" := Database::"Purchase Line";
+        TrackingSpec."Source Subtype" := PurchLine."Document Type".AsInteger();
+        TrackingSpec."Source ID" := PurchLine."Document No.";
+        TrackingSpec."Source Ref. No." := PurchLine."Line No.";
+
+        // [WHEN] Validate Lot No. = 'LOT-T14' (sin ratio de lote)
+        TrackingSpec.Validate("Lot No.", 'LOT-T14');
+
+        // [THEN] DUoM Ratio permanece en 1.40 (ratio manual — no sobrescrito por fallback)
+        LibraryAssert.AreEqual(1.40, TrackingSpec."DUoM Ratio",
+            'T14: DUoM Ratio manual (1.40) no debe ser sobrescrito por el fallback de Purchase Line.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T15 — Múltiples lotes sin ratio de lote → fallback de Purchase Line para cada lote
+    //
+    // Verifica el modelo 1:N sin relación línea-lote: una Purchase Line con DUoM Ratio = 0.8
+    // y dos lotes sin ratio registrado. Ambos lotes deben recibir el fallback de la
+    // Purchase Line de forma independiente, con DUoM Second Qty calculada por lote.
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingSpec_Variable_TwoLots_NoLotRatio_BothGetPurchLineFallback()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        TrackingSpecA: Record "Tracking Specification";
+        TrackingSpecB: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+
+        // [GIVEN] Purchase Line con Quantity = 10 y DUoM Ratio = 0.8
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine."DUoM Ratio" := 0.8;
+        PurchLine.Modify(false);
+
+        // [GIVEN] Dos lotes SIN ratio registrado en DUoM Lot Ratio
+        // (intencionalmente sin CreateLotRatio)
+
+        // [GIVEN] Tracking Specification para LOTE-A (6 uds) apuntando a la misma PurchLine
+        TrackingSpecA.Init();
+        TrackingSpecA."Entry No." := 1;
+        TrackingSpecA."Item No." := Item."No.";
+        TrackingSpecA."Quantity (Base)" := 6;
+        TrackingSpecA."Source Type" := Database::"Purchase Line";
+        TrackingSpecA."Source Subtype" := PurchLine."Document Type".AsInteger();
+        TrackingSpecA."Source ID" := PurchLine."Document No.";
+        TrackingSpecA."Source Ref. No." := PurchLine."Line No.";
+
+        // [GIVEN] Tracking Specification para LOTE-B (4 uds) apuntando a la misma PurchLine
+        TrackingSpecB.Init();
+        TrackingSpecB."Entry No." := 2;
+        TrackingSpecB."Item No." := Item."No.";
+        TrackingSpecB."Quantity (Base)" := 4;
+        TrackingSpecB."Source Type" := Database::"Purchase Line";
+        TrackingSpecB."Source Subtype" := PurchLine."Document Type".AsInteger();
+        TrackingSpecB."Source ID" := PurchLine."Document No.";
+        TrackingSpecB."Source Ref. No." := PurchLine."Line No.";
+
+        // [WHEN] Validate Lot No. para ambos lotes
+        TrackingSpecA.Validate("Lot No.", 'LOTE-T15A');
+        TrackingSpecB.Validate("Lot No.", 'LOTE-T15B');
+
+        // [THEN] LOTE-A: DUoM Ratio = 0.8 (fallback PurchLine), DUoM Second Qty = 6 × 0.8 = 4.8
+        LibraryAssert.AreEqual(0.8, TrackingSpecA."DUoM Ratio",
+            'T15: LOTE-A — DUoM Ratio debe ser el fallback de Purchase Line (0.8).');
+        LibraryAssert.AreNearlyEqual(4.8, TrackingSpecA."DUoM Second Qty", 0.001,
+            'T15: LOTE-A — DUoM Second Qty debe ser 6 × 0.8 = 4.8.');
+
+        // [THEN] LOTE-B: DUoM Ratio = 0.8 (fallback PurchLine), DUoM Second Qty = 4 × 0.8 = 3.2
+        LibraryAssert.AreEqual(0.8, TrackingSpecB."DUoM Ratio",
+            'T15: LOTE-B — DUoM Ratio debe ser el fallback de Purchase Line (0.8).');
+        LibraryAssert.AreNearlyEqual(3.2, TrackingSpecB."DUoM Second Qty", 0.001,
+            'T15: LOTE-B — DUoM Second Qty debe ser 4 × 0.8 = 3.2.');
     end;
 }
