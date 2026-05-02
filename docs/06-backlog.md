@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-01 (issue 190 completado)
+> **Última actualización:** 2026-05-02 (issue fix/test persistencia DUoM Item Tracking Lines completado)
 
 ### Issues completados ✅
 
@@ -41,6 +41,7 @@ GitHub Copilot Coding Agent.
 | 180 | docs: política definitiva AlwaysVariable + lotes en docs troncales |
 | P2-persistence | docs: matriz de persistencia DUoM por flujo y tabla (source of truth) |
 | 190 | fix: propagar DUoM Ratio y DUoM Second Qty a Reservation Entry usando `OnAfterCopyTrackingFromTrackingSpec` |
+| fix/test-persist | fix/test: validar y corregir persistencia DUoM en Item Tracking Lines de pedido de compra (codeunit 50219) |
 
 ### Próximo issue pendiente
 
