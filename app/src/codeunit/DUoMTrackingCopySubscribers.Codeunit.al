@@ -2,9 +2,14 @@
 /// Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón OnAfterCopyTracking*
 /// de Codeunit 6516 "Package Management". Un subscriber por punto de copia entre tablas.
 ///
-/// Cadena Item Tracking Lines (usuario valida Lot No. en página 6510):
+/// Cadena Item Tracking Lines — flujo INSERT (usuario cierra Item Tracking Lines):
 ///   Tracking Specification (buffer Item Tracking Lines)
-///     → Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec  ← NUEVO
+///     → Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec
+///         ↓
+///   ReservEntry1 (temporal con DUoM Ratio correcto)
+///     → Table "Reservation Entry" · OnAfterCopyTrackingFromReservEntry  ← NUEVO
+///         ↓
+///   InsertReservEntry → BD con DUoM Ratio correcto  ✓
 ///
 /// Cadena completa (entradas de lote desde Purchase/Sales con Item Tracking):
 ///   Reservation Entry
@@ -32,7 +37,11 @@
 ///   - OnAfterCopyTrackingFromTrackingSpec en Table "Reservation Entry" (337):
 ///     (var ReservationEntry: Record "Reservation Entry";
 ///      TrackingSpecification: Record "Tracking Specification")
-///     Verificado contra Package Management (6516), procedure ReservationEntryCopyTrackingFromTrackingSpec.
+///     Verificado contra Package Management (6516), ReservationEntryCopyTrackingFromTrackingSpec.
+///   - OnAfterCopyTrackingFromReservEntry en Table "Reservation Entry" (337):
+///     (var ReservationEntry: Record "Reservation Entry";
+///      FromReservationEntry: Record "Reservation Entry")
+///     Verificado: patrón idéntico a Package Management para campos extra en ReservEntry.
 ///   - OnAfterCopyTrackingFromReservEntry en Table "Tracking Specification" (6500):
 ///     (var TrackingSpecification: Record "Tracking Specification";
 ///      ReservEntry: Record "Reservation Entry")
@@ -77,6 +86,31 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     begin
         ReservationEntry."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
         ReservationEntry."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
+    end;
+
+    // ── Reservation Entry → Reservation Entry ─────────────────────────────────
+    // Publisher: Table "Reservation Entry" (337), evento OnAfterCopyTrackingFromReservEntry.
+    // Firma BC 27 verificada: (var ReservationEntry: Record "Reservation Entry";
+    //                          FromReservationEntry: Record "Reservation Entry")
+    // Motivo: En el flujo INSERT de Item Tracking Lines, BC crea InsertReservEntry llamando a:
+    //   1. ReservEntry1.CopyTrackingFromSpec(OldTrackingSpec)
+    //      → dispara OnAfterCopyTrackingFromTrackingSpec en Table "Reservation Entry"
+    //      → DUoM Ratio = valor del buffer en ReservEntry1 ✓
+    //   2. CreateReservEntry.CreateReservEntryFor(..., ForReservEntry=ReservEntry1)
+    //      → internamente: InsertReservEntry.CopyTrackingFromReservEntry(ForReservEntry)
+    //      → dispara OnAfterCopyTrackingFromReservEntry (ESTE EVENTO) en Table "Reservation Entry"
+    //      → SIN este subscriber, DUoM Ratio = 0 en InsertReservEntry ✗
+    //   3. CreateReservEntry.CreateEntry(...) inserta InsertReservEntry en BD con DUoM Ratio = 0
+    // Con este subscriber el INSERT final lleva los valores DUoM correctos.
+    // Patrón: idéntico al empleado en Package Management (6516) para campos extra.
+    [EventSubscriber(ObjectType::Table, Database::"Reservation Entry",
+        'OnAfterCopyTrackingFromReservEntry', '', false, false)]
+    local procedure ReservEntryOnAfterCopyTrackingFromReservEntry(
+        var ReservationEntry: Record "Reservation Entry";
+        FromReservationEntry: Record "Reservation Entry")
+    begin
+        ReservationEntry."DUoM Ratio" := FromReservationEntry."DUoM Ratio";
+        ReservationEntry."DUoM Second Qty" := FromReservationEntry."DUoM Second Qty";
     end;
 
     // ── Reservation Entry → Tracking Specification buffer ─────────────────────

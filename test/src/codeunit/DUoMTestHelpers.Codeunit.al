@@ -237,4 +237,53 @@ codeunit 50208 "DUoM Test Helpers"
         ReservEntry."DUoM Second Qty" := Qty * DUoMRatio;
         ReservEntry.Insert(true);
     end;
+
+    /// <summary>
+    /// Asigna un lote a una Sales Line y escribe DUoM Ratio en la
+    /// Reservation Entry correspondiente (entrada saliente / outbound).
+    ///
+    /// Análogo a AssignLotWithDUoMRatioToPurchLine pero para Sales Lines.
+    /// Crea una Reservation Entry negativa (salida) con DUoM Ratio incluido.
+    ///
+    /// Parámetros:
+    ///   SalesLine  — La línea de venta a la que asignar la trazabilidad de lote.
+    ///   LotNo      — Número de lote a asignar.
+    ///   Qty        — Cantidad positiva (user-facing); la ReservEntry almacena -Qty.
+    ///   DUoMRatio  — Ratio DUoM a registrar en Reservation Entry.
+    /// </summary>
+    procedure AssignLotWithDUoMRatioToSalesLine(
+        var SalesLine: Record "Sales Line";
+        LotNo: Code[50];
+        Qty: Decimal;
+        DUoMRatio: Decimal)
+    var
+        ReservEntry: Record "Reservation Entry";
+        NextEntryNo: Integer;
+    begin
+        ReservEntry.LockTable();
+        if ReservEntry.FindLast() then
+            NextEntryNo := ReservEntry."Entry No." + 1
+        else
+            NextEntryNo := 1;
+        ReservEntry.Init();
+        ReservEntry."Entry No." := NextEntryNo;
+        ReservEntry.Positive := false;
+        ReservEntry."Item No." := SalesLine."No.";
+        ReservEntry."Variant Code" := SalesLine."Variant Code";
+        ReservEntry."Location Code" := SalesLine."Location Code";
+        ReservEntry."Lot No." := LotNo;
+        ReservEntry."Quantity (Base)" := -Qty;
+        ReservEntry."Qty. to Handle (Base)" := -Qty;
+        ReservEntry."Qty. to Invoice (Base)" := -Qty;
+        ReservEntry."Source Type" := Database::"Sales Line";
+        ReservEntry."Source Subtype" := SalesLine."Document Type".AsInteger();
+        ReservEntry."Source ID" := SalesLine."Document No.";
+        ReservEntry."Source Batch Name" := '';
+        ReservEntry."Source Prod. Order Line" := 0;
+        ReservEntry."Source Ref. No." := SalesLine."Line No.";
+        ReservEntry."Reservation Status" := ReservEntry."Reservation Status"::Surplus;
+        ReservEntry."DUoM Ratio" := DUoMRatio;
+        ReservEntry."DUoM Second Qty" := Qty * DUoMRatio;
+        ReservEntry.Insert(true);
+    end;
 }

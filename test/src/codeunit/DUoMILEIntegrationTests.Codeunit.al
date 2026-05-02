@@ -633,4 +633,81 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'NO debe existir Tracking Specification para el lote (el helper no debe insertar en TrackingSpec)');
     end;
 
+    // -------------------------------------------------------------------------
+    // TEST 6 (= T03 del issue: SalesLine_ItemTracking_DUoMValuesFromReservEntryOnPost)
+    //
+    // Verifica que la cadena Item Tracking en Sales Order propaga DUoM Ratio
+    // correctamente desde Reservation Entry hasta el ILE de salida:
+    //   ReservEntry (Positive=false, DUoM=1.25)
+    //     → TrackingSpec (OnAfterCopyTrackingFromReservEntry en 50110)
+    //     → IJL split (OnAfterCopyTrackingFromSpec en 50110)
+    //     → ILE venta (OnAfterCopyTrackingFromItemJnlLine en 50110)
+    //
+    // Preparación:
+    //   1. Crear inventario vía Purchase Order con lote + DUoM = 1.25
+    //   2. Crear Sales Order con ReservEntry outbound para ese lote + DUoM = 1.25
+    //   3. Contabilizar Sales Order (solo envío)
+    //   4. Verificar ILE de venta tiene DUoM Ratio = 1.25 · DUoM Second Qty = 5 × 1.25
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure SalesLine_ItemTracking_DUoMValuesFromReservEntryOnPost()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        Customer: Record Customer;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+    begin
+        // [GIVEN] Artículo modo Variable, sin ratio fijo; Item Tracking habilitado
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        LotNo := 'LOT-ILE6';
+
+        // [GIVEN] Inventario creado vía Purchase Order: 10 uds · lote LOT-ILE6 · DUoM = 1.25
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order,
+            Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader,
+            PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNo, 10, 1.25);
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [GIVEN] Pedido de venta: 5 uds con lote LOT-ILE6 · DUoM = 1.25
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order,
+            Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item,
+            Item."No.", 0);
+        SalesLine.Validate(Quantity, 5);
+        SalesLine.Modify(true);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, LotNo, 5, 1.25);
+
+        // [WHEN] Se registra el pedido de venta (solo envío)
+        LibrarySales.PostSalesDocument(SalesHeader, true, false);
+
+        // [THEN] ILE de venta: DUoM Ratio = 1.25 · DUoM Second Qty = 5 × 1.25 = 6.25
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
+        ILE.SetRange("Lot No.", LotNo);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'T03: Se esperaba un ILE de venta para el lote LOT-ILE6.');
+        LibraryAssert.AreNearlyEqual(1.25, ILE."DUoM Ratio", 0.001,
+            'T03: ILE venta DUoM Ratio debe ser 1.25.');
+        LibraryAssert.AreNearlyEqual(6.25, ILE."DUoM Second Qty", 0.001,
+            'T03: ILE venta DUoM Second Qty = 5 × 1.25 = 6.25.');
+    end;
+
 }
