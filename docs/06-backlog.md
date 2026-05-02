@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-02 (Issue análisis-item-tracking: análisis técnico del ciclo de vida de Item Tracking y puntos de validación DUoM — documento creado en `docs/duom-item-tracking-validation-analysis.md`)
+> **Última actualización:** 2026-05-02 (Issue hardening-item-tracking: tests E2E de bloqueo en posting DUoM con lotes — codeunit 50221 añadido; flujo Purchase Order con Item Tracking probado end-to-end)
 
 ### Issues completados ✅
 
@@ -45,6 +45,7 @@ GitHub Copilot Coding Agent.
 | bug/tracking-flow | 🐛 fix: campos DUoM no viajan por flujo Item Tracking — añadido subscriber `OnAfterCopyTrackingFromReservEntry` en Table "Reservation Entry" (337); tests T01-T05 añadidos (50218, 50219, 50209) |
 | 25 | Completar patrón OnAfterCopyTracking* en DUoMTrackingCopySubscribers: Clear/Blank en TrackingSpec, ReservEntry e IJL; Copy buffer→buffer y ILE→buffer en TrackingSpec; CopyFromNewItemJnlLine en ILE |
 | análisis-item-tracking | docs: análisis técnico del ciclo de vida de Item Tracking y puntos de validación/propagación DUoM — `docs/duom-item-tracking-validation-analysis.md` |
+| hardening-item-tracking | test: hardening E2E del flujo Purchase Order con Item Tracking — codeunit 50221 `DUoM Purch Tracking Post Tests`; 4 tests de bloqueo en posting (suma baja, suma alta, AlwaysVariable sin ratio, Fixed ratio incorrecto) |
 
 ### Próximo issue pendiente
 
