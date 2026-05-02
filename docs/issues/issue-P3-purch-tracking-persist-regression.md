@@ -93,8 +93,7 @@ ReservEntry (Source = Purchase Line, Lot = LOT-DUOM-001, DUoM Ratio=1.25, DUoM S
 → Página muestra valores correctos
 ```
 
-**Subscribers:** `TrackingSpecCopyTrackingFromReservEntry` y
-`TrackingSpecOnAfterInitFromReservEntry` en codeunit 50110.
+**Subscribers:** `TrackingSpecCopyTrackingFromReservEntry` en codeunit 50110.
 
 ### Enlace Purchase Line → Reservation Entry
 
