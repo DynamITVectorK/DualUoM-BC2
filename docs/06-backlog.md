@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-02 (Issue 25: patrón OnAfterCopyTracking* completado — subscribers Clear/Blank y Copy adicionales añadidos a codeunit 50110)
+> **Última actualización:** 2026-05-02 (Issue análisis-item-tracking: análisis técnico del ciclo de vida de Item Tracking y puntos de validación DUoM — documento creado en `docs/duom-item-tracking-validation-analysis.md`)
 
 ### Issues completados ✅
 
@@ -44,6 +44,7 @@ GitHub Copilot Coding Agent.
 | fix/test-persist | fix/test: validar y corregir persistencia DUoM en Item Tracking Lines de pedido de compra (codeunit 50219) |
 | bug/tracking-flow | 🐛 fix: campos DUoM no viajan por flujo Item Tracking — añadido subscriber `OnAfterCopyTrackingFromReservEntry` en Table "Reservation Entry" (337); tests T01-T05 añadidos (50218, 50219, 50209) |
 | 25 | Completar patrón OnAfterCopyTracking* en DUoMTrackingCopySubscribers: Clear/Blank en TrackingSpec, ReservEntry e IJL; Copy buffer→buffer y ILE→buffer en TrackingSpec; CopyFromNewItemJnlLine en ILE |
+| análisis-item-tracking | docs: análisis técnico del ciclo de vida de Item Tracking y puntos de validación/propagación DUoM — `docs/duom-item-tracking-validation-analysis.md` |
 
 ### Próximo issue pendiente
 
