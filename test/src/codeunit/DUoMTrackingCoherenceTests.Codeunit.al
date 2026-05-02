@@ -390,10 +390,11 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
     // ── Helpers privados ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// Ajusta DUoM Second Qty en la última Reservation Entry insertada para el lote indicado.
-    /// Necesario porque AssignLotWithDUoMRatioToPurchLine calcula DUoM Second Qty = Qty * Ratio
-    /// en un solo paso, pero los tests T01–T03 requieren cantidades enteras exactas (e.g. 5 PCS)
-    /// sin depender del redondeo de la multiplicación.
+    /// Sobrescribe DUoM Second Qty en la última Reservation Entry insertada para el lote indicado.
+    /// Permite configurar deliberadamente estados incoherentes (p. ej. suma de lotes ≠ línea)
+    /// que son necesarios en los tests negativos T02 y T03 sin depender del valor calculado
+    /// automáticamente por AssignLotWithDUoMRatioToPurchLine (Qty × Ratio), que puede diferir
+    /// del entero exacto que el test quiere provocar como error.
     /// </summary>
     local procedure SetDUoMSecondQtyOnLastReservEntry(
         ItemNo: Code[20];

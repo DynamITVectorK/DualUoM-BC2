@@ -67,7 +67,11 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         RoundingPrecision := GetDUoMRoundingPrecision(PurchLine."No.", SecondUoMCode);
 
         // Total comparison: only when the Purchase Line carries a DUoM total.
-        // AlwaysVariable lines may legitimately have DUoM Second Qty = 0 on the line.
+        // AlwaysVariable lines may legitimately have DUoM Second Qty = 0 on the line
+        // (user did not fill it in; each lot carries its own DUoM data in tracking).
+        // When PurchLine.DUoM Second Qty > 0 but TotalSecondQty = 0, the tracking
+        // entries exist (TotalBaseQty > 0) but carry no DUoM data — this IS an
+        // inconsistency and will be reported (difference = PurchLine.DUoM Second Qty).
         if PurchLine."DUoM Second Qty" > 0 then begin
             Difference := Abs(TotalSecondQty - PurchLine."DUoM Second Qty");
             if Difference > RoundingPrecision then
