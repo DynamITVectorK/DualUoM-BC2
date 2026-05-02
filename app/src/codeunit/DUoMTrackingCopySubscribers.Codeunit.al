@@ -319,21 +319,6 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         ReservationEntry."DUoM Second Qty" := 0;
     end;
 
-    // ── Item Journal Line: OnAfterClearTracking ───────────────────────────────
-    // Publisher: Table "Item Journal Line" (83)
-    // Patrón: Package Management — ItemJournalLineClearTracking
-    // Motivo: BC llama a ClearTracking al reinicializar el IJL.
-    //         Sin este subscriber, DUoM Ratio queda con valor residual en el IJL.
-    // Firma BC 27 verificada: (var ItemJournalLine: Record "Item Journal Line")
-    [EventSubscriber(ObjectType::Table, Database::"Item Journal Line",
-        'OnAfterClearTracking', '', false, false)]
-    local procedure IJLClearTracking(
-        var ItemJournalLine: Record "Item Journal Line")
-    begin
-        ItemJournalLine."DUoM Ratio" := 0;
-        ItemJournalLine."DUoM Second Qty" := 0;
-    end;
-
     // ── Item Ledger Entry: OnAfterCopyTrackingFromNewItemJnlLine ──────────────
     // Publisher: Table "Item Ledger Entry" (32)
     // Patrón: Package Management — ItemLedgerEntryCopyTrackingFromNewItemJnlLine
