@@ -198,8 +198,8 @@ Subscribers`, codeunit 50109) al asignar un lote en recepciones posteriores.
   `var ReservationEntry` modificable, contrariamente a lo documentado en Issue 22).
 - **Bug fix (tracking flow):** añadido subscriber `OnAfterCopyTrackingFromReservEntry` en
   Table "Reservation Entry" (337) para completar el Paso 2 del INSERT de Item Tracking Lines.
-- **Issue 25:** patrón Clear/Blank completado — `OnAfterClearTracking` en `Tracking Specification`,
-  `Reservation Entry` e `Item Journal Line`; `OnAfterSetTrackingBlank` y
+- **Issue 25:** patrón Clear/Blank completado — `OnAfterClearTracking` en `Tracking Specification`
+  y `Reservation Entry`; `OnAfterSetTrackingBlank` y
   `OnAfterCopyTrackingFromTrackingSpec` (buffer→buffer) en `Tracking Specification`;
   `OnAfterClearNewTracking` en `Reservation Entry`; `OnAfterCopyTrackingFromItemLedgEntry` en
   `Tracking Specification`; `OnAfterCopyTrackingFromNewItemJnlLine` en `Item Ledger Entry`.
@@ -210,6 +210,15 @@ Subscribers`, codeunit 50109) al asignar un lote en recepciones posteriores.
   final insertada con `DUoM Ratio = 0` aunque `ReservEntry1` ya tuviera el valor correcto.
   Patrón: idéntico al de `Package Management (6516)` para campos extra en Reservation Entry.
   Corrige el test `T-PERSIST-01` (era el único test fallando de 135).
+  **Excepción deliberada:** `OnAfterClearTracking` en `Item Journal Line` **no** está
+  implementado porque BC llama a `ClearTracking()` sobre el IJL durante `Validate("Lot No.")`
+  y durante el split de posting por lote. Si se añade un subscriber que ponga
+  `DUoM Ratio := 0` en ese evento, se borran los valores DUoM del IJL antes de que los
+  subscribers `OnAfterInitItemLedgEntry` e `ILECopyTrackingFromItemJnlLine` puedan
+  utilizarlos, rompiendo toda la cadena de propagación. El comportamiento correcto es que
+  los campos DUoM del IJL **no** se borren cuando se limpia el tracking identificador
+  (Lot No./Serial No./Package No.): son campos económicos, no identificadores de trazabilidad.
+  Pruebas que lo confirman: T02, T03, T04–T09, T13, T14.
 
 ---
 
