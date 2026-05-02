@@ -93,6 +93,7 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
         // [WHEN] Se intenta registrar la compra (solo recepción)
         // [THEN] El posting se bloquea porque la suma DUoM de tracking (7) < línea (8)
         asserterror LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+        LibraryAssert.ExpectedError('does not match the DUoM quantity on the purchase line');
 
         // [THEN] No se ha creado ningún ILE (rollback completo de la transacción)
         ILE.SetRange("Item No.", Item."No.");
@@ -149,6 +150,7 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
         // [WHEN] Se intenta registrar la compra (solo recepción)
         // [THEN] El posting se bloquea porque la suma DUoM de tracking (9) > línea (8)
         asserterror LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+        LibraryAssert.ExpectedError('does not match the DUoM quantity on the purchase line');
 
         // [THEN] No se ha creado ningún ILE
         ILE.SetRange("Item No.", Item."No.");
@@ -210,6 +212,7 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
         // [THEN] El posting se bloquea porque AlwaysVariable exige ratio por lote
         //        (AlwaysVariableMissingRatioErr en DUoM Tracking Coherence Mgt)
         asserterror LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+        LibraryAssert.ExpectedError('requires a variable DUoM ratio per lot');
 
         // [THEN] No se ha creado ningún ILE
         ILE.SetRange("Item No.", Item."No.");
@@ -219,19 +222,18 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T-POST-07 — Fixed no permite ratio diferente al configurado (total mismatch)
+    // T-POST-07 — Fixed modo con ratio incorrecto: suma total mismatch bloquea
     //
-    // Caso del issue Test 7 — variante con total mismatch:
-    //   Artículo en modo Fixed, ratio fijo = 0.8.
-    //   Lote informado con DUoM Ratio = 0.9 (diferente al fijo).
-    //   DUoM Second Qty del lote = 10 × 0.9 = 9 ≠ PurchLine (8) → total mismatch.
-    //   El posting se bloquea por TrackingTotalMismatchErr (la suma 9 ≠ 8).
+    // Artículo en modo Fixed, ratio fijo = 0.8.
+    // Lote informado con DUoM Ratio = 0.9 → DUoM Second Qty = 9 ≠ PurchLine (8).
+    // El posting se bloquea por TrackingTotalMismatchErr (suma 9 ≠ 8).
     //
-    // Ver también PurchFixed_TotalOK_WrongRatioBlocked para el caso donde la suma
-    // coincide pero el ratio del lote sigue siendo distinto del ratio fijo.
+    // Nota: este test cubre el escenario donde el ratio incorrecto también produce
+    // un total mismatch. Para el caso donde el total coincide pero el ratio fijo
+    // sigue siendo incorrecto, ver PurchFixed_TotalOK_WrongRatioBlocked (T-POST-07B).
     // -------------------------------------------------------------------------
     [Test]
-    procedure PurchFixedWrongRatio_Blocked()
+    procedure PurchFixed_TotalMismatch_Blocked()
     var
         Item: Record Item;
         Vendor: Record Vendor;
@@ -266,6 +268,7 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
         // [WHEN] Se intenta registrar la compra
         // [THEN] El posting se bloquea porque la suma DUoM (9) ≠ línea (8)
         asserterror LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+        LibraryAssert.ExpectedError('does not match the DUoM quantity on the purchase line');
 
         // [THEN] No se ha creado ningún ILE
         ILE.SetRange("Item No.", Item."No.");
@@ -326,17 +329,18 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
         // [GIVEN] Se sobrescribe DUoM Second Qty a 8 para que la suma total coincida
         //         con la Purchase Line (8 == 8) y la comprobación de total pase.
         //         Así sólo la regla de ratio fijo actúa durante el posting.
-        OverrideDUoMSecondQtyOnReservEntry(Item."No.", 'LOTE-T7B', 8);
+        OverrideDUoMSecondQtyOnReservEntry(PurchLine, 'LOTE-T7B', 8);
 
         // [GIVEN] Se verifica que la sobrescritura se aplicó correctamente
         //         (si no, el test probaría un escenario diferente al pretendido)
-        VerifyReservEntryDUoMSecondQty(Item."No.", 'LOTE-T7B', 8, LibraryAssert);
+        VerifyReservEntryDUoMSecondQty(PurchLine, 'LOTE-T7B', 8, LibraryAssert);
 
         // [WHEN] Se intenta registrar la compra
         // [THEN] El posting se bloquea por FixedRatioMismatchErr:
         //         suma total = 8 == línea → comprobación de total PASA
         //         ratio del lote 0.9 ≠ ratio fijo 0.8 → FixedRatioMismatchErr
         asserterror LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+        LibraryAssert.ExpectedError('differs from the fixed ratio configured for item');
 
         // [THEN] No se ha creado ningún ILE
         ILE.SetRange("Item No.", Item."No.");
@@ -348,42 +352,53 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
     // ── Helpers privados ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// Sobrescribe DUoM Second Qty en la última Reservation Entry positiva
-    /// del lote indicado. Permite configurar escenarios donde el total de
-    /// tracking coincide con la Purchase Line pero el ratio del lote es
-    /// incoherente (necesario para aislar la regla FixedRatioMismatchErr).
-    /// Lanza error si no existe ninguna Reservation Entry para el lote.
+    /// Sobrescribe DUoM Second Qty en la Reservation Entry positiva del lote
+    /// asociada a la Purchase Line indicada. Filtra por todos los campos Source
+    /// para garantizar que se modifica exactamente la entrada vinculada a la línea
+    /// bajo prueba. Necesario para aislar la regla FixedRatioMismatchErr cuando el
+    /// total coincide pero el ratio del lote es incorrecto.
+    /// Lanza error si no existe ninguna Reservation Entry para la línea y lote.
     /// </summary>
     local procedure OverrideDUoMSecondQtyOnReservEntry(
-        ItemNo: Code[20];
+        PurchLine: Record "Purchase Line";
         LotNo: Code[50];
         SecondQty: Decimal)
     var
         ReservEntry: Record "Reservation Entry";
     begin
-        ReservEntry.SetRange("Item No.", ItemNo);
+        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
+        ReservEntry.SetRange("Source Subtype", PurchLine."Document Type".AsInteger());
+        ReservEntry.SetRange("Source ID", PurchLine."Document No.");
+        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
+        ReservEntry.SetRange("Item No.", PurchLine."No.");
         ReservEntry.SetRange("Lot No.", LotNo);
         ReservEntry.SetRange(Positive, true);
         if not ReservEntry.FindLast() then
-            Error('OverrideDUoMSecondQtyOnReservEntry: no Reservation Entry found for Item %1, Lot %2.',
-                ItemNo, LotNo);
+            Error('OverrideDUoMSecondQtyOnReservEntry: no Reservation Entry found for Document %1 Line %2, Lot %3.',
+                PurchLine."Document No.", PurchLine."Line No.", LotNo);
         ReservEntry."DUoM Second Qty" := SecondQty;
         ReservEntry.Modify(false);
     end;
 
     /// <summary>
-    /// Verifica que la última Reservation Entry positiva del lote tiene
-    /// DUoM Second Qty igual al valor esperado.
+    /// Verifica que la Reservation Entry positiva del lote asociada a la Purchase
+    /// Line indicada tiene DUoM Second Qty igual al valor esperado. Filtra por todos
+    /// los campos Source para garantizar que se lee exactamente la entrada vinculada
+    /// a la línea bajo prueba.
     /// </summary>
     local procedure VerifyReservEntryDUoMSecondQty(
-        ItemNo: Code[20];
+        PurchLine: Record "Purchase Line";
         LotNo: Code[50];
         ExpectedSecondQty: Decimal;
         var LibraryAssert: Codeunit "Library Assert")
     var
         ReservEntry: Record "Reservation Entry";
     begin
-        ReservEntry.SetRange("Item No.", ItemNo);
+        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
+        ReservEntry.SetRange("Source Subtype", PurchLine."Document Type".AsInteger());
+        ReservEntry.SetRange("Source ID", PurchLine."Document No.");
+        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
+        ReservEntry.SetRange("Item No.", PurchLine."No.");
         ReservEntry.SetRange("Lot No.", LotNo);
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindLast(),
