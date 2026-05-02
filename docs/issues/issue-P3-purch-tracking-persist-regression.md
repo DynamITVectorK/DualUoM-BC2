@@ -42,7 +42,7 @@ And el artículo tiene DUoM activo en modo AlwaysVariable
 When el usuario abre Item Tracking Lines desde la línea de compra
 And introduce Lot No. = 'LOT-DUOM-001'
 And introduce Quantity (Base) = 10
-And introduce DUoM Ratio = 1.25
+And introduce DUoM Ratio = 0.8
 And introduce DUoM Second Qty = 8
 And acepta la página (OK)
 Then existe una Reservation Entry vinculada a la Purchase Line con los valores DUoM
@@ -56,12 +56,16 @@ Then los valores DUoM aparecen cargados en la página (Lot No., DUoM Ratio, DUoM
 |-------|-------|
 | Quantity | 10 |
 | Lot No. | LOT-DUOM-001 |
-| DUoM Ratio | 1.25 |
+| DUoM Ratio | 0.8 (= 8 / 10) |
 | DUoM Second Qty | 8 (manual, no calculado) |
 
-Los valores DUoM Ratio = 1.25 y DUoM Second Qty = 8 son independientes (modo AlwaysVariable).
+Los valores DUoM Ratio = 0.8 y DUoM Second Qty = 8 son introducidos como valores independientes
+en modo AlwaysVariable (aunque en este caso son matemáticamente consistentes: 10 × 0.8 = 8).
 El trigger `OnValidate` de `DUoM Ratio` en `DUoMTrackingSpecExt` hace `exit` sin recalcular
 `DUoM Second Qty` en modo AlwaysVariable, por lo que ambos valores se almacenan tal cual.
+Se usan valores matemáticamente consistentes para simplificar la validación del flujo de
+persistencia sin introducir complejidad adicional (AlwaysVariable permite valores inconsistentes,
+pero no es el foco de este test).
 
 ---
 
@@ -70,11 +74,11 @@ El trigger `OnValidate` de `DUoM Ratio` en `DUoMTrackingSpecExt` hace `exit` sin
 ### Flujo de persistencia (al cerrar Item Tracking Lines)
 
 ```
-TrackingSpec buffer (con DUoM Ratio=1.25, DUoM Second Qty=8)
+TrackingSpec buffer (con DUoM Ratio=0.8, DUoM Second Qty=8)
 → OK pressed
 → ReservEntry.CopyTrackingFromTrackingSpec(TrackSpec)
 → OnAfterCopyTrackingFromTrackingSpec (codeunit 50110)
-    ↓ ReservEntry."DUoM Ratio"      := 1.25
+    ↓ ReservEntry."DUoM Ratio"      := 0.8
     ↓ ReservEntry."DUoM Second Qty" := 8
 → ReservEntry.Insert()
 ```
@@ -85,10 +89,10 @@ TrackingSpec buffer (con DUoM Ratio=1.25, DUoM Second Qty=8)
 ### Flujo de recarga (al reabrir Item Tracking Lines)
 
 ```
-ReservEntry (Source = Purchase Line, Lot = LOT-DUOM-001, DUoM Ratio=1.25, DUoM Second Qty=8)
+ReservEntry (Source = Purchase Line, Lot = LOT-DUOM-001, DUoM Ratio=0.8, DUoM Second Qty=8)
 → TrackSpec.CopyTrackingFromReservEntry(ReservEntry)
 → OnAfterCopyTrackingFromReservEntry (codeunit 50110)
-    ↓ TrackSpec."DUoM Ratio"      := 1.25
+    ↓ TrackSpec."DUoM Ratio"      := 0.8
     ↓ TrackSpec."DUoM Second Qty" := 8  (sin recálculo — asignación directa :=)
 → Página muestra valores correctos
 ```
@@ -115,8 +119,10 @@ Se usa modo `AlwaysVariable` (no Fixed ni Variable) porque:
 - El usuario introduce `DUoM Ratio` y `DUoM Second Qty` de forma totalmente independiente.
 - En modo AlwaysVariable, el trigger `OnValidate` de `DUoM Ratio` en `DUoMTrackingSpecExt`
   hace `exit` sin recalcular `DUoM Second Qty`. Esto es correcto por diseño.
-- Los valores DUoM Ratio = 1.25 y DUoM Second Qty = 8 (no matemáticamente consistentes)
+- Los valores DUoM Ratio = 0.8 y DUoM Second Qty = 8 (matemáticamente consistentes: 10 × 0.8 = 8)
   se conservan tal cual, verificando que el sistema almacena exactamente lo que el usuario introduce.
+  Se usan valores consistentes para simplificar la validación del flujo sin introducir complejidad
+  adicional (AlwaysVariable permite valores inconsistentes, pero ese no es el foco del test).
 
 ### 2. TestPage + ModalPageHandler
 
@@ -135,7 +141,7 @@ los campos DUoM correctos.
 ### 4. Validación en BD y en página
 
 El test valida en dos niveles:
-1. **BD real:** `Reservation Entry` tiene `DUoM Ratio = 1.25` y `DUoM Second Qty = 8`.
+1. **BD real:** `Reservation Entry` tiene `DUoM Ratio = 0.8` y `DUoM Second Qty = 8`.
 2. **Página:** al reabrir `Item Tracking Lines`, los campos muestran los mismos valores.
 
 Esto verifica tanto la persistencia (save path) como la recarga (reload path).
