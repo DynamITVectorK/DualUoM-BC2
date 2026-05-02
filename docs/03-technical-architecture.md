@@ -196,6 +196,13 @@ Subscribers`, codeunit 50109) al asignar un lote en recepciones posteriores.
 - **Issue 190:** implementada propagación DUoM de `Tracking Specification` a `Reservation Entry`
   vía `OnAfterCopyTrackingFromTrackingSpec` (verificado en BC 27 — el evento SÍ expone
   `var ReservationEntry` modificable, contrariamente a lo documentado en Issue 22).
+- **Bug fix (tracking flow):** añadido subscriber `OnAfterCopyTrackingFromReservEntry` en
+  Table "Reservation Entry" (337) para completar el Paso 2 del INSERT de Item Tracking Lines.
+  Sin este subscriber, `InsertReservEntry.CopyTrackingFromReservEntry(ReservEntry1)` (llamado
+  internamente por `CreateReservEntryFor`) no propagaba DUoM Ratio, dejando la ReservEntry
+  final insertada con `DUoM Ratio = 0` aunque `ReservEntry1` ya tuviera el valor correcto.
+  Patrón: idéntico al de `Package Management (6516)` para campos extra en Reservation Entry.
+  Corrige el test `T-PERSIST-01` (era el único test fallando de 135).
 
 ---
 
@@ -204,18 +211,31 @@ Subscribers`, codeunit 50109) al asignar un lote en recepciones posteriores.
 ### Flujo de persistencia al cerrar la página
 
 Cuando el usuario acepta (OK) la página `Item Tracking Lines` (6510) desde un pedido de compra,
-BC transfiere el buffer `Tracking Specification` a `Reservation Entry`:
+BC transfiere el buffer `Tracking Specification` a `Reservation Entry` en **dos pasos internos**:
 
 ```
 Usuario informa Lot No. + DUoM Ratio + DUoM Second Qty en buffer TrackingSpec
 → OK
-→ BC: por cada TrackingSpec en buffer, llama ReservEntry.CopyTrackingFromTrackingSpec(TrackSpec)
-→ Evento: Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec              [50110]
-     ↓ ReservEntry."DUoM Ratio"      := TrackSpec."DUoM Ratio"
-     ↓ ReservEntry."DUoM Second Qty" := TrackSpec."DUoM Second Qty"
-→ BC: ReservEntry.Insert() con campos DUoM ya establecidos
+→ BC (RegisterChange::Insert):
+   PASO 1: ReservEntry1.CopyTrackingFromSpec(OldTrackingSpec)
+   → Evento: Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec         [50110]
+        ↓ ReservEntry1."DUoM Ratio"      := TrackSpec."DUoM Ratio"
+        ↓ ReservEntry1."DUoM Second Qty" := TrackSpec."DUoM Second Qty"
+
+   PASO 2: CreateReservEntry.CreateReservEntryFor(..., ForReservEntry=ReservEntry1)
+           → internamente: InsertReservEntry.CopyTrackingFromReservEntry(ReservEntry1)
+   → Evento: Table "Reservation Entry" · OnAfterCopyTrackingFromReservEntry          [50110]
+        ↓ InsertReservEntry."DUoM Ratio"      := ReservEntry1."DUoM Ratio"
+        ↓ InsertReservEntry."DUoM Second Qty" := ReservEntry1."DUoM Second Qty"
+
+   PASO 3: CreateReservEntry.CreateEntry(...) → InsertReservEntry.Insert()
 Reservation Entry (tabla 337) ← fuente de verdad persistente por lote
 ```
+
+> **Nota de diseño:** El Paso 2 era el eslabón faltante (bug). Sin el subscriber
+> `OnAfterCopyTrackingFromReservEntry` en Table "Reservation Entry", `InsertReservEntry`
+> quedaba con `DUoM Ratio = 0` aunque `ReservEntry1` ya lo tuviera correcto del Paso 1.
+> La corrección se implementa en el PR que cierra el issue de bug (tracking flow).
 
 ### Flujo de recarga al reabrir la página
 
@@ -259,16 +279,17 @@ El subscriber `OnAfterValidateEvent["Quantity (Base)"]` (codeunit 50109) sí rec
 
 ### Test de regresión
 
-El flujo completo (Purchase Order → Item Tracking Lines → OK → reabrir → verificar)
-queda cubierto por el test `T-PERSIST-01` en codeunit 50219 `DUoM Purch Tracking Persist`:
+El flujo completo queda cubierto por cuatro tests en codeunit 50219 `DUoM Purch Tracking Persist`:
 
-```al
-PurchLine_ItemTracking_DUoMValuesPersistAfterCloseAndReopen
-```
+| Test | Escenario |
+|------|-----------|
+| `T-PERSIST-01` `PurchLine_ItemTracking_DUoMValuesPersistAfterCloseAndReopen` | AlwaysVariable — cerrar/reabrir Item Tracking Lines conserva DUoM en ReservEntry |
+| `T-PERSIST-02` `PurchLine_ItemTracking_DUoMRatioPropagatedToILEOnPost` | AlwaysVariable — contabilizar PO con tracking → ILE tiene DUoM Ratio correcto |
+| `T-PERSIST-03` `ItemTracking_ModifyLotRatio_UpdatesReservEntry` | Variable — asignar lote con ratio registrado auto-asigna DUoM Ratio en ReservEntry |
+| `T-PERSIST-04` `ItemTracking_NoImpactOnItemsWithoutDUoM` | Sin DUoM — Item Tracking Lines no introduce DUoM en ReservEntry |
 
-El test usa `TestPage "Purchase Order"` + `ModalPageHandler` (`ItemTrackingLines_AssignAndVerify_MPH`)
-en dos pasos: (1) asignar lote + DUoM desde la página, (2) verificar recarga al reabrir.
-Valida además la persistencia real en `Reservation Entry` después de la primera apertura/cierre.
+Los tests T-PERSIST-01 y T-PERSIST-02 validan específicamente el Paso 2 (el eslabón reparado)
+al combinar la apertura de Item Tracking Lines vía TestPage con verificación de ReservEntry/ILE.
 
 ### Restricciones para no romper el Item Tracking estándar
 
