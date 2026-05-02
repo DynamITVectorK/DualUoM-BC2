@@ -7,6 +7,10 @@
 /// DUoM Second Qty is recalculated automatically when DUoM Ratio or Quantity (Base) changes.
 /// Both fields are editable so the user can review and override values per lot assignment.
 /// For items without DUoM enabled the columns are shown empty (no conditional hide).
+///
+/// OnValidate handlers on both DUoM fields delegate to DUoM Tracking Coherence Mgt (50111)
+/// for immediate UI feedback on ratio coherence and mode-specific rules. The server-side
+/// validation guard (pre-posting) is in DUoM Purchase Subscribers (50102).
 /// </summary>
 pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 {
@@ -18,12 +22,26 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
             {
                 ApplicationArea = All;
                 ToolTip = 'Specifies the conversion ratio for this lot tracking line. Filled automatically from the registered DUoM Lot Ratio (Variable mode) or the item Fixed Ratio (Fixed mode). Can be overridden manually.', Comment = 'ToolTip for DUoM Ratio field on Item Tracking Lines; no placeholders.';
+
+                trigger OnValidate()
+                var
+                    DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+                begin
+                    DUoMCoherenceMgt.ValidateTrackingSpecLine(Rec);
+                end;
             }
             field("DUoM Second Qty"; Rec."DUoM Second Qty")
             {
                 ApplicationArea = All;
                 CaptionClass = DUoMSecondQtyCaption;
                 ToolTip = 'Specifies the secondary quantity for this lot tracking line in the second unit of measure. Computed automatically from Quantity (Base) and DUoM Ratio.', Comment = 'ToolTip for DUoM Second Qty field on Item Tracking Lines; no placeholders.';
+
+                trigger OnValidate()
+                var
+                    DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+                begin
+                    DUoMCoherenceMgt.ValidateTrackingSpecLine(Rec);
+                end;
             }
         }
     }

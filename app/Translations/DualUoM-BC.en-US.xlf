@@ -869,6 +869,35 @@
           <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Reservation Entry Ext - Field DUoM Ratio - Property Caption</note>
         </trans-unit>
 
+        <!-- ═══════════════════════════════════════════════════════════════════
+             Codeunit 50111  DUoM Tracking Coherence Mgt (Issue — coherencia tracking)
+             PENDING: Codeunit hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="Codeunit 3801234600 - NamedType 3801234601" translate="yes" xml:space="preserve">
+          <source>The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the purchase line.\\Document: %1\\Line No.: %2\\Purchase Line DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4</source>
+          <target state="final">The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the purchase line.\\Document: %1\\Line No.: %2\\Purchase Line DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4</target>
+          <note from="Developer" annotates="general" priority="2">%1 = Document No., %2 = Line No., %3 = Purchase Line DUoM Second Qty, %4 = Second UoM Code, %5 = Total Tracking DUoM Qty, %6 = Difference</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType TrackingTotalMismatchErr</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 3801234600 - NamedType 3801234602" translate="yes" xml:space="preserve">
+          <source>Lot %1 has an inconsistent DUoM ratio.\\Base Qty: %2\\Secondary Qty: %3\\Stated Ratio: %4\\Expected Ratio: %5</source>
+          <target state="final">Lot %1 has an inconsistent DUoM ratio.\\Base Qty: %2\\Secondary Qty: %3\\Stated Ratio: %4\\Expected Ratio: %5</target>
+          <note from="Developer" annotates="general" priority="2">%1 = Lot No., %2 = Base Qty, %3 = Secondary Qty, %4 = Stated Ratio, %5 = Expected Ratio</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType RatioIncoherenceErr</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 3801234600 - NamedType 3801234603" translate="yes" xml:space="preserve">
+          <source>Item %1 requires a variable DUoM ratio per lot, but lot %2 does not have a valid ratio.</source>
+          <target state="final">Item %1 requires a variable DUoM ratio per lot, but lot %2 does not have a valid ratio.</target>
+          <note from="Developer" annotates="general" priority="2">%1 = Item No., %2 = Lot No.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType AlwaysVariableMissingRatioErr</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 3801234600 - NamedType 3801234604" translate="yes" xml:space="preserve">
+          <source>Lot %1 uses a DUoM ratio (%2) that differs from the fixed ratio configured for item %3 (%4).</source>
+          <target state="final">Lot %1 uses a DUoM ratio (%2) that differs from the fixed ratio configured for item %3 (%4).</target>
+          <note from="Developer" annotates="general" priority="2">%1 = Lot No., %2 = Actual Ratio, %3 = Item No., %4 = Fixed Ratio</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType FixedRatioMismatchErr</note>
+        </trans-unit>
+
       </group>
     </body>
   </file>

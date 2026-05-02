@@ -3,6 +3,17 @@
 /// Reacts to Quantity and Variant Code changes on Purchase Lines to auto-compute
 /// the secondary quantity via the DUoM Calc Engine, applying the effective DUoM
 /// configuration resolved through the Item → Variant hierarchy (DUoM Setup Resolver).
+///
+/// Also provides a pre-posting server-side validation guard via
+/// OnPostItemJnlLineOnAfterCopyDocumentFields in Codeunit "Purch.-Post" (90):
+///   Before the Item Journal Line is processed and any Item Ledger Entry is created,
+///   DUoM Tracking Coherence Mgt (50111) verifies that Reservation Entries for the
+///   Purchase Line are coherent with the line's DUoM data.
+///   Subscriber chosen: OnPostItemJnlLineOnAfterCopyDocumentFields fires once per
+///   Purchase Line when the IJL is prepared — Reservation Entries are already in DB
+///   (created when the user assigned lots via Item Tracking Lines) and the ILE has
+///   not been created yet, making this the ideal server-side validation point.
+///   Firma BC 27 verificada: (var ItemJournalLine, PurchaseLine: Record "Purchase Line").
 /// </summary>
 codeunit 50102 "DUoM Purchase Subscribers"
 {
@@ -58,6 +69,30 @@ codeunit 50102 "DUoM Purchase Subscribers"
         Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
             Rec.Quantity, EffectiveRatio, ConversionMode,
             DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode));
+    end;
+
+    /// <summary>
+    /// Server-side DUoM coherence validation before posting.
+    ///
+    /// Publisher:  Codeunit "Purch.-Post" (90), event OnPostItemJnlLineOnAfterCopyDocumentFields.
+    /// Motivo:     Fires once per Purchase Line when the Item Journal Line fields are copied
+    ///             from the Purchase Line — Reservation Entries are already in the database
+    ///             (assigned during Item Tracking Lines) and no ILE has been created yet.
+    ///             This is the ideal point to validate DUoM coherence server-side.
+    /// Firma BC 27 verificada: (var ItemJournalLine: Record "Item Journal Line";
+    ///                          PurchaseLine: Record "Purchase Line").
+    ///             Confirmed against existing use of the same event in DUoM Inventory
+    ///             Subscribers (50104) — OnPurchPostCopyDocFieldsToItemJnlLine.
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post",
+        'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
+    local procedure OnPurchPostValidateDUoMTrackingCoherence(
+        var ItemJournalLine: Record "Item Journal Line";
+        PurchaseLine: Record "Purchase Line")
+    var
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+    begin
+        DUoMCoherenceMgt.ValidatePurchLineTrackingCoherence(PurchaseLine);
     end;
 
     /// <summary>
