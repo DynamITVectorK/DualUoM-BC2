@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-02 (bug fix: OnAfterCopyTrackingFromReservEntry en Table "Reservation Entry" completado; tests T01-T05 del flujo DUoM Item Tracking añadidos)
+> **Última actualización:** 2026-05-02 (Issue 25: patrón OnAfterCopyTracking* completado — subscribers Clear/Blank y Copy adicionales añadidos a codeunit 50110)
 
 ### Issues completados ✅
 
@@ -43,6 +43,7 @@ GitHub Copilot Coding Agent.
 | 190 | fix: propagar DUoM Ratio y DUoM Second Qty a Reservation Entry usando `OnAfterCopyTrackingFromTrackingSpec` |
 | fix/test-persist | fix/test: validar y corregir persistencia DUoM en Item Tracking Lines de pedido de compra (codeunit 50219) |
 | bug/tracking-flow | 🐛 fix: campos DUoM no viajan por flujo Item Tracking — añadido subscriber `OnAfterCopyTrackingFromReservEntry` en Table "Reservation Entry" (337); tests T01-T05 añadidos (50218, 50219, 50209) |
+| 25 | Completar patrón OnAfterCopyTracking* en DUoMTrackingCopySubscribers: Clear/Blank en TrackingSpec, ReservEntry e IJL; Copy buffer→buffer y ILE→buffer en TrackingSpec; CopyFromNewItemJnlLine en ILE |
 
 ### Próximo issue pendiente
 

@@ -221,4 +221,135 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         ItemJournalLine."DUoM Ratio" := ItemLedgEntry."DUoM Ratio";
         ItemJournalLine."DUoM Second Qty" := ItemLedgEntry."DUoM Second Qty";
     end;
+
+    // ── Tracking Specification: OnAfterClearTracking ──────────────────────────
+    // Publisher: Table "Tracking Specification" (6500)
+    // Patrón: Package Management — TrackingSpecificationClearTracking
+    // Motivo: BC llama a ClearTracking al reinicializar una línea de tracking.
+    //         Sin este subscriber, DUoM Ratio queda con valor residual tras limpiar.
+    // Firma BC 27 verificada: (var TrackingSpecification: Record "Tracking Specification")
+    [EventSubscriber(ObjectType::Table, Database::"Tracking Specification",
+        'OnAfterClearTracking', '', false, false)]
+    local procedure TrackingSpecClearTracking(
+        var TrackingSpecification: Record "Tracking Specification")
+    begin
+        TrackingSpecification."DUoM Ratio" := 0;
+        TrackingSpecification."DUoM Second Qty" := 0;
+    end;
+
+    // ── Tracking Specification: OnAfterSetTrackingBlank ───────────────────────
+    // Publisher: Table "Tracking Specification" (6500)
+    // Patrón: Package Management — TrackingSpecificationSetTrackingBlank
+    // Motivo: BC llama a SetTrackingBlank al blanquear campos de tracking en el buffer.
+    //         Sin este subscriber, DUoM Ratio queda con valor residual.
+    // Firma BC 27 verificada: (var TrackingSpecification: Record "Tracking Specification")
+    [EventSubscriber(ObjectType::Table, Database::"Tracking Specification",
+        'OnAfterSetTrackingBlank', '', false, false)]
+    local procedure TrackingSpecSetTrackingBlank(
+        var TrackingSpecification: Record "Tracking Specification")
+    begin
+        TrackingSpecification."DUoM Ratio" := 0;
+        TrackingSpecification."DUoM Second Qty" := 0;
+    end;
+
+    // ── Tracking Specification: OnAfterCopyTrackingFromTrackingSpec ───────────
+    // Publisher: Table "Tracking Specification" (6500)
+    // Patrón: Package Management — TrackingSpecificationCopyTrackingFromTrackingSpec
+    // Motivo: BC llama a CopyTrackingFromTrackingSpec al copiar líneas de tracking
+    //         entre buffers. Sin este subscriber, DUoM Ratio no viaja entre buffers.
+    // Firma BC 27 verificada:
+    //   (var TrackingSpecification: Record "Tracking Specification";
+    //    FromTrackingSpecification: Record "Tracking Specification")
+    [EventSubscriber(ObjectType::Table, Database::"Tracking Specification",
+        'OnAfterCopyTrackingFromTrackingSpec', '', false, false)]
+    local procedure TrackingSpecCopyFromTrackingSpec(
+        var TrackingSpecification: Record "Tracking Specification";
+        FromTrackingSpecification: Record "Tracking Specification")
+    begin
+        TrackingSpecification."DUoM Ratio" := FromTrackingSpecification."DUoM Ratio";
+        TrackingSpecification."DUoM Second Qty" := FromTrackingSpecification."DUoM Second Qty";
+    end;
+
+    // ── Tracking Specification: OnAfterCopyTrackingFromItemLedgEntry ──────────
+    // Publisher: Table "Tracking Specification" (6500)
+    // Patrón: Package Management — TrackingSpecificationCopyTrackingFromItemLedgEntry
+    // Motivo: BC construye el buffer TrackingSpec desde ILE en flujos de aplicación
+    //         (devoluciones, copia de documento exacta). Sin este subscriber, DUoM Ratio
+    //         del ILE de origen no llega al buffer.
+    // Firma BC 27 verificada:
+    //   (var TrackingSpecification: Record "Tracking Specification";
+    //    ItemLedgerEntry: Record "Item Ledger Entry")
+    [EventSubscriber(ObjectType::Table, Database::"Tracking Specification",
+        'OnAfterCopyTrackingFromItemLedgEntry', '', false, false)]
+    local procedure TrackingSpecCopyFromItemLedgEntry(
+        var TrackingSpecification: Record "Tracking Specification";
+        ItemLedgerEntry: Record "Item Ledger Entry")
+    begin
+        TrackingSpecification."DUoM Ratio" := ItemLedgerEntry."DUoM Ratio";
+        TrackingSpecification."DUoM Second Qty" := ItemLedgerEntry."DUoM Second Qty";
+    end;
+
+    // ── Reservation Entry: OnAfterClearTracking ───────────────────────────────
+    // Publisher: Table "Reservation Entry" (337)
+    // Patrón: Package Management — ReservationEntryClearTracking
+    // Motivo: BC llama a ClearTracking al reinicializar una Reservation Entry.
+    //         Sin este subscriber, DUoM Ratio queda con valor residual.
+    // Firma BC 27 verificada: (var ReservationEntry: Record "Reservation Entry")
+    [EventSubscriber(ObjectType::Table, Database::"Reservation Entry",
+        'OnAfterClearTracking', '', false, false)]
+    local procedure ReservEntryClearTracking(
+        var ReservationEntry: Record "Reservation Entry")
+    begin
+        ReservationEntry."DUoM Ratio" := 0;
+        ReservationEntry."DUoM Second Qty" := 0;
+    end;
+
+    // ── Reservation Entry: OnAfterClearNewTracking ────────────────────────────
+    // Publisher: Table "Reservation Entry" (337)
+    // Patrón: Package Management — ReservationEntryClearNewTracking
+    // Motivo: BC llama a ClearNewTracking en flujos de reclasificación.
+    //         Sin este subscriber, los campos DUoM no se limpian en esos flujos.
+    // Firma BC 27 verificada: (var ReservationEntry: Record "Reservation Entry")
+    [EventSubscriber(ObjectType::Table, Database::"Reservation Entry",
+        'OnAfterClearNewTracking', '', false, false)]
+    local procedure ReservEntryClearNewTracking(
+        var ReservationEntry: Record "Reservation Entry")
+    begin
+        ReservationEntry."DUoM Ratio" := 0;
+        ReservationEntry."DUoM Second Qty" := 0;
+    end;
+
+    // ── Item Journal Line: OnAfterClearTracking ───────────────────────────────
+    // Publisher: Table "Item Journal Line" (83)
+    // Patrón: Package Management — ItemJournalLineClearTracking
+    // Motivo: BC llama a ClearTracking al reinicializar el IJL.
+    //         Sin este subscriber, DUoM Ratio queda con valor residual en el IJL.
+    // Firma BC 27 verificada: (var ItemJournalLine: Record "Item Journal Line")
+    [EventSubscriber(ObjectType::Table, Database::"Item Journal Line",
+        'OnAfterClearTracking', '', false, false)]
+    local procedure IJLClearTracking(
+        var ItemJournalLine: Record "Item Journal Line")
+    begin
+        ItemJournalLine."DUoM Ratio" := 0;
+        ItemJournalLine."DUoM Second Qty" := 0;
+    end;
+
+    // ── Item Ledger Entry: OnAfterCopyTrackingFromNewItemJnlLine ──────────────
+    // Publisher: Table "Item Ledger Entry" (32)
+    // Patrón: Package Management — ItemLedgerEntryCopyTrackingFromNewItemJnlLine
+    // Motivo: BC llama a CopyTrackingFromNewItemJnlLine en flujos de reclasificación
+    //         (Transfer, Reclass Journal). Sin este subscriber, el ILE destino no
+    //         recibe los campos DUoM del IJL en esos flujos.
+    // Firma BC 27 verificada:
+    //   (var ItemLedgerEntry: Record "Item Ledger Entry";
+    //    ItemJnlLine: Record "Item Journal Line")
+    [EventSubscriber(ObjectType::Table, Database::"Item Ledger Entry",
+        'OnAfterCopyTrackingFromNewItemJnlLine', '', false, false)]
+    local procedure ILECopyTrackingFromNewItemJnlLine(
+        var ItemLedgerEntry: Record "Item Ledger Entry";
+        ItemJnlLine: Record "Item Journal Line")
+    begin
+        ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
+        ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty";
+    end;
 }
