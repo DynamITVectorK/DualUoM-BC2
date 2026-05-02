@@ -40,18 +40,18 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     //   Artículo: DUoM AlwaysVariable, seguimiento por lote habilitado
     //   Cantidad base: 10
     //   Lote: LOT-DUOM-001
-    //   DUoM Ratio: 1.25 (introducido manualmente; no recalcula en AlwaysVariable)
+    //   DUoM Ratio: 0.8 (= 8 / 10; introducido manualmente; no recalcula en AlwaysVariable)
     //   DUoM Second Qty: 8 (introducido manualmente e independiente)
     //
     // Primera apertura (HandlerStep = 1):
     //   - Introduce Lot No. = 'LOT-DUOM-001', Qty = 10
-    //   - Introduce DUoM Ratio = 1.25 y DUoM Second Qty = 8
+    //   - Introduce DUoM Ratio = 0.8 y DUoM Second Qty = 8
     //   - Acepta con OK
     //
     // Validación de persistencia en BD:
     //   - Reservation Entry vinculada a la Purchase Line con:
     //       Lot No. = 'LOT-DUOM-001'
-    //       DUoM Ratio = 1.25
+    //       DUoM Ratio = 0.8
     //       DUoM Second Qty = 8
     //
     // Segunda apertura (HandlerStep = 2):
@@ -111,8 +111,8 @@ codeunit 50219 "DUoM Purch Tracking Persist"
             ReservEntry.FindFirst(),
             'Debe existir una Reservation Entry vinculada a la línea de compra y lote LOT-DUOM-001.');
         LibraryAssert.AreNearlyEqual(
-            1.25, ReservEntry."DUoM Ratio", 0.001,
-            'DUoM Ratio debe ser 1.25 en Reservation Entry tras cerrar Item Tracking Lines.');
+            0.8, ReservEntry."DUoM Ratio", 0.001,
+            'DUoM Ratio debe ser 0.8 en Reservation Entry tras cerrar Item Tracking Lines.');
         LibraryAssert.AreNearlyEqual(
             8, ReservEntry."DUoM Second Qty", 0.001,
             'DUoM Second Qty debe ser 8 en Reservation Entry tras cerrar Item Tracking Lines.');
@@ -139,8 +139,8 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     //
     // Valores de referencia:
     //   Artículo: DUoM AlwaysVariable, seguimiento por lote habilitado
-    //   Lote: LOT-DUOM-001 · DUoM Ratio = 1.25 (introducido manualmente en T-PERSIST-01)
-    //   Tras contabilizar: ILE.DUoM Ratio = 1.25 · ILE.DUoM Second Qty = 10 × 1.25 = 12.5
+    //   Lote: LOT-DUOM-001 · DUoM Ratio = 0.8 (= 8 / 10; introducido manualmente en T-PERSIST-01)
+    //   Tras contabilizar: ILE.DUoM Ratio = 0.8 · ILE.DUoM Second Qty = 8
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_AssignAndVerify_MPH')]
@@ -172,8 +172,8 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchLine.Validate(Quantity, 10);
         PurchLine.Modify(true);
 
-        // [WHEN] El usuario abre el pedido de compra y asigna lote + DUoM = 1.25
-        //        (HandlerStep = 1: introduce lote, DUoM Ratio = 1.25, DUoM Second Qty = 8)
+        // [WHEN] El usuario abre el pedido de compra y asigna lote + DUoM Ratio = 0.8
+        //        (HandlerStep = 1: introduce lote, DUoM Ratio = 0.8, DUoM Second Qty = 8)
         PurchaseOrder.OpenEdit();
         PurchaseOrder.GotoRecord(PurchHeader);
         HandlerStep := 1;
@@ -184,7 +184,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         // [WHEN] Se contabiliza el pedido de compra (recepción)
         LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
 
-        // [THEN] ILE creado con DUoM Ratio = 1.25 y DUoM Second Qty = 10 × 1.25 = 12.5
+        // [THEN] ILE creado con DUoM Ratio = 0.8 y DUoM Second Qty = 8
         //        La cadena ReservEntry → TrackingSpec → IJL → ILE propaga el ratio
         //        gracias al subscriber ReservEntryOnAfterCopyTrackingFromReservEntry (50110)
         //        que completa el eslabón faltante en el flujo INSERT de Item Tracking Lines.
@@ -194,11 +194,11 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         LibraryAssert.IsTrue(ILE.FindFirst(),
             'T02: Debe existir un ILE de compra para el lote LOT-DUOM-001.');
         LibraryAssert.AreNearlyEqual(
-            1.25, ILE."DUoM Ratio", 0.001,
-            'T02: ILE.DUoM Ratio debe ser 1.25 tras contabilizar el pedido de compra con tracking.');
+            0.8, ILE."DUoM Ratio", 0.001,
+            'T02: ILE.DUoM Ratio debe ser 0.8 tras contabilizar el pedido de compra con tracking.');
         LibraryAssert.AreNearlyEqual(
-            12.5, ILE."DUoM Second Qty", 0.001,
-            'T02: ILE.DUoM Second Qty = 10 × 1.25 = 12.5.');
+            8, ILE."DUoM Second Qty", 0.001,
+            'T02: ILE.DUoM Second Qty = 8 (propagado desde Item Tracking Lines).');
     end;
 
     // -------------------------------------------------------------------------
@@ -347,7 +347,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     /// ModalPageHandler para Item Tracking Lines — usado en cuatro pasos:
     ///
     ///   HandlerStep = 1: simula que el usuario introduce lote y valores DUoM manualmente.
-    ///                    Lote: LOT-DUOM-001 · DUoM Ratio = 1.25 · DUoM Second Qty = 8
+    ///                    Lote: LOT-DUOM-001 · DUoM Ratio = 0.8 (= 8/10) · DUoM Second Qty = 8
     ///                    Modo AlwaysVariable: DUoM Ratio no recalcula DUoM Second Qty.
     ///   HandlerStep = 2: verifica que los valores DUoM se han recargado correctamente
     ///                    desde Reservation Entry al reabrir la página.
@@ -357,7 +357,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     ///   HandlerStep = 4: asigna lote LOT-T05 sin valores DUoM (artículo sin DUoM activo).
     ///                    DUoM Ratio y DUoM Second Qty deben ser 0.
     ///
-    /// DUoM Ratio = 1.25 en modo AlwaysVariable: el trigger OnValidate de DUoM Ratio
+    /// DUoM Ratio = 0.8 en modo AlwaysVariable: el trigger OnValidate de DUoM Ratio
     /// en DUoMTrackingSpecExt NO recalcula DUoM Second Qty (exit explícito para AlwaysVariable),
     /// por lo que DUoM Second Qty = 8 se mantiene como valor manual independiente.
     ///
@@ -377,8 +377,8 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                     ItemTrackingLines.New();
                     ItemTrackingLines."Lot No.".SetValue('LOT-DUOM-001');
                     ItemTrackingLines."Quantity (Base)".SetValue(10);
-                    // Modo AlwaysVariable: DUoM Ratio = 1.25 no recalcula DUoM Second Qty
-                    ItemTrackingLines."DUoM Ratio".SetValue(1.25);
+                    // Modo AlwaysVariable: DUoM Ratio = 0.8 (= 8/10) no recalcula DUoM Second Qty
+                    ItemTrackingLines."DUoM Ratio".SetValue(0.8);
                     // Valor manual independiente (no calculado automáticamente)
                     ItemTrackingLines."DUoM Second Qty".SetValue(8);
                     ItemTrackingLines.OK().Invoke();
@@ -393,10 +393,10 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                         ItemTrackingLines."Lot No.".Value,
                         'Lot No. debe seguir siendo LOT-DUOM-001 al reabrir Item Tracking Lines.');
                     LibraryAssert.AreNearlyEqual(
-                        1.25,
+                        0.8,
                         ItemTrackingLines."DUoM Ratio".AsDecimal(),
                         0.001,
-                        'DUoM Ratio debe ser 1.25 al reabrir Item Tracking Lines.');
+                        'DUoM Ratio debe ser 0.8 al reabrir Item Tracking Lines.');
                     LibraryAssert.AreNearlyEqual(
                         8,
                         ItemTrackingLines."DUoM Second Qty".AsDecimal(),
