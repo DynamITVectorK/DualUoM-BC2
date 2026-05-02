@@ -14,7 +14,7 @@
 ///   - Persistencia al cerrar: TrackingSpec buffer → Reservation Entry
 ///     vía OnAfterCopyTrackingFromTrackingSpec (DUoM Tracking Copy Subscribers, 50110)
 ///   - Recarga al reabrir: Reservation Entry → TrackingSpec buffer
-///     vía OnAfterCopyTrackingFromReservEntry o OnAfterInitFromReservEntry (50110)
+///     vía OnAfterCopyTrackingFromReservEntry (50110)
 ///
 /// Modo de conversión: AlwaysVariable (el usuario introduce DUoM Second Qty y DUoM Ratio
 /// de forma independiente en la línea de tracking; el trigger de DUoM Ratio no
@@ -167,8 +167,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
             2:
                 begin
                     // Segunda apertura: verificar que los valores DUoM se recargan
-                    // desde Reservation Entry via OnAfterCopyTrackingFromReservEntry
-                    // o OnAfterInitFromReservEntry (codeunit 50110)
+                    // desde Reservation Entry via OnAfterCopyTrackingFromReservEntry (codeunit 50110)
                     ItemTrackingLines.First();
                     LibraryAssert.AreEqual(
                         'LOT-DUOM-001',

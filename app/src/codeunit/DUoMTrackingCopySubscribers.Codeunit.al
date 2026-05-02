@@ -97,21 +97,6 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         TrackingSpecification."DUoM Second Qty" := ReservEntry."DUoM Second Qty";
     end;
 
-
-    // ── Reservation Entry → Tracking Specification (ruta alternativa de inicialización) ──
-    // Algunas rutas de reapertura de Item Tracking Lines inicializan Tracking Specification
-    // desde Reservation Entry usando InitFromReservEntry en lugar de CopyTrackingFromReservEntry.
-    // Este subscriber espejo asegura que los campos DUoM también se restauran en ese flujo.
-    [EventSubscriber(ObjectType::Table, Database::"Tracking Specification",
-        'OnAfterInitFromReservEntry', '', false, false)]
-    local procedure TrackingSpecOnAfterInitFromReservEntry(
-        var TrackingSpecification: Record "Tracking Specification";
-        ReservEntry: Record "Reservation Entry")
-    begin
-        TrackingSpecification."DUoM Ratio" := ReservEntry."DUoM Ratio";
-        TrackingSpecification."DUoM Second Qty" := ReservEntry."DUoM Second Qty";
-    end;
-
     // ── Tracking Specification → Item Journal Line ────────────────────────────
     // Publisher: Table "Item Journal Line" (83), evento OnAfterCopyTrackingFromSpec.
     // Patrón: Codeunit 6516 "Package Management" línea 774. Firma BC 27 confirmada.
