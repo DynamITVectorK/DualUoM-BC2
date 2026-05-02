@@ -78,7 +78,7 @@ already covers the need:
 | `DUoM Item Variant Ext` | 50120 | `Item Variant` | Cascade-delete del override DUoM de la variante al borrarla |
 | `DUoM Value Entry Ext` | 50121 | `Value Entry` | DUoM Second Qty para trazabilidad contable completa (Issue 12) |
 | `DUoM Tracking Spec Ext` | 50122 | `Tracking Specification` | Campos DUoM Second Qty y Ratio en el buffer de Item Tracking Lines; pre-relleno al validar Lot No. (Issue 22) |
-| `DUoM Reservation Entry Ext` | 50123 | `Reservation Entry` | Campos DUoM Second Qty y Ratio reservados para uso futuro. La propagación automática desde `Tracking Specification` no se implementa en BC 27 porque el evento `OnAfterCopyTrackingFromTrackingSpec` no expone un parámetro `var Rec` modificable (AL0282 — limitación conocida, tarea futura N-lotes) |
+| `DUoM Reservation Entry Ext` | 50123 | `Reservation Entry` | Campos DUoM Second Qty y Ratio. La propagación desde `Tracking Specification` al cerrar Item Tracking Lines se implementa en `DUoM Tracking Copy Subs` (50110) vía `OnAfterCopyTrackingFromTrackingSpec`. Al reabrir la página, los valores se recargan vía `OnAfterCopyTrackingFromReservEntry` o `OnAfterInitFromReservEntry` (Issue 190) |
 
 ### Page Extensions
 
@@ -109,8 +109,8 @@ already covers the need:
 | `DUoM UoM Helper` | 50106 | Helper de UoM: `GetSecondUoMRoundingPrecision(ItemNo)` y `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` para obtener `Qty. Rounding Precision` de la tabla `Item Unit of Measure` |
 | `DUoM Setup Resolver` | 50107 | Centraliza la resolución jerárquica Item → Variante de la configuración DUoM efectiva. Todos los suscriptores y triggers deben llamar a `GetEffectiveSetup(ItemNo, VariantCode, ...)` |
 | `DUoM Lot Subscribers` | 50108 | Utilidades para integración DUoM con lotes. Método público `TryApplyLotRatioToILE` conservado para tests unitarios de bajo nivel (ya no se invoca desde el flujo de posting). Helper interno `ApplyLotRatioToItemJournalLine` para escenarios controlados de un único lote (uso en tests unitarios de bajo nivel). El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` fue **eliminado** (Issue 21) por asumir incorrectamente 1 línea = 1 lote. |
-| `DUoM Tracking Subscribers` | 50109 | Suscriptores de eventos `OnAfterValidateEvent` para `Lot No.` y `Quantity (Base)` en `Tracking Specification` (6500). Pre-rellena DUoM Ratio y DUoM Second Qty al asignar un lote en Item Tracking Lines. Modo Fixed: usa ratio fijo; Variable/AlwaysVariable: aplica ratio de lote de `DUoM Lot Ratio` si existe. La propagación a `Reservation Entry` (337) NO se implementa porque `OnAfterCopyTrackingFromTrackingSpec` no expone `var Rec` modificable en BC 27 (AL0282 — limitación conocida, tarea futura N-lotes). (Issue 22) |
-| `DUoM Tracking Copy Subs` | 50110 | Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón `OnAfterCopyTracking*` de `Codeunit 6516 "Package Management"`. Cadena directa: `Tracking Specification` → `Item Journal Line` (`OnAfterCopyTrackingFromSpec`) → `Item Ledger Entry` (`OnAfterCopyTrackingFromItemJnlLine`). Cadena inversa: `Item Ledger Entry` → `Item Journal Line` (`OnAfterCopyTrackingFromItemLedgEntry`). Reemplaza `OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE`. Signatures verificadas contra `Package Management (6516)` BC 27. (Issue 23) |
+| `DUoM Tracking Subscribers` | 50109 | Suscriptores de eventos `OnAfterValidateEvent` para `Lot No.` y `Quantity (Base)` en `Tracking Specification` (6500). Pre-rellena DUoM Ratio y DUoM Second Qty al asignar un lote en Item Tracking Lines. Modo Fixed: usa ratio fijo; Variable/AlwaysVariable: aplica ratio de lote de `DUoM Lot Ratio` si existe. (Issue 22) |
+| `DUoM Tracking Copy Subs` | 50110 | Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón `OnAfterCopyTracking*` de `Codeunit 6516 "Package Management"`. Cadena directa: `Tracking Specification` → `Item Journal Line` (`OnAfterCopyTrackingFromSpec`) → `Item Ledger Entry` (`OnAfterCopyTrackingFromItemJnlLine`). Cadena inversa: `Item Ledger Entry` → `Item Journal Line` (`OnAfterCopyTrackingFromItemLedgEntry`). **Persistencia de Item Tracking Lines:** `Tracking Specification` buffer → `Reservation Entry` vía `OnAfterCopyTrackingFromTrackingSpec` (al cerrar la página). Recarga: `Reservation Entry` → `Tracking Specification` buffer vía `OnAfterCopyTrackingFromReservEntry` y `OnAfterInitFromReservEntry` (al reabrir la página). Reemplaza `OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE`. Signatures verificadas contra `Package Management (6516)` BC 27. (Issues 23, 190) |
 
 ---
 
@@ -193,6 +193,97 @@ Subscribers`, codeunit 50109) al asignar un lote en recepciones posteriores.
   (sin `TryApplyLotRatioToILE`) para el flujo SIN Item Tracking.
 - **Issue 177:** política AlwaysVariable + lotes bifurcada en cuatro sub-casos. Ver sección
   siguiente.
+- **Issue 190:** implementada propagación DUoM de `Tracking Specification` a `Reservation Entry`
+  vía `OnAfterCopyTrackingFromTrackingSpec` (verificado en BC 27 — el evento SÍ expone
+  `var ReservationEntry` modificable, contrariamente a lo documentado en Issue 22).
+
+---
+
+## Persistencia DUoM en Item Tracking Lines (Issues 22, 190)
+
+### Flujo de persistencia al cerrar la página
+
+Cuando el usuario acepta (OK) la página `Item Tracking Lines` (6510) desde un pedido de compra,
+BC transfiere el buffer `Tracking Specification` a `Reservation Entry`:
+
+```
+Usuario informa Lot No. + DUoM Ratio + DUoM Second Qty en buffer TrackingSpec
+→ OK
+→ BC: por cada TrackingSpec en buffer, llama ReservEntry.CopyTrackingFromTrackingSpec(TrackSpec)
+→ Evento: Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec              [50110]
+     ↓ ReservEntry."DUoM Ratio"      := TrackSpec."DUoM Ratio"
+     ↓ ReservEntry."DUoM Second Qty" := TrackSpec."DUoM Second Qty"
+→ BC: ReservEntry.Insert() con campos DUoM ya establecidos
+Reservation Entry (tabla 337) ← fuente de verdad persistente por lote
+```
+
+### Flujo de recarga al reabrir la página
+
+Cuando el usuario vuelve a abrir `Item Tracking Lines` desde la misma línea de compra,
+BC reconstruye el buffer `Tracking Specification` desde las `Reservation Entry` existentes:
+
+```
+BC: por cada ReservEntry de la línea, llama TrackSpec.CopyTrackingFromReservEntry(ReservEntry)
+→ Evento: Table "Tracking Specification" · OnAfterCopyTrackingFromReservEntry           [50110]
+     ↓ TrackSpec."DUoM Ratio"      := ReservEntry."DUoM Ratio"
+     ↓ TrackSpec."DUoM Second Qty" := ReservEntry."DUoM Second Qty"
+
+Alternativa (algunas rutas de BC usan InitFromReservEntry en lugar de CopyTrackingFromReservEntry):
+→ Evento: Table "Tracking Specification" · OnAfterInitFromReservEntry                   [50110]
+     ↓ misma copia de campos DUoM
+→ Página muestra valores DUoM recargados sin recálculo (asignación directa :=)
+```
+
+**Clave:** la recarga usa `:=` directo (sin `Validate`), por lo que **no se dispara** el
+trigger `OnValidate` de `DUoM Ratio` en `DUoMTrackingSpecExt`. Los valores persisted se
+muestran tal cual, sin recalcular `DUoM Second Qty`. Esto permite que valores manuales
+no consistentes con `Qty × Ratio` se conserven fielmente.
+
+### Enlace línea de compra → Reservation Entry
+
+La `Reservation Entry` generada al cerrar Item Tracking Lines queda vinculada a la
+`Purchase Line` mediante los campos estándar de BC:
+
+| Campo en Reservation Entry | Valor |
+|---|---|
+| `Source Type` | `Database::"Purchase Line"` (38) |
+| `Source Subtype` | `PurchLine."Document Type".AsInteger()` |
+| `Source ID` | `PurchHeader."No."` |
+| `Source Ref. No.` | `PurchLine."Line No."` |
+| `Lot No.` | Lote introducido en Item Tracking Lines |
+
+### Modo AlwaysVariable en Item Tracking Lines
+
+En modo `AlwaysVariable`, el trigger `OnValidate` de `DUoM Ratio` en `DUoMTrackingSpecExt`
+(tableextension 50122) hace `exit` sin recalcular `DUoM Second Qty`. Esto permite que
+el usuario introduzca ambos valores de forma totalmente independiente en la página.
+El subscriber `OnAfterValidateEvent["Quantity (Base)"]` (codeunit 50109) sí recalcula
+`DUoM Second Qty` cuando la cantidad cambia, pero solo si `DUoM Ratio ≠ 0`.
+
+### Test de regresión
+
+El flujo completo (Purchase Order → Item Tracking Lines → OK → reabrir → verificar)
+queda cubierto por el test `T-PERSIST-01` en codeunit 50219 `DUoM Purch Tracking Persist`:
+
+```al
+PurchLine_ItemTracking_DUoMValuesPersistAfterCloseAndReopen
+```
+
+El test usa `TestPage "Purchase Order"` + `ModalPageHandler` (`ItemTrackingLines_AssignAndVerify_MPH`)
+en dos pasos: (1) asignar lote + DUoM desde la página, (2) verificar recarga al reabrir.
+Valida además la persistencia real en `Reservation Entry` después de la primera apertura/cierre.
+
+### Restricciones para no romper el Item Tracking estándar
+
+1. **No crear `Reservation Entry` ni `Tracking Specification` manualmente en producción**
+   si existe API o evento BC estándar (el patrón `CopyTrackingFromTrackingSpec` es el camino).
+2. **No llamar a `Validate` en la cadena de carga** (`OnAfterCopyTrackingFromReservEntry`):
+   usar solo `:=` directo para evitar recálculos no deseados.
+3. **No asumir 1 Reservation Entry por Purchase Line**: puede haber N entradas (una por lote).
+4. **Los subscribers de DUoM en Item Tracking Lines son ligeros**: solo copian campos;
+   no contienen lógica de negocio ni llamadas a codeunits complejos.
+
+
 
 ### Política AlwaysVariable + lotes — resumen técnico (Issue 177)
 
