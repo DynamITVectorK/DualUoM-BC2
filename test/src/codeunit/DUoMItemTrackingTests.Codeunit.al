@@ -445,4 +445,86 @@ codeunit 50218 "DUoM Item Tracking Tests"
         LibraryAssert.AreNearlyEqual(3.8, TrackingSpecIn."DUoM Second Qty", 0.001,
             'DUoM Second Qty debe conservarse en el round-trip.');
     end;
+
+    // -------------------------------------------------------------------------
+    // T10 — ReservEntry.CopyTrackingFromReservEntry propaga DUoM Ratio
+    //
+    // Verifica que el subscriber ReservEntryOnAfterCopyTrackingFromReservEntry (50110)
+    // propaga DUoM Ratio y DUoM Second Qty cuando una Reservation Entry copia campos
+    // de tracking desde otra Reservation Entry.
+    //
+    // Contexto: En el flujo INSERT de Item Tracking Lines, BC llama internamente a
+    //   InsertReservEntry.CopyTrackingFromReservEntry(ReservEntry1), donde ReservEntry1
+    //   ya tiene DUoM Ratio correcto (puesto por ReservEntryOnAfterCopyTrackingFromTrackingSpec).
+    //   Sin el subscriber correspondiente en Table "Reservation Entry", el INSERT final
+    //   tiene DUoM Ratio = 0.
+    // CopyTrackingFromReservEntry sí es un método público de Reservation Entry.
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure ReservEntry_CopyFromReservEntry_DUoMFieldsPropagated()
+    var
+        FromReservEntry: Record "Reservation Entry";
+        ToReservEntry: Record "Reservation Entry";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Reservation Entry origen con DUoM Ratio y DUoM Second Qty establecidos
+        //         (resultado del subscriber ReservEntryOnAfterCopyTrackingFromTrackingSpec
+        //          tras cerrar Item Tracking Lines)
+        FromReservEntry.Init();
+        FromReservEntry."DUoM Ratio" := 1.25;
+        FromReservEntry."DUoM Second Qty" := 8;
+
+        // [GIVEN] Reservation Entry destino vacía
+        //         (simulación de InsertReservEntry en CreateReservEntryFor)
+        ToReservEntry.Init();
+
+        // [WHEN] BC copia los campos de tracking de la entrada origen a la destino
+        //        (dispara OnAfterCopyTrackingFromReservEntry — subscriber nuevo en 50110)
+        ToReservEntry.CopyTrackingFromReservEntry(FromReservEntry);
+
+        // [THEN] DUoM Ratio propagado correctamente de FromReservEntry a ToReservEntry
+        LibraryAssert.AreNearlyEqual(1.25, ToReservEntry."DUoM Ratio", 0.001,
+            'DUoM Ratio debe propagarse en CopyTrackingFromReservEntry (Reservation Entry).');
+
+        // [THEN] DUoM Second Qty propagado correctamente
+        LibraryAssert.AreNearlyEqual(8, ToReservEntry."DUoM Second Qty", 0.001,
+            'DUoM Second Qty debe propagarse en CopyTrackingFromReservEntry (Reservation Entry).');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T11 — Artículo sin DUoM activo: CopyTrackingFromReservEntry no establece DUoM
+    //
+    // Verifica que para un artículo sin DUoM activo, los campos DUoM permanecen en 0
+    // en Reservation Entry después del flujo de copia de campos de tracking.
+    // Garantiza que el subscriber no introduce valores DUoM inesperados en entradas
+    // de artículos sin configuración DUoM (regresión T05 del issue).
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure ReservEntry_CopyFromReservEntry_NoDUoM_FieldsRemainZero()
+    var
+        FromReservEntry: Record "Reservation Entry";
+        ToReservEntry: Record "Reservation Entry";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Reservation Entry origen SIN DUoM (artículo sin configuración DUoM activa)
+        //         Simula el estado de una ReservEntry para un artículo sin DUoM habilitado:
+        //         DUoM Ratio = 0 y DUoM Second Qty = 0.
+        FromReservEntry.Init();
+        // FromReservEntry."DUoM Ratio" := 0;   (valor por defecto, no necesita asignarse)
+        // FromReservEntry."DUoM Second Qty" := 0; (ídem)
+
+        // [GIVEN] Reservation Entry destino vacía
+        ToReservEntry.Init();
+
+        // [WHEN] BC copia los campos de tracking
+        ToReservEntry.CopyTrackingFromReservEntry(FromReservEntry);
+
+        // [THEN] DUoM Ratio sigue siendo 0 — sin impacto de subscribers DUoM
+        LibraryAssert.AreEqual(0, ToReservEntry."DUoM Ratio",
+            'DUoM Ratio debe ser 0 para artículos sin DUoM activo.');
+
+        // [THEN] DUoM Second Qty sigue siendo 0
+        LibraryAssert.AreEqual(0, ToReservEntry."DUoM Second Qty",
+            'DUoM Second Qty debe ser 0 para artículos sin DUoM activo.');
+    end;
 }
