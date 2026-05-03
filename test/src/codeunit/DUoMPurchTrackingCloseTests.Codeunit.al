@@ -27,7 +27,7 @@
 ///   Por eso en los tests que necesitan un ratio distinto al de la Purchase Line,
 ///   se invalida el DUoM Ratio explícitamente después de validar el Lot No.
 /// </summary>
-codeunit 50222 "DUoM Purch Tracking Close"
+codeunit 50222 "DUoM Purch Track Close Tests"
 {
     Subtype = Test;
     TestPermissions = Disabled;
