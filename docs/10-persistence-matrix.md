@@ -32,8 +32,8 @@
 | `Sales Invoice Line` (113) | 50118 | `DUoM Second Qty`, `DUoM Ratio`, `DUoM Unit Price` | **Inmutable** — contabilizado | Histórico de factura de venta |
 | `Sales Cr.Memo Line` (115) | 50119 | `DUoM Second Qty`, `DUoM Ratio`, `DUoM Unit Price` | **Inmutable** — contabilizado | Histórico de abono de venta |
 | `Value Entry` (5802) | 50121 | `DUoM Second Qty` | **Inmutable** — contabilizado | Trazabilidad contable de la cantidad secundaria por asiento de valoración |
-| `Tracking Specification` (6500) | 50122 | `DUoM Second Qty`, `DUoM Ratio` | **Transient** — buffer de sesión | Buffer de Item Tracking Lines; datos temporales antes de confirmar el tracking |
-| `Reservation Entry` (337) | 50123 | `DUoM Second Qty`, `DUoM Ratio` | ⚠️ Campos definidos, **NO propagados** | Campos reservados para uso futuro — limitación conocida de BC 27 (ver §5) |
+| `Tracking Specification` (6500) | 50122 | `DUoM Second Qty`, `DUoM Ratio` | **Transient** — buffer de sesión | Buffer de Item Tracking Lines; datos temporales durante edición activa |
+| `Reservation Entry` (337) | 50123 | `DUoM Second Qty`, `DUoM Ratio` | ✅ Persistidos y propagados (ver §2.4) | Persistencia DUoM por lote; fuente de verdad del detalle por lote al reabrir Item Tracking Lines |
 
 ---
 
@@ -181,7 +181,14 @@ Item Ledger Entry (entrada de origen)
 ### 2.4 Flujo Item Tracking Lines (UI)
 
 ```
-[1] Usuario abre Item Tracking Lines y asigna un lote
+[1] Usuario abre Item Tracking Lines — recarga desde Reservation Entry
+
+    BC reconstruye el buffer Tracking Specification desde Reservation Entry:
+      Reservation Entry
+        ──[OnAfterCopyTrackingFromReservEntry]──► Tracking Specification (buffer)
+           Suscriptor: DUoM Tracking Copy Subscribers (50110)
+           Campos copiados: DUoM Ratio, DUoM Second Qty
+           Guard: si ReservEntry.DUoM Ratio = 0 → TrackingSpec.DUoM Ratio queda 0
 
     Validate Lot No. en Tracking Specification
       ──[OnAfterValidateEvent 'Lot No.']──► ApplyLotRatioToTrackingSpec
@@ -191,7 +198,10 @@ Item Ledger Entry (entrada de origen)
            Si existe DUoM Lot Ratio (50102) para el lote:
              DUoM Ratio = DUoM Lot Ratio."Actual Ratio"
              DUoM Second Qty = Round(Abs(Qty) × ratio, RoundingPrecision)
-           Si NO existe: campos DUoM sin cambios (usuario puede introducirlos)
+           Si NO existe y DUoM Ratio = 0:
+             TryApplyPurchLineFallback (usa ratio de PurchLine como inicial)
+           Si NO existe y DUoM Ratio ≠ 0:
+             Ningún cambio (el valor ya cargado de ReservEntry se mantiene)
 
     Validate Quantity (Base) en Tracking Specification
       ──[OnAfterValidateEvent 'Quantity (Base)']──► RecalcTrackingSpecSecondQty
@@ -199,18 +209,44 @@ Item Ledger Entry (entrada de origen)
          Guard: DUoM Ratio = 0 → salida anticipada
          DUoM Second Qty = Round(Abs(Qty) × DUoM Ratio, RoundingPrecision)
 
+    Validate DUoM Second Qty en Tracking Specification (UI del usuario)
+      ──[OnValidate en DUoM Tracking Spec Ext (50122)]──► recálculo de DUoM Ratio
+         Solo modos Variable/AlwaysVariable (Fixed: salida anticipada)
+         NormalizeTrackingDUoMSecondQty: DUoM Ratio = DUoM Second Qty / Qty (Base)
+
     Validate DUoM Ratio en Tracking Specification
       ──[OnValidate en DUoM Tracking Spec Ext (50122)]──► recálculo inmediato
          Solo modos Fixed/Variable (AlwaysVariable: salida anticipada)
 
-[2] Al confirmar Item Tracking Lines, BC escribe en Reservation Entry
-    ⚠️ DUoM Ratio y DUoM Second Qty NO se propagan a Reservation Entry
-       (limitación conocida BC 27 — ver §5)
-    El ratio del lote para el posting se obtiene de DUoM Lot Ratio (50102)
-    durante OnAfterCopyTrackingFromReservEntry / ILECopyTrackingFromItemJnlLine
+[2] Al confirmar Item Tracking Lines (OK), BC persiste en Reservation Entry
+
+    Tracking Specification (buffer, por lote)
+      ──[OnAfterCopyTrackingFromTrackingSpec]──► ReservEntry1 (copia temporal)
+         Suscriptor: DUoM Tracking Copy Subscribers (50110)
+         Campos copiados: DUoM Ratio, DUoM Second Qty
+
+    ReservEntry1 (con DUoM Ratio correcto)
+      ──[OnAfterCopyTrackingFromReservEntry]──► InsertReservEntry (final)
+         Suscriptor: DUoM Tracking Copy Subscribers (50110)
+         Necesario porque BC usa un segundo CopyTracking interno en CreateReservEntry
+
+    InsertReservEntry se escribe en BD con DUoM Ratio y DUoM Second Qty correctos ✓
+
+[3] SyncPurchLineFromTrackingBuffer (en OnQueryClosePage del pageextension 50112)
+
+    Tracking Specification buffer → Purchase Line (agregado)
+      Suscriptor/helper: DUoM Tracking Coherence Mgt (50111)
+      Purchase Line.DUoM Second Qty = SUM(TrackingSpec.DUoM Second Qty)
+      Purchase Line.DUoM Ratio = Total Second Qty / Total Qty (Base) [ratio ponderado]
+
+    Regla de fuente de verdad:
+      Reservation Entry (por lote) = DETALLE DUoM
+      Purchase Line = AGREGADO DUoM (resumen de todos los lotes)
+      No copiar ratio de Purchase Line a tracking individual si ya existe DUoM en ReservEntry
 ```
 
-**Tests de cobertura:** `DUoMItemTrackingTests` (50216), `DUoMLotRatioTests` (50217).
+**Tests de cobertura:** `DUoMPurchTrackingPersistTests` (50219) — T-PERSIST-01 a T-PERSIST-05,
+T-REOPEN-01 a T-REOPEN-05.
 
 ---
 
@@ -294,12 +330,20 @@ Esta prioridad se aplica en:
 | 6 | `Sales Line` | `Sales Cr.Memo Line` | `OnAfterInitFromSalesLine` (Table 115) | 50104 | Second Qty, Ratio, Unit Price |
 | 7 | `Purchase Line` | `Item Journal Line` | `OnPostItemJnlLineOnAfterCopyDocumentFields` (Cunit Purch.-Post) | 50104 | Second Qty, Ratio |
 | 8 | `Sales Line` | `Item Journal Line` | `OnPostItemJnlLineOnAfterCopyDocumentFields` (Cunit Sales-Post) | 50104 | Second Qty, Ratio |
-| 9 | `Reservation Entry` | `Tracking Specification` | `OnAfterCopyTrackingFromReservEntry` (Table 6500) | 50110 | Ratio, Second Qty |
+| 9a | `Tracking Specification` | `Reservation Entry` | `OnAfterCopyTrackingFromTrackingSpec` (Table 337) | 50110 | Ratio, Second Qty |
+| 9b | `Reservation Entry` (origen) | `Reservation Entry` (destino) | `OnAfterCopyTrackingFromReservEntry` (Table 337) | 50110 | Ratio, Second Qty |
+| 9c | `Reservation Entry` | `Tracking Specification` | `OnAfterCopyTrackingFromReservEntry` (Table 6500) | 50110 | Ratio, Second Qty |
 | 10 | `Tracking Specification` | `Item Journal Line` | `OnAfterCopyTrackingFromSpec` (Table 83) | 50110 | Ratio, Second Qty |
 | 11 | `Item Journal Line` | `Item Ledger Entry` | `OnAfterCopyTrackingFromItemJnlLine` (Table 32) | 50110 | Ratio, Second Qty |
 | 12 | `Item Journal Line` | `Item Ledger Entry` | `OnAfterInitItemLedgEntry` (Cunit Item Jnl.-Post Line) | 50104 | Ratio, Second Qty |
 | 13 | `Item Journal Line` | `Value Entry` | `OnAfterInitValueEntry` (Cunit Item Jnl.-Post Line) | 50104 | Second Qty |
 | 14 | `Item Ledger Entry` | `Item Journal Line` | `OnAfterCopyTrackingFromItemLedgEntry` (Table 83) | 50110 | Ratio, Second Qty |
+
+> **Pasos 9a/9b/9c:** El paso 9a escribe DUoM desde el buffer de TrackingSpec en ReservEntry
+> cuando el usuario confirma Item Tracking Lines. El paso 9b propaga entre los dos niveles
+> de ReservEntry que BC usa internamente al insertar (ReservEntry1 → InsertReservEntry).
+> El paso 9c recarga los valores DUoM desde ReservEntry al buffer de TrackingSpec al reabrir
+> Item Tracking Lines o durante el posting.
 
 > **Pasos 11 y 12 coexisten.** El paso 12 (`OnAfterInitItemLedgEntry`) se ejecuta primero
 > y establece un valor provisional. El paso 11 (`ILECopyTrackingFromItemJnlLine`) se ejecuta
@@ -307,54 +351,74 @@ Esta prioridad se aplica en:
 
 ---
 
-## 5. Limitaciones conocidas
+## 5. Comportamiento DUoM en Item Tracking por lote
 
-### 5.1 Reservation Entry — propagación DUoM no implementada (BC 27)
+### 5.1 Reservation Entry — propagación DUoM implementada
 
-**Tablas afectadas:** `Reservation Entry` (337), tableextension 50123.
+**Estado:** ✅ Implementado — codeunit 50110 `DUoM Tracking Copy Subscribers`.
 
-**Descripción:** Los campos `DUoM Second Qty` y `DUoM Ratio` están definidos en la
-tableextension `DUoM Reservation Entry Ext` (50123) pero **no se propagan automáticamente**
-desde `Tracking Specification` (6500).
+**Descripción:** Los campos `DUoM Second Qty` y `DUoM Ratio` en `Reservation Entry` (337)
+se propagan automáticamente mediante tres suscriptores en codeunit 50110:
 
-**Causa técnica:** El evento estándar `OnAfterCopyTrackingFromTrackingSpec` publicado en
-`Table "Reservation Entry"` en BC 27 no expone un parámetro `var Rec: Record "Reservation Entry"`
-modificable para campos de extensión. Añadir un subscriber genera error AL0282 en compilación.
+1. **TrackingSpec → ReservEntry** (`OnAfterCopyTrackingFromTrackingSpec` en Table 337):
+   Al cerrar Item Tracking Lines con OK, copia DUoM Ratio y DUoM Second Qty desde el buffer
+   de `Tracking Specification` hacia la primera `Reservation Entry`.
 
-**Impacto operativo:**
-- Los campos DUoM en `Reservation Entry` quedan siempre a cero.
-- El ratio DUoM del lote para la contabilización se obtiene directamente de
-  `DUoM Lot Ratio` (50102) durante `OnAfterCopyTrackingFromReservEntry` (paso 9 de §4).
-- La trazabilidad DUoM al ILE funciona correctamente a través de este mecanismo alternativo.
+2. **ReservEntry → ReservEntry** (`OnAfterCopyTrackingFromReservEntry` en Table 337):
+   BC usa un segundo nivel de copia interna al insertar (`CreateReservEntry`). Este suscriptor
+   propaga los valores DUoM al registro final que se escribe en la base de datos.
 
-**Workaround activo:** `DUoM Tracking Copy Subscribers` (50110) lee `DUoM Lot Ratio` (50102)
-en `ILECopyTrackingFromItemJnlLine` y `OnAfterInitItemLedgEntry`, garantizando que el ILE
-siempre recibe el ratio correcto del lote aunque `Reservation Entry` no lo almacene.
+3. **ReservEntry → TrackingSpec (recarga)** (`OnAfterCopyTrackingFromReservEntry` en Table 6500):
+   Al reabrir Item Tracking Lines, BC reconstruye el buffer `Tracking Specification` desde
+   `Reservation Entry`. Este suscriptor recarga DUoM Ratio y DUoM Second Qty por lote desde
+   `Reservation Entry`, garantizando que los valores introducidos manualmente se preserven
+   sin recalcular desde `Purchase Line` ni desde `DUoM Lot Ratio`.
 
-**Tarea futura:** implementar propagación segura cuando BC exponga el parámetro `var` adecuado
-en una versión posterior, o mediante un mecanismo alternativo (p.ej. buffer propio).
+**Regla de fuente de verdad por lote:**
+```
+Si Reservation Entry tiene DUoM Ratio ≠ 0:
+    Tracking Specification carga DUoM desde Reservation Entry (detalle por lote)
+Si Reservation Entry tiene DUoM Ratio = 0:
+    Si existe DUoM Lot Ratio (50102): aplica ratio registrado
+    Si no existe: TryApplyPurchLineFallback (valor inicial desde Purchase Line)
+```
+
+**Tests de cobertura:** `DUoMPurchTrackingPersistTests` (50219) — T-PERSIST-01 a T-PERSIST-05,
+T-REOPEN-01 a T-REOPEN-05.
 
 **Referencias:**
-- `app/src/tableextension/DUoMReservationEntryExt.TableExt.al` — comentario de cabecera
-- `app/src/codeunit/DUoMTrackingSubscribers.Codeunit.al` — comentario de cabecera
-- `docs/issues/issue-22-item-tracking-lines-duom.md` — §13 decisiones de implementación
+- `app/src/codeunit/DUoMTrackingCopySubscribers.Codeunit.al` — suscriptores completos con
+  firmas verificadas BC 27 / runtime 15
+- `docs/issues/issue-190-fix-duom-ratio-reserventry-copy-tracking.md` — decisión inicial
+- `docs/issues/issue-P3-purch-tracking-persist-regression.md` — implementación T-PERSIST-01
 
 ---
 
-### 5.2 Tracking Specification — datos transitorios (no persisten)
+### 5.2 Tracking Specification — datos transitorios (buffer de sesión)
 
 **Tabla afectada:** `Tracking Specification` (6500), tableextension 50122.
 
 **Descripción:** `Tracking Specification` es un buffer de sesión en BC. Los datos DUoM
-(`DUoM Second Qty`, `DUoM Ratio`) que se pre-rellenan al abrir Item Tracking Lines son
-**solo para uso en la UI durante la edición activa**. No se persisten de forma permanente.
+(`DUoM Second Qty`, `DUoM Ratio`) que se cargan al abrir Item Tracking Lines provienen
+de `Reservation Entry` (paso 9c en §4). Se trabaja con ellos durante la edición activa
+y se persisten de vuelta en `Reservation Entry` al confirmar con OK (pasos 9a y 9b en §4).
 
-**Impacto operativo:**
-- Una vez cerrada la sesión de edición de Item Tracking Lines, los valores de
-  `Tracking Specification` desaparecen.
-- La persistencia real DUoM para el flujo de posting pasa por `Reservation Entry`
-  (limitación §5.1) o `DUoM Lot Ratio` (50102).
-- Para consultar el ratio histórico de un lote, usar `DUoM Lot Ratio` (50102) o el ILE.
+**Flujo completo:**
+```
+Abrir Item Tracking Lines:
+  Reservation Entry → Tracking Specification (recarga DUoM por lote)
+
+Editar en Item Tracking Lines:
+  Tracking Specification buffer (per-lot DUoM)
+
+Cerrar con OK:
+  Tracking Specification → Reservation Entry (persiste DUoM por lote)
+  Reservation Entry → Purchase Line (agrega: SUM de lotes → ratio ponderado)
+```
+
+**Implicación:** `Purchase Line."DUoM Ratio"` es el **ratio ponderado agregado** de todos
+los lotes. No debe usarse para reconstruir el detalle por lote al reabrir Item Tracking Lines.
+La fuente de verdad por lote es siempre `Reservation Entry`.
 
 ---
 
