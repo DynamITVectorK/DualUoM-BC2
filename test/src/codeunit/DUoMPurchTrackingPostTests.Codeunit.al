@@ -366,10 +366,15 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
     var
         ReservEntry: Record "Reservation Entry";
     begin
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source Subtype", PurchLine."Document Type".AsInteger());
-        ReservEntry.SetRange("Source ID", PurchLine."Document No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
+        // SetSourceFilter applies the complete standard BC source identity to avoid
+        // including entries from other documents sharing the same lot.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchLine."Document No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", PurchLine."No.");
         ReservEntry.SetRange("Lot No.", LotNo);
         ReservEntry.SetRange(Positive, true);
@@ -394,10 +399,15 @@ codeunit 50221 "DUoM Purch Tracking Post Tests"
     var
         ReservEntry: Record "Reservation Entry";
     begin
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source Subtype", PurchLine."Document Type".AsInteger());
-        ReservEntry.SetRange("Source ID", PurchLine."Document No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
+        // SetSourceFilter applies the complete standard BC source identity to avoid
+        // including entries from other documents sharing the same lot.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchLine."Document No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", PurchLine."No.");
         ReservEntry.SetRange("Lot No.", LotNo);
         ReservEntry.SetRange(Positive, true);

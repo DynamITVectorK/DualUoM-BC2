@@ -162,10 +162,15 @@ codeunit 50222 "DUoM Purch Track Close Tests"
 
         // [THEN] La página se cierra sin error
         // [THEN] Las Reservation Entries tienen suma DUoM Second Qty = 4
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindSet(),
             'T-CLOSE-02: Deben existir Reservation Entries tras cerrar con OK.');
@@ -232,10 +237,15 @@ codeunit 50222 "DUoM Purch Track Close Tests"
 
         // [THEN] Sin error — la suma total es correcta
         // [THEN] Cada Reservation Entry preserva su ratio real (no ratio medio)
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindSet(),
             'T-CLOSE-03: Deben existir Reservation Entries con ratios distintos.');

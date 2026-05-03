@@ -150,10 +150,15 @@ codeunit 50223 "DUoM Purch Track Val Tests"
         PurchaseOrder.Close();
 
         // [THEN] La Reservation Entry tiene DUoM Ratio = 0.8 (= 8/10, recalculado)
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
             'T-FVAL-02: Debe existir una Reservation Entry tras cerrar Item Tracking Lines.');
@@ -225,10 +230,15 @@ codeunit 50223 "DUoM Purch Track Val Tests"
         PurchaseOrder.Close();
 
         // [THEN] La Reservation Entry tiene DUoM Ratio = 0.6 (= 3/5, recalculado)
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
             'T-FVAL-03: Debe existir una Reservation Entry tras cerrar Item Tracking Lines.');
@@ -296,10 +306,15 @@ codeunit 50223 "DUoM Purch Track Val Tests"
 
         // [THEN] La página se cierra sin error (validación agregada omitida)
         // [THEN] La Reservation Entry tiene DUoM Ratio = 1.5 (valor introducido manualmente)
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
             'T-FVAL-04: Debe existir una Reservation Entry tras cerrar Item Tracking Lines.');

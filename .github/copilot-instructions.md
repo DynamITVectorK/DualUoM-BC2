@@ -292,6 +292,50 @@ LibrarySales:     Codeunit "Library - Sales";
 
 This rule applies to ALL test codeunits in the project without exception.
 
+## Business Central standard tracking/reservation rules
+
+When working with item tracking, lot tracking, reservation entries, tracking specifications, warehouse tracking, or DUoM lot propagation:
+
+- Always prefer standard Business Central APIs and methods over manual filtering or manual record construction.
+- Use `Reservation Entry.SetSourceFilter(...)` when filtering persisted reservation/item tracking records.
+- Use `Tracking Specification.SetSourceFilter(...)` when filtering temporary tracking specification buffers.
+- Do not filter item tracking data only by `Lot No.`, `Serial No.`, `Package No.`, or `Entry No.`.
+- Do not assume a 1:1 relationship between source document line and lot.
+- One source line may have N lots.
+- DUoM values at tracking level must be aggregated back to the source line when required.
+- The source line is a summary; lot/tracking records are the source of truth for per-lot DUoM values.
+- If a lot filter is needed, first apply the standard source filter and then apply the lot filter.
+- Before using any event, method, table, or page name, verify the exact signature and object name against the current Business Central symbols.
+- If standard library/helper methods exist, use them instead of custom ad-hoc logic.
+
+Preferred APIs:
+
+```al
+// Para datos persistidos de tracking/reserva:
+ReservationEntry.SetSourceFilter(
+    Database::"Purchase Line",
+    PurchaseLine."Document Type".AsInteger(),
+    PurchaseLine."Document No.",
+    PurchaseLine."Line No.",
+    true);  // SetOtherFilters=true también filtra Source Batch Name='' y Source Prod. Order Line=0
+
+// Para buffers temporales de tracking/posting/page:
+TrackingSpecification.SetSourceFilter(
+    Database::"Purchase Line",
+    PurchaseLine."Document Type".AsInteger(),
+    PurchaseLine."Document No.",
+    PurchaseLine."Line No.",
+    true);
+
+// Filtros complementarios seguros (solo DESPUÉS del filtro estándar de origen):
+ReservationEntry.SetRange("Item No.", PurchaseLine."No.");
+ReservationEntry.SetRange("Lot No.", LotNo);  // solo después de SetSourceFilter
+```
+
+Ver norma formal completa en `docs/development/coding-standards.md`.
+
+---
+
 ## CI/CD — cost-first approach
 
 Every workflow file uses **only** `workflow_dispatch:` trigger.
