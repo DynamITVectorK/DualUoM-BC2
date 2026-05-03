@@ -403,6 +403,13 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
     var
         ReservEntry: Record "Reservation Entry";
     begin
+        // Technical note: SetSourceFilter cannot be used here because the method
+        // signature only receives ItemNo and LotNo — source document context (PurchLine)
+        // is not available. This is acceptable in isolated test setup because each test
+        // creates a unique item, making the Item No. + Lot No. combination unambiguous
+        // within the test transaction. Changing the signature would require updating
+        // all call sites and falls outside the scope of this issue.
+        // See docs/development/coding-standards.md for the standard pattern.
         ReservEntry.SetRange("Item No.", ItemNo);
         ReservEntry.SetRange("Lot No.", LotNo);
         ReservEntry.SetRange(Positive, true);

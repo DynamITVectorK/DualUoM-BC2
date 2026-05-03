@@ -614,6 +614,14 @@ codeunit 50209 "DUoM ILE Integration Tests"
         DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNo, 10, 1.5);
 
         // [THEN] Existe una Reservation Entry con DUoM Ratio y DUoM Second Qty correctos
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
         ReservEntry.SetRange("Lot No.", LotNo);
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
@@ -627,6 +635,11 @@ codeunit 50209 "DUoM ILE Integration Tests"
         // Anti-regresión Issue 24: el helper no debe insertar en TrackingSpec
         // (causaba colisiones de Entry No. al llamarse dos veces — PurchaseTwoLots).
         // BC construye el buffer de TrackingSpec internamente desde ReservEntry.
+        // Note: filtering only by Item No. + Lot No. is acceptable here because we are
+        // verifying absence of records created by the helper in an isolated test transaction
+        // where no other documents share this item. SetSourceFilter is not required for
+        // absence checks when test isolation guarantees uniqueness.
+        // See docs/development/coding-standards.md.
         TrackingSpec.SetRange("Item No.", Item."No.");
         TrackingSpec.SetRange("Lot No.", LotNo);
         LibraryAssert.IsFalse(TrackingSpec.FindFirst(),

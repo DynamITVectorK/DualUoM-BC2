@@ -98,11 +98,12 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
             exit;
 
         // Iterate buffer records matching the same source and sum DUoM Second Qty.
+        // SetSourceFilter uses the standard BC source identity (Type, Subtype, ID,
+        // Ref. No., Batch Name='', Prod. Order Line=0) to avoid mixing entries
+        // from other documents. See docs/development/coding-standards.md.
         TrackingSpec.Reset();
-        TrackingSpec.SetRange("Source Type", Database::"Purchase Line");
-        TrackingSpec.SetRange("Source Subtype", SourceSubtype);
-        TrackingSpec.SetRange("Source ID", SourceID);
-        TrackingSpec.SetRange("Source Ref. No.", SourceRefNo);
+        TrackingSpec.SetSourceFilter(
+            Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
 
         TotalSecondQty := 0;
         if TrackingSpec.FindSet() then
@@ -299,11 +300,12 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
             exit;
 
         // Sum DUoM Second Qty and Quantity (Base) from all buffer records for this source.
+        // SetSourceFilter uses the standard BC source identity (Type, Subtype, ID,
+        // Ref. No., Batch Name='', Prod. Order Line=0) to avoid mixing entries
+        // from other documents. See docs/development/coding-standards.md.
         TrackingSpec.Reset();
-        TrackingSpec.SetRange("Source Type", Database::"Purchase Line");
-        TrackingSpec.SetRange("Source Subtype", SourceSubtype);
-        TrackingSpec.SetRange("Source ID", SourceID);
-        TrackingSpec.SetRange("Source Ref. No.", SourceRefNo);
+        TrackingSpec.SetSourceFilter(
+            Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
 
         TotalSecondQty := 0;
         TotalBaseQty := 0;
@@ -473,10 +475,17 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         var ReservEntry: Record "Reservation Entry")
     begin
         ReservEntry.Reset();
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source Subtype", PurchLine."Document Type".AsInteger());
-        ReservEntry.SetRange("Source ID", PurchLine."Document No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
+        // SetSourceFilter applies the complete standard BC source identity:
+        // Source Type, Source Subtype, Source ID, Source Ref. No.,
+        // Source Batch Name (='') and Source Prod. Order Line (=0).
+        // This prevents including entries from other documents that share the
+        // same lot number. See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchLine."Document No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange(Positive, true);
     end;
 

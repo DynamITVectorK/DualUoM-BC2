@@ -104,10 +104,15 @@ codeunit 50219 "DUoM Purch Tracking Persist"
 
         // [THEN] Los valores DUoM quedan persistidos en Reservation Entry
         //        vinculada a la línea de compra y al lote LOT-DUOM-001
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange("Lot No.", 'LOT-DUOM-001');
         LibraryAssert.IsTrue(
             ReservEntry.FindFirst(),
@@ -265,10 +270,15 @@ codeunit 50219 "DUoM Purch Tracking Persist"
 
         // [THEN] ReservEntry tiene DUoM Ratio = 1.5 (ratio de lote auto-asignado)
         //        y DUoM Second Qty = 8 × 1.5 = 12
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange("Lot No.", 'LOT-PERSIST03');
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
             'T04: Debe existir una Reservation Entry para el lote LOT-PERSIST03.');
@@ -330,10 +340,15 @@ codeunit 50219 "DUoM Purch Tracking Persist"
 
         // [THEN] ReservEntry existe pero con DUoM Ratio = 0 y DUoM Second Qty = 0
         //        Los subscribers DUoM no interfieren con artículos sin DUoM configurado
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange("Lot No.", 'LOT-T05');
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
             'T05: Debe existir una Reservation Entry para el lote LOT-T05.');
@@ -407,10 +422,15 @@ codeunit 50219 "DUoM Purch Tracking Persist"
 
         // [THEN] ReservEntry tiene DUoM Ratio = 1.25 (fallback desde Purchase Line)
         //        y DUoM Second Qty = 1 × 1.25 = 1.25
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange("Lot No.", 'LOT-FALLBACK01');
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
             'T-P05: Debe existir una Reservation Entry para LOT-FALLBACK01.');

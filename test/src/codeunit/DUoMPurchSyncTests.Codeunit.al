@@ -100,10 +100,15 @@ codeunit 50224 "DUoM Purch Sync Tests"
         // [THEN] Sin error — modo Variable permite informar piezas reales distintas al ratio estimado
 
         // [THEN] La línea de tracking tiene el ratio real calculado = 11/7
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange("Lot No.", 'BV');
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
@@ -179,10 +184,15 @@ codeunit 50224 "DUoM Purch Sync Tests"
         // [THEN] Sin error — AlwaysVariable permite informar piezas reales cuando ratio se calcula
 
         // [THEN] La línea de tracking tiene ratio real = 11/7
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntry.SetRange("Lot No.", 'BV');
         ReservEntry.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
@@ -311,10 +321,15 @@ codeunit 50224 "DUoM Purch Sync Tests"
         PurchaseOrder.Close();
 
         // [THEN] LOTE-A tiene ratio real = 1.5
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntryA.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntryA.SetRange("Item No.", Item."No.");
-        ReservEntryA.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntryA.SetRange("Source ID", PurchHeader."No.");
-        ReservEntryA.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntryA.SetRange("Lot No.", 'LOTE-A');
         ReservEntryA.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntryA.FindFirst(),
@@ -327,10 +342,15 @@ codeunit 50224 "DUoM Purch Sync Tests"
             'T-SYNC-04: LOTE-A DUoM Second Qty debe ser 6 (piezas reales).');
 
         // [THEN] LOTE-B tiene ratio real = 8/6 ≈ 1.333
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntryB.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
         ReservEntryB.SetRange("Item No.", Item."No.");
-        ReservEntryB.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntryB.SetRange("Source ID", PurchHeader."No.");
-        ReservEntryB.SetRange("Source Ref. No.", PurchLine."Line No.");
         ReservEntryB.SetRange("Lot No.", 'LOTE-B');
         ReservEntryB.SetRange(Positive, true);
         LibraryAssert.IsTrue(ReservEntryB.FindFirst(),
