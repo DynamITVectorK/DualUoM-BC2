@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-03 (Issue close-validation: bloquear cierre de Item Tracking Lines cuando el total DUoM de tracking no coincide con la Purchase Line — `OnQueryClosePage` en pageextension 50112 + método `ValidateTrackingSpecBufferForPurchLine` en codeunit 50111 + 6 tests en codeunit 50222 `DUoM Purch Track Close Tests`)
+> **Última actualización:** 2026-05-03 (Issue Posted Item Tracking Lines: pageextension 50124 `DUoM Posted Item Trk. Lines` extiende Page 6511 con campos `DUoM Second Qty` y `DUoM Ratio` del ILE ya persistido. 2 tests en codeunit 50224 `DUoM Pstd Item Trk. Tests`. XLF actualizado en-US y es-ES.)
 
 ### Issues completados ✅
 
@@ -47,6 +47,7 @@ GitHub Copilot Coding Agent.
 | análisis-item-tracking | docs: análisis técnico del ciclo de vida de Item Tracking y puntos de validación/propagación DUoM — `docs/duom-item-tracking-validation-analysis.md` |
 | hardening-item-tracking | test: hardening E2E del flujo Purchase Order con Item Tracking — codeunit 50221 `DUoM Purch Tracking Post Tests`; 4 tests de bloqueo en posting (suma baja, suma alta, AlwaysVariable sin ratio, Fixed ratio incorrecto) |
 | close-validation | fix: bloquear cierre de `Item Tracking Lines` con OK cuando el total DUoM del tracking no coincide con la `Purchase Line`. `OnQueryClosePage` en pageextension 50112 delega en `ValidateTrackingSpecBufferForPurchLine` (50111). 6 tests en codeunit 50222 `DUoM Purch Track Close Tests`. |
+| posted-item-trk-lines | feat: pageextension 50124 `DUoM Posted Item Trk. Lines` extiende Page 6511 con los campos `DUoM Second Qty` y `DUoM Ratio` persistidos en el ILE. Solo lectura; no recalcula. 2 tests en codeunit 50224 `DUoM Pstd Item Trk. Tests`. |
 
 ### Próximo issue pendiente
 
