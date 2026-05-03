@@ -6,8 +6,15 @@
 ///   T-CLOSE-02: Total DUoM igual a la línea → cierre con OK permitido (suma=4, línea=4)
 ///   T-CLOSE-03: Ratios distintos por lote pero total correcto → cierre permitido
 ///   T-CLOSE-04: Total DUoM inferior a la línea → cierre con OK bloqueado (suma=3, línea=4)
-///   T-CLOSE-05: Cancelación no bloquea aunque el total DUoM sea incorrecto
 ///   T-CLOSE-06: La validación pre-posting sigue existiendo como segunda barrera
+///
+/// Nota: el escenario T-CLOSE-05 (cancelación sin OK) fue eliminado porque no existe
+/// un patrón soportado en AL TestPage para cerrar la page 6510 sin OK sin provocar un
+/// doble cierre ("RunModal could not close page 6510 as it has already been closed").
+/// La acción Cancel no está disponible en TestPage "Item Tracking Lines" y llamar a
+/// ItemTrackingLines.Close() dentro del ModalPageHandler causa el doble cierre.
+/// La cobertura de "no persistencia al cancelar" queda fuera del alcance de los tests
+/// automatizados mientras no exista un patrón soportado por la plataforma BC.
 ///
 /// Diseño de la validación:
 ///   OnQueryClosePage (DUoM Item Tracking Lines, 50112)
@@ -276,64 +283,6 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T-CLOSE-05 — Cancelación no bloquea aunque el total DUoM sea incorrecto
-    //
-    // Verifica que OnQueryClosePage con CloseAction = Cancel no ejecuta la
-    // validación DUoM. Los datos incoherentes introducidos no se persisten.
-    //
-    // Purchase Line: Quantity = 2 / DUoM Second Qty = 4
-    // Tracking introducido (incoherente): HH = 2, LOL = 3 → suma = 5
-    // Acción: Cancel → sin error, sin ReservEntry creada
-    // -------------------------------------------------------------------------
-    [Test]
-    [HandlerFunctions('ItemTrackingLines_CloseTest_MPH,DUoMTrackingMismatch_MsgH')]
-    procedure CloseCancel_DUoMIncoherent_NoBlock()
-    var
-        Item: Record Item;
-        Vendor: Record Vendor;
-        PurchHeader: Record "Purchase Header";
-        PurchLine: Record "Purchase Line";
-        ReservEntry: Record "Reservation Entry";
-        PurchaseOrder: TestPage "Purchase Order";
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-        LibraryInventory: Codeunit "Library - Inventory";
-        LibraryPurchase: Codeunit "Library - Purchase";
-        LibraryAssert: Codeunit "Library Assert";
-    begin
-        // [GIVEN] Artículo con DUoM Variable y seguimiento por lote
-        LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(
-            Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
-        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
-
-        // [GIVEN] Purchase Line: Qty = 2 / DUoM Second Qty = 4 (ratio 2)
-        LibraryPurchase.CreateVendor(Vendor);
-        LibraryPurchase.CreatePurchHeader(
-            PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
-        LibraryPurchase.CreatePurchaseLine(
-            PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
-        PurchLine.Validate(Quantity, 2);
-        PurchLine.Validate("DUoM Ratio", 2);   // DUoM Second Qty = 4
-        PurchLine.Modify(true);
-
-        // [WHEN] El usuario introduce lotes incoherentes (suma=5) pero cancela (HandlerStep = 5)
-        PurchaseOrder.OpenEdit();
-        PurchaseOrder.GotoRecord(PurchHeader);
-        HandlerStep := 5;
-        PurchaseOrder.PurchLines.First();
-        // Sin asserterror: la cancelación no debe producir error
-        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
-        PurchaseOrder.Close();
-
-        // [THEN] No se creó ninguna Reservation Entry (los cambios se descartaron)
-        ReservEntry.SetRange("Item No.", Item."No.");
-        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
-        ReservEntry.SetRange("Source ID", PurchHeader."No.");
-        LibraryAssert.IsFalse(ReservEntry.FindFirst(),
-            'T-CLOSE-05: No debe existir ReservEntry tras cancelar Item Tracking Lines.');
-    end;
-
-    // -------------------------------------------------------------------------
     // T-CLOSE-06 — La validación pre-posting sigue funcionando como segunda barrera
     //
     // Verifica que la validación agregada en OnQueryClosePage no sustituye la
@@ -390,7 +339,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     end;
 
     /// <summary>
-    /// ModalPageHandler para Item Tracking Lines — utilizado por los tests T-CLOSE-01..05.
+    /// ModalPageHandler para Item Tracking Lines — utilizado por los tests T-CLOSE-01..04.
     ///
     ///   HandlerStep = 1: Lote HH (ratio=2, second=2) + Lote LOL (ratio=3, second=3)
     ///                    Suma = 5 ≠ 4 → al invocar OK provoca error de validación DUoM
@@ -403,9 +352,6 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     ///
     ///   HandlerStep = 4: Lote HH (ratio=2, second=2) + Lote LOL (ratio=1, second=1)
     ///                    Suma = 3 ≠ 4 → al invocar OK provoca error de validación DUoM
-    ///
-    ///   HandlerStep = 5: Lote HH (ratio=2) + Lote LOL (ratio=3) → suma incoherente
-    ///                    pero se cierra la página sin OK → sin error, sin persistencia
     ///
     /// Notas:
     ///   - En modo Variable sin DUoM Lot Ratio registrado, el subscriber aplica el
@@ -477,29 +423,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
                     ItemTrackingLines."DUoM Ratio".SetValue(1);
                     ItemTrackingLines.OK().Invoke();   // Provoca error de validación
                 end;
-            5:
-                begin
-                    // T-CLOSE-05: datos incoherentes (suma=5) pero se cancela → sin error
-                    ItemTrackingLines.New();
-                    ItemTrackingLines."Lot No.".SetValue('HH');
-                    ItemTrackingLines."Quantity (Base)".SetValue(1);
-                    // Fallback DUoM Ratio = 2 → DUoM Second Qty = 2
-                    ItemTrackingLines.New();
-                    ItemTrackingLines."Lot No.".SetValue('LOL');
-                    ItemTrackingLines."Quantity (Base)".SetValue(1);
-                    ItemTrackingLines."DUoM Ratio".SetValue(3);
-                    // DUoM Second Qty = 3; suma total = 5 ≠ 4 pero...
-                    ItemTrackingLines.Close();              // Cierre sin OK: no ejecuta validación DUoM
-                end;
         end;
-    end;
-
-
-    [MessageHandler]
-    procedure DUoMTrackingMismatch_MsgH(Message: Text[1024])
-    begin
-        // En T-CLOSE-05 el cierre puede emitir mensaje de incoherencia en algunos runtimes.
-        // Se consume para evitar fallo por "Unhandled UI".
     end;
 
     var
