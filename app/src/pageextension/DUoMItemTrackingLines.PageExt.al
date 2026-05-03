@@ -52,25 +52,6 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
         }
     }
 
-
-
-    actions
-    {
-        addlast(processing)
-        {
-            action(Cancel)
-            {
-                ApplicationArea = All;
-                Caption = 'Cancel';
-                Image = Cancel;
-
-                trigger OnAction()
-                begin
-                    CurrPage.Close();
-                end;
-            }
-        }
-    }
     trigger OnAfterGetRecord()
     var
         DUoMItemSetup: Record "DUoM Item Setup";
