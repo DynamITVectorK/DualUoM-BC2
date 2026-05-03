@@ -898,6 +898,29 @@
           <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType FixedRatioMismatchErr</note>
         </trans-unit>
 
+        <!-- ═══════════════════════════════════════════════════════════════════
+             PageExtension 50124  DUoM Posted Item Trk. Lines (Issue)
+             PENDING: PageExtension hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 2070755912 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity stored when this item ledger entry was posted.</source>
+          <target state="final">Specifies the secondary quantity stored when this item ledger entry was posted.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty on Posted Item Tracking Lines; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Item Trk. Lines - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2070755912 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio stored when this item ledger entry was posted.</source>
+          <target state="final">Specifies the conversion ratio stored when this item ledger entry was posted.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio on Posted Item Tracking Lines; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Item Trk. Lines - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 2070755912 - NamedType 3684869122" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default column caption when no second UoM code is available; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Item Trk. Lines - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+
       </group>
     </body>
   </file>
