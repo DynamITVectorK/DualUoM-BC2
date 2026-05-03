@@ -33,7 +33,7 @@
 ///       → PurchLine.DUoM Ratio := Total / TotalBase
 ///     → ValidateTrackingSpecBufferForPurchLine (50111) — sanity check
 /// </summary>
-codeunit 50224 "DUoM Purch Sync Tests"
+codeunit 50225 "DUoM Purch Sync Tests"
 {
     Subtype = Test;
     TestPermissions = Disabled;
