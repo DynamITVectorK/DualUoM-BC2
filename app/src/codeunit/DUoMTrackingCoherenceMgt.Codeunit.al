@@ -4,6 +4,8 @@
 ///
 /// Responsibilities:
 ///   - Validate a Purchase Line against its tracking entries (Reservation Entries).
+///   - Validate the aggregate DUoM total from a Tracking Specification buffer against
+///     the source Purchase Line (pre-persist, UI-close validation).
 ///   - Validate a single Tracking Specification line for ratio/mode coherence.
 ///   - Calculate DUoM totals from Reservation Entries for a Purchase Line.
 ///   - Assert mathematical ratio coherence (BaseQty, SecondQty, Ratio) within tolerance.
@@ -21,6 +23,95 @@
 codeunit 50111 "DUoM Tracking Coherence Mgt"
 {
     Access = Public;
+
+    /// <summary>
+    /// Validates that the sum of DUoM Second Qty across all Tracking Specification buffer
+    /// records for the same Purchase Line source matches PurchLine."DUoM Second Qty".
+    ///
+    /// Called from: DUoM Item Tracking Lines pageextension (50112) in OnQueryClosePage
+    /// to block page close when the aggregate DUoM tracking total does not match the
+    /// source Purchase Line. Uses the live Tracking Specification buffer (temporary table),
+    /// not Reservation Entry, so validation occurs BEFORE any data is persisted.
+    ///
+    /// Steps:
+    ///   1. Exit if TrackingSpec source type is not Purchase Line.
+    ///   2. Exit if DUoM is not active for the item.
+    ///   3. Exit if Purchase Line not found or DUoM Second Qty = 0 on the line.
+    ///   4. Sum DUoM Second Qty from all buffer records sharing the same source.
+    ///   5. Raise TrackingTotalMismatchErr if difference exceeds rounding precision.
+    ///
+    /// Note: filters on TrackingSpec are reset at exit (both error and success paths).
+    ///
+    /// Called from: DUoM Item Tracking Lines (50112) — OnQueryClosePage.
+    /// </summary>
+    procedure ValidateTrackingSpecBufferForPurchLine(var TrackingSpec: Record "Tracking Specification")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        PurchLine: Record "Purchase Line";
+        PurchDocType: Enum "Purchase Document Type";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        TotalSecondQty: Decimal;
+        RoundingPrecision: Decimal;
+        Difference: Decimal;
+        ItemNo: Code[20];
+        VariantCode: Code[10];
+        SourceSubtype: Integer;
+        SourceID: Code[20];
+        SourceRefNo: Integer;
+    begin
+        if TrackingSpec."Source Type" <> Database::"Purchase Line" then
+            exit;
+
+        ItemNo := TrackingSpec."Item No.";
+        VariantCode := TrackingSpec."Variant Code";
+        SourceSubtype := TrackingSpec."Source Subtype";
+        SourceID := TrackingSpec."Source ID";
+        SourceRefNo := TrackingSpec."Source Ref. No.";
+
+        if ItemNo = '' then
+            exit;
+
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 ItemNo, VariantCode, SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        PurchDocType := "Purchase Document Type".FromInteger(SourceSubtype);
+        if not PurchLine.Get(PurchDocType, SourceID, SourceRefNo) then
+            exit;
+
+        // Only validate when the Purchase Line carries a DUoM Second Qty total.
+        // AlwaysVariable lines may have DUoM Second Qty = 0 when the user did not
+        // set a line-level total; in that case, skip the aggregate check.
+        if PurchLine."DUoM Second Qty" <= 0 then
+            exit;
+
+        // Iterate buffer records matching the same source and sum DUoM Second Qty.
+        TrackingSpec.Reset();
+        TrackingSpec.SetRange("Source Type", Database::"Purchase Line");
+        TrackingSpec.SetRange("Source Subtype", SourceSubtype);
+        TrackingSpec.SetRange("Source ID", SourceID);
+        TrackingSpec.SetRange("Source Ref. No.", SourceRefNo);
+
+        TotalSecondQty := 0;
+        if TrackingSpec.FindSet() then
+            repeat
+                TotalSecondQty += TrackingSpec."DUoM Second Qty";
+            until TrackingSpec.Next() = 0;
+
+        // Restore TrackingSpec to no-filter state so the page's standard OK
+        // processing (after validation succeeds) is not affected.
+        TrackingSpec.Reset();
+
+        RoundingPrecision := GetDUoMRoundingPrecision(ItemNo, SecondUoMCode);
+        Difference := Abs(TotalSecondQty - PurchLine."DUoM Second Qty");
+        if Difference > RoundingPrecision then
+            Error(TrackingTotalMismatchErr,
+                PurchLine."Document No.", PurchLine."Line No.",
+                PurchLine."DUoM Second Qty", SecondUoMCode,
+                TotalSecondQty, Difference);
+    end;
 
     /// <summary>
     /// Validates DUoM coherence for a Purchase Line against all its Reservation Entries.

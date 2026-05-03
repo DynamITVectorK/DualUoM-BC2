@@ -11,6 +11,12 @@
 /// OnValidate handlers on both DUoM fields delegate to DUoM Tracking Coherence Mgt (50111)
 /// for immediate UI feedback on ratio coherence and mode-specific rules. The server-side
 /// validation guard (pre-posting) is in DUoM Purchase Subscribers (50102).
+///
+/// OnQueryClosePage validates the aggregate DUoM Second Qty sum across all tracking lines
+/// against the source Purchase Line when the user confirms with OK or LookupOK.
+/// This prevents persisting incoherent DUoM data in Reservation Entry.
+/// The pre-posting validation in DUoM Purchase Subscribers (50102) remains as a second
+/// safety barrier for data that may arrive by other means.
 /// </summary>
 pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 {
@@ -56,6 +62,18 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
                 if DUoMItemSetup."Dual UoM Enabled" then
                     if DUoMItemSetup."Second UoM Code" <> '' then
                         DUoMSecondQtyCaption := '3,' + DUoMItemSetup."Second UoM Code";
+    end;
+
+    trigger OnQueryClosePage(CloseAction: Action): Boolean
+    var
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+    begin
+        // Only validate on acceptance (OK / LookupOK). Cancel and other close
+        // actions must never be blocked by DUoM aggregate validation.
+        if not (CloseAction in [Action::OK, Action::LookupOK]) then
+            exit(true);
+        DUoMCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(Rec);
+        exit(true);
     end;
 
     var
