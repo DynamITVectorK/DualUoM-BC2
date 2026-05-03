@@ -8,15 +8,23 @@
 /// Both fields are editable so the user can review and override values per lot assignment.
 /// For items without DUoM enabled the columns are shown empty (no conditional hide).
 ///
+/// DUoM Second Qty.OnValidate (Variable/AlwaysVariable modes):
+///   Calls NormalizeTrackingDUoMSecondQty BEFORE ValidateTrackingSpecLine so that when
+///   the user enters real pieces during reception, DUoM Ratio is recalculated from the
+///   actual measurement rather than blocking with a coherence error. Fixed mode keeps
+///   strict validation (ratio unchanged, coherence error if secondary qty is inconsistent).
+///
 /// OnValidate handlers on both DUoM fields delegate to DUoM Tracking Coherence Mgt (50111)
 /// for immediate UI feedback on ratio coherence and mode-specific rules. The server-side
 /// validation guard (pre-posting) is in DUoM Purchase Subscribers (50102).
 ///
-/// OnQueryClosePage validates the aggregate DUoM Second Qty sum across all tracking lines
-/// against the source Purchase Line when the user confirms with OK or LookupOK.
-/// This prevents persisting incoherent DUoM data in Reservation Entry.
-/// The pre-posting validation in DUoM Purchase Subscribers (50102) remains as a second
-/// safety barrier for data that may arrive by other means.
+/// OnQueryClosePage (OK/LookupOK):
+///   1. Calls SyncPurchLineFromTrackingBuffer to update the source Purchase Line with the
+///      aggregate DUoM totals from tracking. The Purchase Line is the aggregate summary;
+///      each tracking line (lot) retains its own per-lot ratio.
+///   2. Calls ValidateTrackingSpecBufferForPurchLine as sanity check after sync.
+///   The pre-posting validation in DUoM Purchase Subscribers (50102) remains as a second
+///   safety barrier for data that may arrive by other means.
 /// </summary>
 pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 {
@@ -40,12 +48,16 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
             {
                 ApplicationArea = All;
                 CaptionClass = DUoMSecondQtyCaption;
-                ToolTip = 'Specifies the secondary quantity for this lot tracking line in the second unit of measure. Computed automatically from Quantity (Base) and DUoM Ratio.', Comment = 'ToolTip for DUoM Second Qty field on Item Tracking Lines; no placeholders.';
+                ToolTip = 'Specifies the secondary quantity for this lot tracking line in the second unit of measure. In Variable and AlwaysVariable modes, editing this field recalculates DUoM Ratio automatically.', Comment = 'ToolTip for DUoM Second Qty field on Item Tracking Lines; no placeholders.';
 
                 trigger OnValidate()
                 var
                     DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
                 begin
+                    // In Variable/AlwaysVariable modes: recalculate DUoM Ratio from the entered
+                    // secondary qty before validating coherence. This allows users to inform real
+                    // pieces during reception without knowing the ratio in advance.
+                    DUoMCoherenceMgt.NormalizeTrackingDUoMSecondQty(Rec);
                     DUoMCoherenceMgt.ValidateTrackingSpecLine(Rec);
                 end;
             }
@@ -91,6 +103,11 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
         // actions must never be blocked by DUoM aggregate validation.
         if not (CloseAction in [Action::OK, Action::LookupOK]) then
             exit(true);
+        // Sync the source Purchase Line with the aggregate DUoM totals from tracking.
+        // This makes the Purchase Line the aggregate summary of what was actually received.
+        // Must run before ValidateTrackingSpecBufferForPurchLine so the comparison is
+        // against the freshly-synced value (which always matches the tracking sum).
+        DUoMCoherenceMgt.SyncPurchLineFromTrackingBuffer(Rec);
         DUoMCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(Rec);
         exit(true);
     end;

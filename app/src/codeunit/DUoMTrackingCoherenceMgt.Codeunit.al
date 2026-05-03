@@ -3,15 +3,25 @@
 /// and their associated item tracking (Reservation Entry) data.
 ///
 /// Responsibilities:
-///   - Validate a Purchase Line against its tracking entries (Reservation Entries).
+///   - Normalize DUoM Ratio from DUoM Second Qty in Variable/AlwaysVariable modes
+///     (NormalizeTrackingDUoMSecondQty) — called on DUoM Second Qty.OnValidate.
+///   - Sync Purchase Line DUoM fields from the tracking buffer aggregate
+///     (SyncPurchLineFromTrackingBuffer) — called on OnQueryClosePage.
 ///   - Validate the aggregate DUoM total from a Tracking Specification buffer against
 ///     the source Purchase Line (pre-persist, UI-close validation).
+///   - Validate a Purchase Line against its tracking entries (Reservation Entries).
 ///   - Validate a single Tracking Specification line for ratio/mode coherence.
 ///   - Calculate DUoM totals from Reservation Entries for a Purchase Line.
 ///   - Assert mathematical ratio coherence (BaseQty, SecondQty, Ratio) within tolerance.
 ///   - Apply mode-specific rules: Fixed, Variable, AlwaysVariable.
 ///   - Centralise error messages so the same checks run from both page (UI feedback)
 ///     and posting (server-side guard).
+///
+/// Source of truth hierarchy:
+///   Item Tracking Lines (TrackingSpec buffer) = per-lot reality during reception.
+///   Purchase Line = aggregate summary synced from tracking on close.
+///   Reservation Entry = per-lot persistence after OK.
+///   Item Ledger Entry = historical truth after posting.
 ///
 /// Conventions:
 ///   DUoM Ratio = DUoM Second Qty / Quantity  (secondary UoM units per primary unit).
@@ -183,11 +193,148 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     end;
 
     /// <summary>
+    /// Normalizes DUoM Ratio on a Tracking Specification line when DUoM Second Qty changes.
+    ///
+    /// In Variable and AlwaysVariable modes: recalculates DUoM Ratio from the entered
+    /// secondary quantity using the formula:
+    ///   DUoM Ratio := DUoM Second Qty / Abs(Quantity (Base))
+    ///
+    /// This allows users to inform real pieces during reception without knowing the ratio
+    /// in advance. The ratio is derived from the actual measurement on receipt.
+    ///
+    /// Does nothing in Fixed mode (ratio is fixed and cannot be recalculated from qty).
+    /// Does nothing if Quantity (Base) = 0 or DUoM Second Qty = 0 (nothing to derive from).
+    /// Does nothing if DUoM is not active for the item.
+    ///
+    /// Called from: DUoM Item Tracking Lines pageextension (50112) on DUoM Second Qty.OnValidate,
+    ///              before ValidateTrackingSpecLine, so validation sees the recalculated ratio.
+    /// </summary>
+    procedure NormalizeTrackingDUoMSecondQty(var TrackingSpec: Record "Tracking Specification")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+    begin
+        if TrackingSpec."Item No." = '' then
+            exit;
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 TrackingSpec."Item No.", TrackingSpec."Variant Code",
+                 SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+        // Fixed mode: ratio is set by the item configuration, not derived from qty.
+        if ConversionMode = ConversionMode::Fixed then
+            exit;
+        // Nothing to derive from if either qty is zero.
+        if TrackingSpec."Quantity (Base)" = 0 then
+            exit;
+        if TrackingSpec."DUoM Second Qty" = 0 then
+            exit;
+        // Variable / AlwaysVariable: derive ratio from the real secondary quantity.
+        TrackingSpec."DUoM Ratio" := TrackingSpec."DUoM Second Qty" / Abs(TrackingSpec."Quantity (Base)");
+    end;
+
+    /// <summary>
+    /// Synchronizes the source Purchase Line DUoM aggregate fields from the Tracking
+    /// Specification buffer records for the same source document line.
+    ///
+    /// Reads all buffer records sharing Source Type = Purchase Line, Source Subtype,
+    /// Source ID and Source Ref. No. from the provided TrackingSpec, sums the DUoM values,
+    /// and updates the Purchase Line with:
+    ///   PurchLine."DUoM Second Qty" := SUM(TrackingSpec."DUoM Second Qty")
+    ///   PurchLine."DUoM Ratio"      := TotalSecondQty / TotalBaseQty (or 0 if base = 0)
+    ///
+    /// The Purchase Line acts as an aggregate summary of the tracking reality.
+    /// Each tracking line (lot) retains its own per-lot ratio in TrackingSpec and
+    /// subsequently in Reservation Entry and DUoM Lot Ratio.
+    ///
+    /// Partial receive note: the sync reflects only the quantities in the current
+    /// tracking buffer, which represents the "to handle" portion for this session.
+    /// If multiple partial receives are done, each session syncs from its own buffer.
+    ///
+    /// No-op if:
+    ///   - Source type is not Purchase Line
+    ///   - DUoM is not active for the item
+    ///   - Purchase Line is not found in the database
+    ///
+    /// Uses Modify(false) to avoid triggering standard purchase line business logic
+    /// that would interfere with user-entered values.
+    ///
+    /// Called from: DUoM Item Tracking Lines pageextension (50112) on OnQueryClosePage.
+    /// </summary>
+    procedure SyncPurchLineFromTrackingBuffer(var TrackingSpec: Record "Tracking Specification")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        PurchLine: Record "Purchase Line";
+        PurchDocType: Enum "Purchase Document Type";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        ItemNo: Code[20];
+        VariantCode: Code[10];
+        SourceSubtype: Integer;
+        SourceID: Code[20];
+        SourceRefNo: Integer;
+        TotalSecondQty: Decimal;
+        TotalBaseQty: Decimal;
+    begin
+        if TrackingSpec."Source Type" <> Database::"Purchase Line" then
+            exit;
+
+        ItemNo := TrackingSpec."Item No.";
+        VariantCode := TrackingSpec."Variant Code";
+        SourceSubtype := TrackingSpec."Source Subtype";
+        SourceID := TrackingSpec."Source ID";
+        SourceRefNo := TrackingSpec."Source Ref. No.";
+
+        if ItemNo = '' then
+            exit;
+
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 ItemNo, VariantCode, SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        PurchDocType := "Purchase Document Type".FromInteger(SourceSubtype);
+        if not PurchLine.Get(PurchDocType, SourceID, SourceRefNo) then
+            exit;
+
+        // Sum DUoM Second Qty and Quantity (Base) from all buffer records for this source.
+        TrackingSpec.Reset();
+        TrackingSpec.SetRange("Source Type", Database::"Purchase Line");
+        TrackingSpec.SetRange("Source Subtype", SourceSubtype);
+        TrackingSpec.SetRange("Source ID", SourceID);
+        TrackingSpec.SetRange("Source Ref. No.", SourceRefNo);
+
+        TotalSecondQty := 0;
+        TotalBaseQty := 0;
+        if TrackingSpec.FindSet() then
+            repeat
+                TotalSecondQty += TrackingSpec."DUoM Second Qty";
+                TotalBaseQty += Abs(TrackingSpec."Quantity (Base)");
+            until TrackingSpec.Next() = 0;
+
+        // Restore TrackingSpec to no-filter state (same pattern as ValidateTrackingSpecBufferForPurchLine).
+        TrackingSpec.Reset();
+
+        // Update the Purchase Line with the aggregate DUoM summary from tracking.
+        PurchLine."DUoM Second Qty" := TotalSecondQty;
+        if TotalBaseQty <> 0 then
+            PurchLine."DUoM Ratio" := TotalSecondQty / TotalBaseQty
+        else
+            PurchLine."DUoM Ratio" := 0;
+        // Modify(false) to persist DUoM fields without triggering purchase line triggers.
+        PurchLine.Modify(false);
+    end;
+
+    /// <summary>
     /// Validates a single Tracking Specification record for DUoM coherence.
     /// Checks ratio against the mode-specific rules (Fixed, Variable, AlwaysVariable)
     /// and verifies the mathematical relationship: DUoM Second Qty ≈ Qty (Base) × DUoM Ratio.
     ///
     /// Called from: DUoM Item Tracking Lines page extension (50112) for UI feedback.
+    /// Note: for Variable and AlwaysVariable modes, NormalizeTrackingDUoMSecondQty should
+    /// be called BEFORE this procedure when DUoM Second Qty changes, so that the ratio is
+    /// already recalculated and the coherence check sees consistent values.
     /// </summary>
     procedure ValidateTrackingSpecLine(TrackingSpec: Record "Tracking Specification")
     var
