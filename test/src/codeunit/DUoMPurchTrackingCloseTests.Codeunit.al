@@ -405,7 +405,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     ///                    Suma = 3 ≠ 4 → al invocar OK provoca error de validación DUoM
     ///
     ///   HandlerStep = 5: Lote HH (ratio=2) + Lote LOL (ratio=3) → suma incoherente
-    ///                    pero se invoca Cancel → sin error, sin persistencia
+    ///                    pero se cierra la página sin OK → sin error, sin persistencia
     ///
     /// Notas:
     ///   - En modo Variable sin DUoM Lot Ratio registrado, el subscriber aplica el
@@ -489,7 +489,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
                     ItemTrackingLines."Quantity (Base)".SetValue(1);
                     ItemTrackingLines."DUoM Ratio".SetValue(3);
                     // DUoM Second Qty = 3; suma total = 5 ≠ 4 pero...
-                    ItemTrackingLines.Cancel().Invoke();   // Cancel: no ejecuta validación DUoM
+                    ItemTrackingLines.Close();              // Cierre sin OK: no ejecuta validación DUoM
                 end;
         end;
     end;
