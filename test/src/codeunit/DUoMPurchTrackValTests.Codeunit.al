@@ -94,26 +94,28 @@ codeunit 50223 "DUoM Purch Track Val Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T-FVAL-02 — Modo AlwaysVariable: DUoM Second Qty sin DUoM Ratio bloqueado
+    // T-FVAL-02 — Modo AlwaysVariable: DUoM Second Qty recalcula DUoM Ratio
     //
-    // En modo AlwaysVariable, el ratio no se auto-asigna cuando no hay ratio de lote
-    // registrado ni DUoM Ratio en la Purchase Line. Al intentar introducir DUoM Second Qty
-    // con DUoM Ratio = 0, el trigger OnValidate de DUoM Second Qty llama a
-    // ValidateTrackingSpecLine → AlwaysVariableMissingRatioErr.
+    // En modo AlwaysVariable, si el usuario informa DUoM Second Qty directamente
+    // (sin ratio previo), el sistema recalcula DUoM Ratio = DUoM Second Qty / Qty (Base)
+    // en lugar de bloquear con AlwaysVariableMissingRatioErr.
+    // Esto permite el flujo real de recepción: el usuario informa piezas reales
+    // y el sistema deriva el ratio a partir de la medición real.
     //
     // Artículo: DUoM AlwaysVariable, seguimiento por lote.
     // Purchase Line: Qty = 10, sin DUoM Ratio (= 0).
     // Tracking: Lot No. = 'LOT-AV01', Qty (Base) = 10, DUoM Ratio = 0 (default).
-    // Acción: SetValue("DUoM Second Qty", 8) → error (ratio = 0, qty = 10).
+    // Acción: SetValue("DUoM Second Qty", 8) → DUoM Ratio recalculado = 8/10 = 0.8.
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_FieldVal_MPH')]
-    procedure ValidateDUoMSecondQty_AlwaysVar_ZeroRatio_Blocked()
+    procedure ValidateDUoMSecondQty_AlwaysVar_CalculatesRatio()
     var
         Item: Record Item;
         Vendor: Record Vendor;
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        ReservEntry: Record "Reservation Entry";
         PurchaseOrder: TestPage "Purchase Order";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
@@ -135,41 +137,57 @@ codeunit 50223 "DUoM Purch Track Val Tests"
         PurchLine.Validate(Quantity, 10);
         PurchLine.Modify(true);
 
-        // [WHEN] El usuario abre Item Tracking Lines, asigna lote y cantidad,
-        //        pero introduce DUoM Second Qty sin haber definido DUoM Ratio
-        //        (HandlerStep = 2: Lot No. → Qty = 10 → DUoM Second Qty = 8 con Ratio = 0)
+        // [WHEN] El usuario abre Item Tracking Lines, asigna lote con Qty = 10
+        //        e informa DUoM Second Qty = 8 (sin ratio previo)
+        //        (HandlerStep = 2: Lot No. → Qty = 10 → DUoM Second Qty = 8 → OK)
         PurchaseOrder.OpenEdit();
         PurchaseOrder.GotoRecord(PurchHeader);
         HandlerStep := 2;
         PurchaseOrder.PurchLines.First();
 
-        // [THEN] Error al validar DUoM Second Qty: AlwaysVariable exige ratio válido
-        asserterror PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
-        LibraryAssert.ExpectedError('requires a variable DUoM ratio per lot');
+        // [THEN] No se produce error: DUoM Ratio se recalcula automáticamente
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
         PurchaseOrder.Close();
+
+        // [THEN] La Reservation Entry tiene DUoM Ratio = 0.8 (= 8/10, recalculado)
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
+        ReservEntry.SetRange("Source ID", PurchHeader."No.");
+        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
+        ReservEntry.SetRange(Positive, true);
+        LibraryAssert.IsTrue(ReservEntry.FindFirst(),
+            'T-FVAL-02: Debe existir una Reservation Entry tras cerrar Item Tracking Lines.');
+        LibraryAssert.AreNearlyEqual(
+            0.8, ReservEntry."DUoM Ratio", 0.001,
+            'T-FVAL-02: DUoM Ratio debe ser 8/10 = 0.8 (recalculado desde DUoM Second Qty).');
+        LibraryAssert.AreNearlyEqual(
+            8, ReservEntry."DUoM Second Qty", 0.001,
+            'T-FVAL-02: DUoM Second Qty debe ser 8 (valor introducido por el usuario).');
     end;
 
     // -------------------------------------------------------------------------
-    // T-FVAL-03 — Modo Variable: DUoM Second Qty incoherente con DUoM Ratio bloqueado
+    // T-FVAL-03 — Modo Variable: DUoM Second Qty diferente recalcula DUoM Ratio
     //
-    // En modo Variable, al asignar el lote el fallback de Purchase Line establece
-    // DUoM Ratio = 2. DUoM Second Qty se auto-calcula = 5 × 2 = 10. Cuando el usuario
-    // sobreescribe manualmente DUoM Second Qty = 3 (incoherente), el trigger OnValidate
-    // llama a ValidateTrackingSpecLine → AssertRatioCoherence → RatioIncoherenceErr.
+    // En modo Variable, si el usuario introduce un DUoM Second Qty que no coincide
+    // con Qty (Base) × DUoM Ratio previo, el sistema recalcula DUoM Ratio a partir
+    // de la nueva cantidad secundaria: DUoM Ratio = DUoM Second Qty / Qty (Base).
+    // Esto soporta el flujo real de recepción donde las piezas reales pueden diferir
+    // de la estimación inicial.
     //
     // Artículo: DUoM Variable, seguimiento por lote.
     // Purchase Line: Qty = 5, DUoM Ratio = 2 → DUoM Second Qty = 10.
     // Tracking: Lot No. = 'LOT-VAR01', Qty (Base) = 5, DUoM Ratio = 2 (fallback).
-    // Acción: SetValue("DUoM Second Qty", 3) → error (|5×2 − 3| = 7 >> tolerancia).
+    // Acción: SetValue("DUoM Second Qty", 3) → DUoM Ratio recalculado = 3/5 = 0.6.
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_FieldVal_MPH')]
-    procedure ValidateDUoMSecondQty_Variable_Incoherent_Blocked()
+    procedure ValidateDUoMSecondQty_Variable_RecalculatesRatio()
     var
         Item: Record Item;
         Vendor: Record Vendor;
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
+        ReservEntry: Record "Reservation Entry";
         PurchaseOrder: TestPage "Purchase Order";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
@@ -194,18 +212,32 @@ codeunit 50223 "DUoM Purch Track Val Tests"
         PurchLine.Modify(true);
 
         // [WHEN] El usuario abre Item Tracking Lines, asigna lote con ratio 2 (fallback),
-        //        DUoM Second Qty se auto-calcula a 10, y luego sobreescribe manualmente
-        //        DUoM Second Qty = 3 (incoherente con Qty=5 × Ratio=2 = 10)
+        //        DUoM Second Qty se auto-calcula a 10, y luego informa DUoM Second Qty = 3
+        //        (valor real de recepción diferente al estimado)
         //        (HandlerStep = 3)
         PurchaseOrder.OpenEdit();
         PurchaseOrder.GotoRecord(PurchHeader);
         HandlerStep := 3;
         PurchaseOrder.PurchLines.First();
 
-        // [THEN] Error al validar DUoM Second Qty: incoherencia matemática detectada
-        asserterror PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
-        LibraryAssert.ExpectedError('has an inconsistent DUoM ratio');
+        // [THEN] No se produce error: DUoM Ratio se recalcula a 3/5 = 0.6
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
         PurchaseOrder.Close();
+
+        // [THEN] La Reservation Entry tiene DUoM Ratio = 0.6 (= 3/5, recalculado)
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange("Source Type", Database::"Purchase Line");
+        ReservEntry.SetRange("Source ID", PurchHeader."No.");
+        ReservEntry.SetRange("Source Ref. No.", PurchLine."Line No.");
+        ReservEntry.SetRange(Positive, true);
+        LibraryAssert.IsTrue(ReservEntry.FindFirst(),
+            'T-FVAL-03: Debe existir una Reservation Entry tras cerrar Item Tracking Lines.');
+        LibraryAssert.AreNearlyEqual(
+            0.6, ReservEntry."DUoM Ratio", 0.001,
+            'T-FVAL-03: DUoM Ratio debe ser 3/5 = 0.6 (recalculado desde DUoM Second Qty = 3).');
+        LibraryAssert.AreNearlyEqual(
+            3, ReservEntry."DUoM Second Qty", 0.001,
+            'T-FVAL-03: DUoM Second Qty debe ser 3 (valor introducido por el usuario).');
     end;
 
     // -------------------------------------------------------------------------
@@ -290,22 +322,24 @@ codeunit 50223 "DUoM Purch Track Val Tests"
     ///   HandlerStep = 2 (T-FVAL-02):
     ///     Artículo AlwaysVariable. Introduce lote LOT-AV01 y Qty = 10.
     ///     DUoM Ratio permanece en 0 (sin ratio de lote, PurchLine sin DUoM Ratio).
-    ///     Introduce DUoM Second Qty = 8 con Ratio = 0 → AlwaysVariableMissingRatioErr.
+    ///     Introduce DUoM Second Qty = 8 → NormalizeTrackingDUoMSecondQty recalcula
+    ///     DUoM Ratio = 8/10 = 0.8. Sin error. OK() cierra la página.
     ///
     ///   HandlerStep = 3 (T-FVAL-03):
     ///     Artículo Variable. Introduce lote LOT-VAR01 y Qty = 5.
     ///     El fallback de PurchLine establece DUoM Ratio = 2.
     ///     OnValidate de Quantity (Base) auto-calcula DUoM Second Qty = 10.
-    ///     Sobreescribe DUoM Second Qty = 3 (incoherente) → RatioIncoherenceErr.
+    ///     Sobreescribe DUoM Second Qty = 3 → NormalizeTrackingDUoMSecondQty recalcula
+    ///     DUoM Ratio = 3/5 = 0.6. Sin error. OK() cierra la página.
     ///
     ///   HandlerStep = 4 (T-FVAL-04):
     ///     Artículo Variable. PurchLine sin DUoM Ratio (= 0).
     ///     Introduce lote LOT-NOCHK01 y Qty = 5.
     ///     Introduce DUoM Ratio = 1.5 manualmente → DUoM Second Qty = 7.5 (auto-calculado).
-    ///     OK sin error: PurchLine.DUoM Second Qty = 0 → validación agregada omitida.
+    ///     OK sin error: SyncPurchLineFromTrackingBuffer → PurchLine.DUoM = 7.5 → OK.
     ///
-    /// Nota: en los steps 1, 2 y 3, la excepción se propaga desde SetValue antes
-    /// de llegar a OK().Invoke(), de modo que el handler termina con error.
+    /// Nota: en el step 1, la excepción se propaga desde SetValue antes
+    /// de llegar a OK().Invoke(). En los steps 2, 3 y 4, OK() se invoca con éxito.
     /// </summary>
     [ModalPageHandler]
     procedure ItemTrackingLines_FieldVal_MPH(
@@ -324,28 +358,32 @@ codeunit 50223 "DUoM Purch Track Val Tests"
                 end;
             2:
                 begin
-                    // T-FVAL-02: AlwaysVariable — DUoM Second Qty sin ratio → error en SetValue
+                    // T-FVAL-02: AlwaysVariable — NormalizeTrackingDUoMSecondQty recalcula ratio
                     ItemTrackingLines.New();
                     ItemTrackingLines."Lot No.".SetValue('LOT-AV01');
                     // Sin ratio de lote y PurchLine.DUoM Ratio = 0 → DUoM Ratio queda en 0
                     ItemTrackingLines."Quantity (Base)".SetValue(10);
-                    // Intentar introducir DUoM Second Qty con Ratio = 0 → AlwaysVariableMissingRatioErr
+                    // NormalizeTrackingDUoMSecondQty: DUoM Ratio = 8/10 = 0.8 → sin error
                     ItemTrackingLines."DUoM Second Qty".SetValue(8);
+                    // OK cierra la página con DUoM Ratio = 0.8
+                    ItemTrackingLines.OK().Invoke();
                 end;
             3:
                 begin
-                    // T-FVAL-03: Variable — DUoM Second Qty incoherente → error en SetValue
+                    // T-FVAL-03: Variable — NormalizeTrackingDUoMSecondQty recalcula ratio
                     ItemTrackingLines.New();
                     ItemTrackingLines."Lot No.".SetValue('LOT-VAR01');
                     // Fallback desde PurchLine: DUoM Ratio = 2
                     ItemTrackingLines."Quantity (Base)".SetValue(5);
                     // DUoM Second Qty auto-calculada = 5 × 2 = 10
-                    // Sobreescribir con valor incoherente → RatioIncoherenceErr (|5×2-3|=7)
+                    // NormalizeTrackingDUoMSecondQty: DUoM Ratio = 3/5 = 0.6 → sin error
                     ItemTrackingLines."DUoM Second Qty".SetValue(3);
+                    // OK cierra la página con DUoM Ratio = 0.6
+                    ItemTrackingLines.OK().Invoke();
                 end;
             4:
                 begin
-                    // T-FVAL-04: PurchLine.DUoM Second Qty = 0 → cierre OK sin validación agregada
+                    // T-FVAL-04: PurchLine.DUoM Second Qty = 0 → SyncPurchLineFromTrackingBuffer → OK
                     ItemTrackingLines.New();
                     ItemTrackingLines."Lot No.".SetValue('LOT-NOCHK01');
                     // Sin ratio de lote y PurchLine.DUoM Ratio = 0 → DUoM Ratio = 0
@@ -353,7 +391,7 @@ codeunit 50223 "DUoM Purch Track Val Tests"
                     // Introducir DUoM Ratio manual = 1.5 → DUoM Second Qty = 5 × 1.5 = 7.5
                     ItemTrackingLines."DUoM Ratio".SetValue(1.5);
                     // ValidateTrackingSpecLine: Ratio=1.5, Qty=5, SecondQty=7.5 → coherente ✓
-                    // OnQueryClosePage: PurchLine.DUoM Second Qty = 0 → exit → sin error
+                    // OnQueryClosePage: SyncPurchLineFromTrackingBuffer → PurchLine.DUoM = 7.5 → OK
                     ItemTrackingLines.OK().Invoke();
                 end;
         end;
