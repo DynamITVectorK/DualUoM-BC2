@@ -74,6 +74,17 @@ Los identificadores AL (nombres de objetos, campos, procedimientos, variables) y
   etc.) **must not exceed 30 characters** (compiler limit AL0305). Verify length before opening
   a PR. Page extension names must be especially compact to leave room for the `DUoM` prefix.
 
+## AL object ID rules (mandatory)
+
+- Every new AL object must use a **unique Object Type + Object ID** combination within its app.
+- Before creating a new object, search the repository for the intended ID to confirm it is free.
+- Do **not** reuse an object ID when copying an existing object.
+- The selected ID must be inside the `idRanges` configured in the corresponding `app.json`
+  (`50100–50199` for `app/`, `50200–50299` for `test/`).
+- After creating or removing an object, update `docs/development/object-id-registry.md` in the
+  same PR.
+- Violation of this rule causes compiler error **AL0264** and breaks the build immediately.
+
 ## Localization rule (mandatory)
 
 Every user-facing text in the extension **must** be translation-ready. The supported languages are **English (en-US)** and **Spanish (es-ES)**.
