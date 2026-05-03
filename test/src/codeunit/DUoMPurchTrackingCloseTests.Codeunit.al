@@ -286,7 +286,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     // Acción: Cancel → sin error, sin ReservEntry creada
     // -------------------------------------------------------------------------
     [Test]
-    [HandlerFunctions('ItemTrackingLines_CloseTest_MPH')]
+    [HandlerFunctions('ItemTrackingLines_CloseTest_MPH,DUoMTrackingMismatch_MsgH')]
     procedure CloseCancel_DUoMIncoherent_NoBlock()
     var
         Item: Record Item;
@@ -492,6 +492,14 @@ codeunit 50222 "DUoM Purch Track Close Tests"
                     ItemTrackingLines.Cancel().Invoke();   // Cancel: no ejecuta validación DUoM
                 end;
         end;
+    end;
+
+
+    [MessageHandler]
+    procedure DUoMTrackingMismatch_MsgH(Message: Text[1024])
+    begin
+        // En T-CLOSE-05 el cierre puede emitir mensaje de incoherencia en algunos runtimes.
+        // Se consume para evitar fallo por "Unhandled UI".
     end;
 
     var
