@@ -286,7 +286,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     // Acción: Cancel → sin error, sin ReservEntry creada
     // -------------------------------------------------------------------------
     [Test]
-    [HandlerFunctions('ItemTrackingLines_CloseTest_MPH')]
+    [HandlerFunctions('ItemTrackingLines_CloseCancel_MPH')]
     procedure CloseCancel_DUoMIncoherent_NoBlock()
     var
         Item: Record Item;
@@ -416,8 +416,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     /// </summary>
     [ModalPageHandler]
     procedure ItemTrackingLines_CloseTest_MPH(
-        var ItemTrackingLines: TestPage "Item Tracking Lines";
-        var Response: Action)
+        var ItemTrackingLines: TestPage "Item Tracking Lines")
     begin
         case HandlerStep of
             1:
@@ -490,9 +489,28 @@ codeunit 50222 "DUoM Purch Track Close Tests"
                     ItemTrackingLines."Quantity (Base)".SetValue(1);
                     ItemTrackingLines."DUoM Ratio".SetValue(3);
                     // DUoM Second Qty = 3; suma total = 5 ≠ 4 pero...
-                    Response := Action::Cancel;            // Simula cierre con Cancel sin aceptar cambios
+                    // En este handler los pasos 1..4 validan con OK; T-CLOSE-05 usa handler dedicado.
                 end;
         end;
+    end;
+
+
+    [ModalPageHandler]
+    procedure ItemTrackingLines_CloseCancel_MPH(
+        var ItemTrackingLines: TestPage "Item Tracking Lines";
+        var Response: Action)
+    begin
+        // T-CLOSE-05: datos incoherentes (suma=5) y cierre con Cancel
+        ItemTrackingLines.New();
+        ItemTrackingLines."Lot No.".SetValue('HH');
+        ItemTrackingLines."Quantity (Base)".SetValue(1);
+        // Fallback DUoM Ratio = 2 → DUoM Second Qty = 2
+        ItemTrackingLines.New();
+        ItemTrackingLines."Lot No.".SetValue('LOL');
+        ItemTrackingLines."Quantity (Base)".SetValue(1);
+        ItemTrackingLines."DUoM Ratio".SetValue(3);
+        // DUoM Second Qty = 3; suma total = 5 ≠ 4
+        Response := Action::Cancel;
     end;
 
     var
