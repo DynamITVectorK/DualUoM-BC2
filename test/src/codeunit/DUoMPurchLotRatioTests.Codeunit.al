@@ -246,7 +246,6 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
         TrackingSpec: Record "Tracking Specification" temporary;
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
-        LibraryAssert: Codeunit "Library Assert";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
     begin
         // [GIVEN] Artículo con DUoM Variable
@@ -274,9 +273,6 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
         // [WHEN] Se ejecuta la validación del buffer (equivalente al cierre de la página)
         // [THEN] Sin error: la línea vacía se ignora; la funcional es coherente
         DUoMCoherenceMgt.ValidateTrackingSpecBufferEachLine(TrackingSpec);
-        LibraryAssert.IsTrue(
-            true,
-            'T-RATIO-04: La línea vacía no debe causar error de coherencia DUoM.');
     end;
 
     // -------------------------------------------------------------------------
@@ -298,7 +294,6 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
         TrackingSpec: Record "Tracking Specification" temporary;
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
-        LibraryAssert: Codeunit "Library Assert";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
     begin
         // [GIVEN] Artículo con DUoM Variable
@@ -336,9 +331,6 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
         // [WHEN] Se valida el conjunto de tracking (cada línea por su ratio)
         // [THEN] Sin error: los 3 lotes tienen ratios coherentes
         DUoMCoherenceMgt.ValidateTrackingSpecBufferEachLine(TrackingSpec);
-        LibraryAssert.IsTrue(
-            true,
-            'T-RATIO-05: Los tres lotes coherentes no deben causar error de validación.');
     end;
 
     // -------------------------------------------------------------------------
