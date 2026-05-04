@@ -50,13 +50,17 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     ///   4. Sum DUoM Second Qty from all buffer records sharing the same source.
     ///   5. Raise TrackingTotalMismatchErr if difference exceeds rounding precision.
     ///
-    /// Note: filters on TrackingSpec are reset at exit (both error and success paths).
+    /// Cursor safety: iteration uses a LOCAL COPY of TrackingSpec (via Copy(Rec, true))
+    /// that shares the same temp-table data with an independent cursor. This prevents
+    /// Reset()/FindSet()/Next() from modifying the page's Rec cursor and causing
+    /// duplicate tracking entries on reopen.
     ///
     /// Called from: DUoM Item Tracking Lines (50112) — OnQueryClosePage.
     /// </summary>
     procedure ValidateTrackingSpecBufferForPurchLine(var TrackingSpec: Record "Tracking Specification")
     var
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        LocalTrackingSpec: Record "Tracking Specification" temporary;
         PurchLine: Record "Purchase Line";
         PurchDocType: Enum "Purchase Document Type";
         SecondUoMCode: Code[10];
@@ -97,23 +101,23 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         if PurchLine."DUoM Second Qty" <= 0 then
             exit;
 
-        // Iterate buffer records matching the same source and sum DUoM Second Qty.
+        // Use a LOCAL COPY of TrackingSpec with the same shared temp-table data but
+        // an independent cursor. This avoids calling Reset()/FindSet()/Next() on the
+        // page's Rec (= TrackingSpec), which would interfere with BC's standard
+        // Item Tracking Lines close mechanism and create duplicate tracking entries.
         // SetSourceFilter uses the standard BC source identity (Type, Subtype, ID,
         // Ref. No., Batch Name='', Prod. Order Line=0) to avoid mixing entries
         // from other documents. See docs/development/coding-standards.md.
-        TrackingSpec.Reset();
-        TrackingSpec.SetSourceFilter(
+        LocalTrackingSpec.Copy(TrackingSpec, true);
+        LocalTrackingSpec.Reset();
+        LocalTrackingSpec.SetSourceFilter(
             Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
 
         TotalSecondQty := 0;
-        if TrackingSpec.FindSet() then
+        if LocalTrackingSpec.FindSet() then
             repeat
-                TotalSecondQty += TrackingSpec."DUoM Second Qty";
-            until TrackingSpec.Next() = 0;
-
-        // Restore TrackingSpec to no-filter state so the page's standard OK
-        // processing (after validation succeeds) is not affected.
-        TrackingSpec.Reset();
+                TotalSecondQty += LocalTrackingSpec."DUoM Second Qty";
+            until LocalTrackingSpec.Next() = 0;
 
         RoundingPrecision := GetDUoMRoundingPrecision(ItemNo, SecondUoMCode);
         Difference := Abs(TotalSecondQty - PurchLine."DUoM Second Qty");
@@ -261,11 +265,18 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// Uses Modify(false) to avoid triggering standard purchase line business logic
     /// that would interfere with user-entered values.
     ///
+    /// Cursor safety: iteration uses a LOCAL COPY of TrackingSpec (via Copy(Rec, true))
+    /// that shares the same temp-table data with an independent cursor. This prevents
+    /// Reset()/FindSet()/Next() from modifying the page's Rec cursor, which would
+    /// interfere with BC's standard Item Tracking Lines close mechanism and cause
+    /// duplicate Tracking Specification / Reservation Entry records.
+    ///
     /// Called from: DUoM Item Tracking Lines pageextension (50112) on OnQueryClosePage.
     /// </summary>
     procedure SyncPurchLineFromTrackingBuffer(var TrackingSpec: Record "Tracking Specification")
     var
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        LocalTrackingSpec: Record "Tracking Specification" temporary;
         PurchLine: Record "Purchase Line";
         PurchDocType: Enum "Purchase Document Type";
         SecondUoMCode: Code[10];
@@ -299,24 +310,25 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         if not PurchLine.Get(PurchDocType, SourceID, SourceRefNo) then
             exit;
 
-        // Sum DUoM Second Qty and Quantity (Base) from all buffer records for this source.
+        // Use a LOCAL COPY of TrackingSpec with the same shared temp-table data but
+        // an independent cursor. This avoids calling Reset()/FindSet()/Next() on the
+        // page's Rec (= TrackingSpec), which would interfere with BC's standard
+        // Item Tracking Lines close mechanism and create duplicate tracking entries.
         // SetSourceFilter uses the standard BC source identity (Type, Subtype, ID,
         // Ref. No., Batch Name='', Prod. Order Line=0) to avoid mixing entries
         // from other documents. See docs/development/coding-standards.md.
-        TrackingSpec.Reset();
-        TrackingSpec.SetSourceFilter(
+        LocalTrackingSpec.Copy(TrackingSpec, true);
+        LocalTrackingSpec.Reset();
+        LocalTrackingSpec.SetSourceFilter(
             Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
 
         TotalSecondQty := 0;
         TotalBaseQty := 0;
-        if TrackingSpec.FindSet() then
+        if LocalTrackingSpec.FindSet() then
             repeat
-                TotalSecondQty += TrackingSpec."DUoM Second Qty";
-                TotalBaseQty += Abs(TrackingSpec."Quantity (Base)");
-            until TrackingSpec.Next() = 0;
-
-        // Restore TrackingSpec to no-filter state (same pattern as ValidateTrackingSpecBufferForPurchLine).
-        TrackingSpec.Reset();
+                TotalSecondQty += LocalTrackingSpec."DUoM Second Qty";
+                TotalBaseQty += Abs(LocalTrackingSpec."Quantity (Base)");
+            until LocalTrackingSpec.Next() = 0;
 
         // Update the Purchase Line with the aggregate DUoM summary from tracking.
         PurchLine."DUoM Second Qty" := TotalSecondQty;
