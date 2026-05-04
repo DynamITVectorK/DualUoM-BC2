@@ -5,6 +5,10 @@
 /// Responsibilities:
 ///   - Normalize DUoM Ratio from DUoM Second Qty in Variable/AlwaysVariable modes
 ///     (NormalizeTrackingDUoMSecondQty) — called on DUoM Second Qty.OnValidate.
+///   - Validate each functional line in the Tracking Specification buffer for per-lot
+///     ratio coherence (ValidateTrackingSpecBufferEachLine) — called from OnQueryClosePage
+///     BEFORE SyncPurchLineFromTrackingBuffer so that inconsistent per-lot ratios are
+///     caught before any data is persisted. Empty/insertion lines are skipped.
 ///   - Sync Purchase Line DUoM fields from the tracking buffer aggregate
 ///     (SyncPurchLineFromTrackingBuffer) — called on OnQueryClosePage.
 ///   - Validate the aggregate DUoM total from a Tracking Specification buffer against
@@ -237,6 +241,42 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
             exit;
         // Variable / AlwaysVariable: derive ratio from the real secondary quantity.
         TrackingSpec."DUoM Ratio" := TrackingSpec."DUoM Second Qty" / Abs(TrackingSpec."Quantity (Base)");
+    end;
+
+    /// <summary>
+    /// Validates each functional Tracking Specification line in the buffer for
+    /// per-lot DUoM ratio coherence by calling ValidateTrackingSpecLine on every
+    /// line that is considered "functional" (has at least one meaningful value).
+    ///
+    /// Empty/insertion lines (all key fields empty or zero) are silently skipped
+    /// so that TestPage insertion rows and page navigation artefacts do not trigger
+    /// false-positive validation errors.
+    ///
+    /// This method is the early-validation barrier called from OnQueryClosePage
+    /// BEFORE SyncPurchLineFromTrackingBuffer.  Catching per-lot ratio incoherence
+    /// at this point prevents inconsistent data from being persisted to Reservation
+    /// Entry and subsequently blocking the posting flow.
+    ///
+    /// The server-side posting guard (ValidatePurchLineTrackingCoherence, called from
+    /// DUoM Purchase Subscribers 50102) remains as a second safety barrier for data
+    /// that may arrive via code paths that bypass the Item Tracking Lines UI.
+    ///
+    /// Cursor safety: iteration uses a LOCAL COPY of TrackingSpec (via Copy(Rec, true))
+    /// to avoid modifying the page's Rec cursor.  See docs/development/coding-standards.md.
+    ///
+    /// Called from: DUoM Item Tracking Lines pageextension (50112) — OnQueryClosePage.
+    /// </summary>
+    procedure ValidateTrackingSpecBufferEachLine(var TrackingSpec: Record "Tracking Specification")
+    var
+        LocalTrackingSpec: Record "Tracking Specification" temporary;
+    begin
+        LocalTrackingSpec.Copy(TrackingSpec, true);
+        LocalTrackingSpec.Reset();
+        if LocalTrackingSpec.FindSet() then
+            repeat
+                if IsFunctionalTrackingLine(LocalTrackingSpec) then
+                    ValidateTrackingSpecLine(LocalTrackingSpec);
+            until LocalTrackingSpec.Next() = 0;
     end;
 
     /// <summary>
@@ -530,6 +570,27 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 ReservEntry."DUoM Ratio",
                 RoundingPrecision,
                 ReservEntry."Lot No.");
+    end;
+
+    /// <summary>
+    /// Returns true when the Tracking Specification line has at least one meaningful
+    /// value (Lot No., Serial No., Package No., Quantity (Base), DUoM Second Qty, or
+    /// DUoM Ratio is non-empty/non-zero).
+    ///
+    /// Empty/insertion lines — rows visible in the TestPage or the standard page
+    /// during editing but not yet filled in — have all these fields empty or zero
+    /// and are therefore not functional.  They must be silently skipped during
+    /// aggregate validation to avoid false-positive DUoM coherence errors.
+    /// </summary>
+    local procedure IsFunctionalTrackingLine(TrackingSpec: Record "Tracking Specification"): Boolean
+    begin
+        exit(
+            (TrackingSpec."Lot No." <> '') or
+            (TrackingSpec."Serial No." <> '') or
+            (TrackingSpec."Package No." <> '') or
+            (TrackingSpec."Quantity (Base)" <> 0) or
+            (TrackingSpec."DUoM Second Qty" <> 0) or
+            (TrackingSpec."DUoM Ratio" <> 0));
     end;
 
     var

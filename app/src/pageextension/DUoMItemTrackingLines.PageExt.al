@@ -19,12 +19,15 @@
 /// validation guard (pre-posting) is in DUoM Purchase Subscribers (50102).
 ///
 /// OnQueryClosePage (OK/LookupOK):
-///   1. Calls SyncPurchLineFromTrackingBuffer to update the source Purchase Line with the
+///   1. Calls ValidateTrackingSpecBufferEachLine to validate per-lot DUoM ratio coherence
+///      for every functional tracking line BEFORE any data is persisted. Empty/insertion
+///      lines are skipped. This is the first (early) barrier against inconsistent ratios.
+///   2. Calls SyncPurchLineFromTrackingBuffer to update the source Purchase Line with the
 ///      aggregate DUoM totals from tracking. The Purchase Line is the aggregate summary;
 ///      each tracking line (lot) retains its own per-lot ratio.
-///   2. Calls ValidateTrackingSpecBufferForPurchLine as sanity check after sync.
+///   3. Calls ValidateTrackingSpecBufferForPurchLine as sanity check after sync.
 ///   The pre-posting validation in DUoM Purchase Subscribers (50102) remains as a second
-///   safety barrier for data that may arrive by other means.
+///   safety barrier for data that may arrive by other means (e.g., direct code insertion).
 /// </summary>
 pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 {
@@ -103,6 +106,10 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
         // actions must never be blocked by DUoM aggregate validation.
         if not (CloseAction in [Action::OK, Action::LookupOK]) then
             exit(true);
+        // Validate per-lot ratio coherence BEFORE syncing. This is the early barrier
+        // that prevents inconsistent DUoM ratios from being persisted to Reservation
+        // Entry. Empty/insertion lines are skipped automatically.
+        DUoMCoherenceMgt.ValidateTrackingSpecBufferEachLine(Rec);
         // Sync the source Purchase Line with the aggregate DUoM totals from tracking.
         // This makes the Purchase Line the aggregate summary of what was actually received.
         // Must run before ValidateTrackingSpecBufferForPurchLine so the comparison is
