@@ -1198,55 +1198,103 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                 end;
             13:
                 begin
-                    // T-REOPEN-05 / T-REOPEN-06: Verificar que no se han creado líneas duplicadas.
-                    // La página debe abrirse sin error "record already exists"
-                    // y mostrar exactamente 1 línea para LOT-REOPEN-T1.
-                    // Si existe una segunda línea, el Error captura sus datos para diagnóstico.
-                    ItemTrackingLines.First();
-                    LibraryAssert.AreEqual(
+                    // T-REOPEN-05: Verificar que no se han creado líneas funcionales duplicadas.
+                    // El TestPage estándar puede exponer una línea vacía/de inserción.
+                    // Esa línea no debe contarse como duplicado funcional.
+                    AssertSingleFunctionalTrackingLine(
+                        ItemTrackingLines,
                         'LOT-REOPEN-T1',
-                        ItemTrackingLines."Lot No.".Value,
-                        'T-REOPEN-05: Lot No. debe ser LOT-REOPEN-T1 al reabrir (sin duplicados).');
-                    if ItemTrackingLines.Next() then
-                        Error(
-                            'T-REOPEN-05: Se encontró una segunda línea visible. ' +
-                            'Lot No.=%1, Qty Base=%2, DUoM Ratio=%3, DUoM Second Qty=%4',
-                            ItemTrackingLines."Lot No.".Value,
-                            ItemTrackingLines."Quantity (Base)".AsDecimal(),
-                            ItemTrackingLines."DUoM Ratio".AsDecimal(),
-                            ItemTrackingLines."DUoM Second Qty".AsDecimal());
+                        2,
+                        5,
+                        2.5,
+                        'T-REOPEN-05');
                     ItemTrackingLines.OK().Invoke();
                 end;
             14:
                 begin
                     // T-REOPEN-06: Tercera apertura — verificar que DUoM sigue correcto
-                    // y que no se han generado duplicados tras dos cierres consecutivos.
-                    ItemTrackingLines.First();
-                    LibraryAssert.AreEqual(
+                    // y que no se han generado duplicados funcionales tras dos cierres consecutivos.
+                    AssertSingleFunctionalTrackingLine(
+                        ItemTrackingLines,
                         'LOT-REOPEN-T1',
-                        ItemTrackingLines."Lot No.".Value,
-                        'T-REOPEN-06: Lot No. debe ser LOT-REOPEN-T1 en la tercera apertura.');
-                    LibraryAssert.AreNearlyEqual(
+                        2,
                         5,
-                        ItemTrackingLines."DUoM Second Qty".AsDecimal(),
-                        0.001,
-                        'T-REOPEN-06: DUoM Second Qty debe ser 5 tras dos cierres.');
-                    LibraryAssert.AreNearlyEqual(
                         2.5,
-                        ItemTrackingLines."DUoM Ratio".AsDecimal(),
-                        0.001,
-                        'T-REOPEN-06: DUoM Ratio debe ser 2.5 tras dos cierres.');
-                    if ItemTrackingLines.Next() then
-                        Error(
-                            'T-REOPEN-06: Se encontró una segunda línea en la tercera apertura. ' +
-                            'Lot No.=%1, Qty Base=%2, DUoM Ratio=%3, DUoM Second Qty=%4',
-                            ItemTrackingLines."Lot No.".Value,
-                            ItemTrackingLines."Quantity (Base)".AsDecimal(),
-                            ItemTrackingLines."DUoM Ratio".AsDecimal(),
-                            ItemTrackingLines."DUoM Second Qty".AsDecimal());
+                        'T-REOPEN-06');
                     ItemTrackingLines.OK().Invoke();
                 end;
         end;
+    end;
+
+    /// <summary>
+    /// Devuelve true si la línea actual del TestPage contiene datos funcionales de tracking.
+    /// Una línea completamente vacía/cero (línea de inserción del TestPage estándar)
+    /// no debe tratarse como duplicado funcional.
+    /// </summary>
+    local procedure IsFunctionalTrackingLine(var ItemTrackingLines: TestPage "Item Tracking Lines"): Boolean
+    begin
+        exit(
+            (ItemTrackingLines."Lot No.".Value <> '') or
+            (ItemTrackingLines."Quantity (Base)".AsDecimal() <> 0) or
+            (ItemTrackingLines."DUoM Ratio".AsDecimal() <> 0) or
+            (ItemTrackingLines."DUoM Second Qty".AsDecimal() <> 0));
+    end;
+
+    /// <summary>
+    /// Valida que existe exactamente una línea funcional para el lote esperado
+    /// y que no existen otras líneas funcionales de tracking.
+    /// Ignora líneas vacías/de inserción visibles en el TestPage estándar.
+    /// </summary>
+    local procedure AssertSingleFunctionalTrackingLine(
+        var ItemTrackingLines: TestPage "Item Tracking Lines";
+        ExpectedLotNo: Code[50];
+        ExpectedQtyBase: Decimal;
+        ExpectedSecondQty: Decimal;
+        ExpectedRatio: Decimal;
+        TestContext: Text)
+    var
+        LibraryAssert: Codeunit "Library Assert";
+        ExpectedLotFunctionalCount: Integer;
+        OtherFunctionalCount: Integer;
+    begin
+        ItemTrackingLines.First();
+
+        repeat
+            if IsFunctionalTrackingLine(ItemTrackingLines) then begin
+                if ItemTrackingLines."Lot No.".Value = ExpectedLotNo then begin
+                    ExpectedLotFunctionalCount += 1;
+
+                    LibraryAssert.AreNearlyEqual(
+                        ExpectedQtyBase,
+                        ItemTrackingLines."Quantity (Base)".AsDecimal(),
+                        0.001,
+                        TestContext + ': Quantity (Base) incorrecta.');
+
+                    LibraryAssert.AreNearlyEqual(
+                        ExpectedSecondQty,
+                        ItemTrackingLines."DUoM Second Qty".AsDecimal(),
+                        0.001,
+                        TestContext + ': DUoM Second Qty incorrecta.');
+
+                    LibraryAssert.AreNearlyEqual(
+                        ExpectedRatio,
+                        ItemTrackingLines."DUoM Ratio".AsDecimal(),
+                        0.001,
+                        TestContext + ': DUoM Ratio incorrecto.');
+                end else
+                    OtherFunctionalCount += 1;
+            end;
+        until not ItemTrackingLines.Next();
+
+        LibraryAssert.AreEqual(
+            1,
+            ExpectedLotFunctionalCount,
+            TestContext + ': debe existir exactamente 1 línea funcional para el lote esperado.');
+
+        LibraryAssert.AreEqual(
+            0,
+            OtherFunctionalCount,
+            TestContext + ': no deben existir otras líneas funcionales de tracking.');
     end;
 
     var
