@@ -60,12 +60,35 @@ Dado que compras y ventas comparten infraestructura de tracking/reversión, el f
 
 ---
 
+
+## Alineación con estándar y patrón BC
+
+Este fix debe seguir el **estilo y patrones estándar** de Business Central y del proyecto:
+
+- Priorizar eventos/subscribers equivalentes a los usados por el estándar para copias de tracking y reversión.
+- Evitar lógica ad-hoc en un único flujo (solo compras o solo ventas).
+- Mantener simetría funcional entre documentos origen y sus movimientos de anulación.
+
+### Estudio requerido: tratamiento de signo en estándar
+
+Antes de cerrar la implementación, analizar cómo trata el estándar el **signo** en anulaciones para replicarlo igual en DUoM:
+
+1. Identificar en base app los puntos donde se invierte `Quantity` al anular recepción/envío.
+2. Verificar correspondencia de signo en campos derivados (incluyendo segunda cantidad).
+3. Aplicar la misma regla al cálculo/persistencia de `DUoM Second Qty` (y su relación con `DUoM Ratio`).
+4. Añadir tests que validen explícitamente signo por línea y suma total (original vs. reverso).
+
+Resultado esperado: DUoM debe comportarse exactamente como el estándar en la inversión de signo, tanto en compras como en ventas.
+
+---
+
 ## Criterios de aceptación
 
 - [ ] Al anular albarán de compra contabilizado, los movimientos inversos conservan `DUoM Ratio` y `DUoM Second Qty` en todas las líneas.
 - [ ] Al anular albarán de venta contabilizado, mismo resultado.
 - [ ] En escenarios multi-lote, la suma de segunda cantidad en reverso coincide (con signo contrario) con el movimiento original.
 - [ ] No hay regresión en trazabilidad ni en cantidad facturada.
+- [ ] El signo de `DUoM Second Qty` en anulación replica la regla estándar de BC (por línea y total agregado).
 
 ---
 
