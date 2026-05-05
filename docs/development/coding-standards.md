@@ -126,6 +126,85 @@ ReservationEntry.SetRange("Lot No.", LotNo);
 
 ---
 
+## Norma: ILE ← IJL siempre (DUoM Second Qty)
+
+### Regla obligatoria
+
+`Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
+Siempre debe recibir sus datos del `Item Journal Line` (IJL).
+
+La fórmula canónica es:
+
+```al
+// ✅ CORRECTO — datos vienen del IJL; Signed() aplica el signo correcto
+ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+```
+
+`Signed()` es el idioma estándar de Microsoft BC para aplicar el signo correcto según
+Entry Type: positivo para entradas (Purchase), negativo para salidas (Sale, anulaciones).
+
+### Patrones prohibidos
+
+```al
+// ❌ PROHIBIDO — usa ILE.Quantity como fuente (viola norma ILE←IJL)
+ILE."DUoM Second Qty" := IJL.Signed(Abs(ILE.Quantity) * Ratio);
+
+// ❌ PROHIBIDO — usa ILE.Quantity de otro parámetro ILE como fuente
+ILE."DUoM Second Qty" := IJL.Signed(Abs(ItemLedgEntry.Quantity) * Ratio);
+
+// ❌ PROHIBIDO — calcula desde campos del ILE sin pasar por IJL
+ILE."DUoM Second Qty" := Abs(ILE.Quantity) * ILE."DUoM Ratio";
+```
+
+### Patrón con DUoM Lot Ratio
+
+Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio del IJL, el IJL debe actualizarse
+**primero** (si es `var`), y el ILE debe leer del IJL actualizado:
+
+```al
+// ✅ CORRECTO — actualizar IJL primero, luego ILE ← IJL
+if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
+    ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
+    if ItemJournalLine."DUoM Ratio" <> 0 then
+        ItemJournalLine."DUoM Second Qty" :=
+            Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
+end;
+ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+```
+
+Cuando el IJL es parámetro **por valor** (no `var`), usar `ItemJnlLine.Quantity` —
+no `ItemLedgerEntry.Quantity`:
+
+```al
+// ✅ CORRECTO — fuente IJL (Quantity del IJL, no del ILE)
+ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine.Quantity) * AppliedRatio);
+
+// ❌ PROHIBIDO — fuente ILE
+ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemLedgerEntry.Quantity) * AppliedRatio);
+```
+
+### Patrón para flujo de anulación (undo sin trazabilidad)
+
+En el flujo de anulación sin lote, BC no propaga DUoM al IJL (llega con DUoM = 0).
+El IJL tiene `Applies-to Entry` apuntando al ILE original. La norma se respeta así:
+
+```al
+// ✅ CORRECTO — poblar IJL desde ILE original; ILE recibe datos del IJL
+if OrigILE.Get(ItemJournalLine."Applies-to Entry") then begin
+    ItemJournalLine."DUoM Ratio" := OrigILE."DUoM Ratio";
+    ItemJournalLine."DUoM Second Qty" := OrigILE."DUoM Second Qty";
+end;
+// Después, la fórmula canónica:
+ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+```
+
+### Implementación de referencia
+
+Ver codeunit 50104 `DUoM Inventory Subscribers` (subscriber `OnAfterInitItemLedgEntry`)
+y codeunit 50110 `DUoM Tracking Copy Subscribers` (subscriber `ILECopyTrackingFromItemJnlLine`).
+
+---
+
 ## Anti-patrones prohibidos
 
 Los siguientes patrones **no están permitidos** salvo que estén explícitamente justificados

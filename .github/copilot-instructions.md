@@ -169,6 +169,42 @@ codeunit 50202 "DUoM Item Card Opening Tests"
 When copying custom extension fields from source document lines to posted/history lines,
 follow these rules to avoid fragile and build-breaking subscriber signatures:
 
+### ILE DUoM Second Qty — norma ILE←IJL (obligatoria)
+
+`Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
+Siempre debe recibir sus datos del `Item Journal Line`. Fórmula canónica:
+
+```al
+// ✅ OBLIGATORIO — datos vienen del IJL; Signed() aplica el signo correcto (Microsoft standard idiom)
+ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+```
+
+`Signed()` es el idioma estándar de Microsoft BC para el signo según Entry Type:
+positivo para entradas (Purchase), negativo para salidas (Sale, anulaciones).
+
+```al
+// ❌ PROHIBIDO — usa ILE.Quantity como fuente (viola norma ILE←IJL)
+ILE."DUoM Second Qty" := IJL.Signed(Abs(ILE.Quantity) * Ratio);
+ILE."DUoM Second Qty" := IJL.Signed(Abs(ItemLedgEntry.Quantity) * Ratio);
+```
+
+Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio, el IJL debe actualizarse primero
+(si es `var`), y el ILE leer del IJL. Si el IJL es parámetro por valor, usar `IJL.Quantity`:
+
+```al
+// ✅ CORRECTO (parámetro var — actualizar IJL, luego ILE ← IJL)
+ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
+ItemJournalLine."DUoM Second Qty" := Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
+ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+
+// ✅ CORRECTO (parámetro por valor — usar IJL.Quantity, no ILE.Quantity)
+ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine.Quantity) * AppliedRatio);
+```
+
+Ver norma completa en `docs/development/coding-standards.md` (sección "Norma: ILE ← IJL siempre").
+Implementación de referencia: codeunit 50104 `OnAfterInitItemLedgEntry` y codeunit 50110
+`ILECopyTrackingFromItemJnlLine`.
+
 ### Prefer InitFrom* table events over codeunit insert events
 
 For propagating DUoM fields (or any custom fields) from:
