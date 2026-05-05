@@ -186,19 +186,22 @@ positivo para entradas (Purchase), negativo para salidas (Sale, anulaciones).
 // ❌ PROHIBIDO — usa ILE.Quantity como fuente (viola norma ILE←IJL)
 ILE."DUoM Second Qty" := IJL.Signed(Abs(ILE.Quantity) * Ratio);
 ILE."DUoM Second Qty" := IJL.Signed(Abs(ItemLedgEntry.Quantity) * Ratio);
+
+// ❌ PROHIBIDO — calcula desde IJL.Quantity × Ratio al asignar al ILE
+ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL.Quantity) * AppliedRatio);
 ```
 
 Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio, el IJL debe actualizarse primero
-(si es `var`), y el ILE leer del IJL. Si el IJL es parámetro por valor, usar `IJL.Quantity`:
+(si es `var`), y el ILE leer del campo del IJL actualizado:
 
 ```al
-// ✅ CORRECTO (parámetro var — actualizar IJL, luego ILE ← IJL)
+// ✅ CORRECTO — actualizar IJL, luego ILE ← IJL (asignación directa del campo)
 ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
 ItemJournalLine."DUoM Second Qty" := Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
 ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
 
-// ✅ CORRECTO (parámetro por valor — usar IJL.Quantity, no ILE.Quantity)
-ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine.Quantity) * AppliedRatio);
+// ✅ CORRECTO — parámetro por valor: el IJL ya refleja actualizaciones del subscriber anterior
+ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine."DUoM Second Qty"));
 ```
 
 Ver norma completa en `docs/development/coding-standards.md` (sección "Norma: ILE ← IJL siempre").

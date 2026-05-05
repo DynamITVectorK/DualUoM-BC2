@@ -334,29 +334,18 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al):
     ///   OnAfterInitValueEntry(var ValueEntry; var ItemJnlLine; var ValueEntryNo; var ItemLedgEntry).
     /// Patrón SaaS: OnAfterInit* + asignación directa (sin Modify sobre tabla base).
+    ///
+    /// NORMA ILE←IJL: ValueEntry."DUoM Second Qty" := IJL.Signed(Abs(IJL."DUoM Second Qty")).
+    /// OnAfterInitItemLedgEntry (var ItemJournalLine, ejecutado antes de este evento)
+    /// garantiza que el IJL tiene el DUoM Second Qty definitivo, incluyendo flujos de
+    /// anulación donde el IJL llega inicialmente con DUoM = 0.
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
     local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
-    var
-        OrigILE: Record "Item Ledger Entry";
     begin
-        if ItemJournalLine."DUoM Second Qty" = 0 then begin
-            // Anulación sin trazabilidad: rama de seguridad.
-            // OnAfterInitItemLedgEntry (que se dispara antes) ya actualiza var ItemJournalLine
-            // con los datos del ILE original, por lo que en condiciones normales este bloque
-            // es código muerto. Se mantiene como salvaguarda por si el flujo de posting
-            // llega aquí con IJL aún en 0.
-            // Norma ILE←IJL: se usa IJL.Quantity en lugar de ILE.Quantity como fuente.
-            if ItemJournalLine."Applies-to Entry" <> 0 then
-                if OrigILE.Get(ItemJournalLine."Applies-to Entry") then
-                    if OrigILE."DUoM Ratio" <> 0 then
-                        // ItemJournalLine.Signed() aplica el signo correcto según Entry Type.
-                        ValueEntry."DUoM Second Qty" :=
-                            ItemJournalLine.Signed(Abs(ItemJournalLine.Quantity) * OrigILE."DUoM Ratio");
-            exit;
-        end;
-        // ItemJournalLine.Signed() aplica el signo correcto según Entry Type (BC standard idiom):
-        // positivo para entradas (Purchase), negativo para salidas (Sale).
+        // Norma ILE←IJL: asignación directa del campo del IJL — sin cálculos en destino.
+        // Signed() aplica el signo correcto según Entry Type (BC standard idiom):
+        // positivo para entradas (Purchase), negativo para salidas (Sale, anulaciones).
         ValueEntry."DUoM Second Qty" :=
             ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
     end;

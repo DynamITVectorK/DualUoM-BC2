@@ -131,12 +131,11 @@ ReservationEntry.SetRange("Lot No.", LotNo);
 ### Regla obligatoria
 
 `Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
-Siempre debe recibir sus datos del `Item Journal Line` (IJL).
-
-La fórmula canónica es:
+Siempre debe recibir sus datos del `Item Journal Line` (IJL) mediante asignación directa
+del mismo campo:
 
 ```al
-// ✅ CORRECTO — datos vienen del IJL; Signed() aplica el signo correcto
+// ✅ CORRECTO — asignación directa del campo del IJL; Signed() aplica el signo
 ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
 ```
 
@@ -146,41 +145,43 @@ Entry Type: positivo para entradas (Purchase), negativo para salidas (Sale, anul
 ### Patrones prohibidos
 
 ```al
-// ❌ PROHIBIDO — usa ILE.Quantity como fuente (viola norma ILE←IJL)
+// ❌ PROHIBIDO — calcula desde ILE.Quantity (viola norma ILE←IJL)
 ILE."DUoM Second Qty" := IJL.Signed(Abs(ILE.Quantity) * Ratio);
 
-// ❌ PROHIBIDO — usa ILE.Quantity de otro parámetro ILE como fuente
-ILE."DUoM Second Qty" := IJL.Signed(Abs(ItemLedgEntry.Quantity) * Ratio);
+// ❌ PROHIBIDO — calcula desde IJL.Quantity × Ratio al asignar al ILE
+ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL.Quantity) * AppliedRatio);
 
 // ❌ PROHIBIDO — calcula desde campos del ILE sin pasar por IJL
 ILE."DUoM Second Qty" := Abs(ILE.Quantity) * ILE."DUoM Ratio";
 ```
 
+Los cálculos intermedios pertenecen al IJL (actualizando `var IJL`), no a la asignación
+final al ILE. La asignación al ILE siempre es `IJL.Signed(Abs(IJL."DUoM Second Qty"))`.
+
 ### Patrón con DUoM Lot Ratio
 
 Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio del IJL, el IJL debe actualizarse
-**primero** (si es `var`), y el ILE debe leer del IJL actualizado:
+**primero** (si es `var`), y el ILE leer del IJL actualizado:
 
 ```al
-// ✅ CORRECTO — actualizar IJL primero, luego ILE ← IJL
+// ✅ CORRECTO — actualizar IJL primero, luego ILE ← IJL (asignación directa)
 if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
     ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
     if ItemJournalLine."DUoM Ratio" <> 0 then
         ItemJournalLine."DUoM Second Qty" :=
             Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
 end;
+// Asignación directa del campo del IJL — sin repetir el cálculo aquí:
 ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
 ```
 
-Cuando el IJL es parámetro **por valor** (no `var`), usar `ItemJnlLine.Quantity` —
-no `ItemLedgerEntry.Quantity`:
+Cuando el IJL es parámetro por valor (no `var`) en un subscriber posterior, el IJL ya
+refleja los valores actualizados porque BC pasa el mismo `ItemJournalLine` (var en el
+subscriber anterior). Por lo que la asignación directa del campo del IJL sigue siendo válida:
 
 ```al
-// ✅ CORRECTO — fuente IJL (Quantity del IJL, no del ILE)
-ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine.Quantity) * AppliedRatio);
-
-// ❌ PROHIBIDO — fuente ILE
-ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemLedgerEntry.Quantity) * AppliedRatio);
+// ✅ CORRECTO — asignación directa; el IJL ya tiene el valor actualizado
+ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine."DUoM Second Qty"));
 ```
 
 ### Patrón para flujo de anulación (undo sin trazabilidad)
@@ -189,12 +190,13 @@ En el flujo de anulación sin lote, BC no propaga DUoM al IJL (llega con DUoM = 
 El IJL tiene `Applies-to Entry` apuntando al ILE original. La norma se respeta así:
 
 ```al
-// ✅ CORRECTO — poblar IJL desde ILE original; ILE recibe datos del IJL
+// ✅ CORRECTO — poblar IJL desde ILE original; ILE recibe datos del IJL (asignación directa)
 if OrigILE.Get(ItemJournalLine."Applies-to Entry") then begin
     ItemJournalLine."DUoM Ratio" := OrigILE."DUoM Ratio";
     ItemJournalLine."DUoM Second Qty" := OrigILE."DUoM Second Qty";
+    // No exit: continúa al flujo normal donde ILE lee del IJL actualizado.
 end;
-// Después, la fórmula canónica:
+// Asignación directa del campo del IJL:
 ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
 ```
 
