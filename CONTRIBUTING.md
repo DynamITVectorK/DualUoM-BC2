@@ -218,6 +218,29 @@ Un PR sin esta declaración explícita no cumple la definición de trabajo compl
 - Librería de aserciones: `Library Assert` (Microsoft).
 - Ningún test puede desactivarse para que pase el CI.
 
+---
+
+## Regla de legibilidad: evitar `if` anidados/encadenados
+
+> **No se permiten estructuras `if` anidadas o encadenadas cuando exista una alternativa clara de diseño.**
+
+### Norma del proyecto
+
+- Máximo **1 nivel** de anidación de `if` por bloque de lógica.
+- No encadenar múltiples `if/else if` para reglas complejas: preferir `case` o extracción a helpers con nombre semántico.
+- Priorizar **guard clauses** (`exit`, `Error`) para cortar flujo temprano.
+
+### Refactor recomendado
+
+1. Invertir condición y salir pronto.
+2. Extraer validaciones a funciones pequeñas (`Is...`, `Can...`, `Should...`).
+3. Reemplazar cascadas condicionales por `case` o por una función de decisión.
+
+### Cumplimiento en PR
+
+- Todo PR debe declarar explícitamente que revisó esta regla en el checklist.
+- Si hay una excepción, documentarla y justificar por qué no se pudo simplificar.
+
 ### Norma de creación de datos de test (obligatoria)
 
 En el código de tests, **si existe un helper estándar de Microsoft `Library - *` que cubra

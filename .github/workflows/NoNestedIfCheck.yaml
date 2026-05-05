@@ -1,0 +1,35 @@
+name: 'No Nested If Check'
+
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  nested-if-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Detect nested/chain if patterns in AL
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+
+          changed_files="$(git diff --name-only --diff-filter=ACMRT "origin/${{ github.base_ref }}...HEAD" | rg '\.al$' || true)"
+          if [ -z "${changed_files}" ]; then
+            echo "No hay archivos .al modificados en el PR."
+            exit 0
+          fi
+
+          # Heurística simple en archivos tocados por el PR:
+          # identifica if dentro de un bloque if/else begin..end sin parseo AL completo.
+          if rg -nUP "if\s+.+\s+then\s+begin[\s\S]{0,400}?\bif\s+.+\s+then" ${changed_files}; then
+            echo "Se detectaron posibles if anidados/encadenados."
+            exit 1
+          fi
+
+          echo "No se detectaron patrones de if anidados/encadenados según la regla del proyecto."
