@@ -155,7 +155,7 @@ Dos mecanismos paralelos cubren los dos paths de posting:
 IJL (DUoM Ratio del artículo/variante)
   → Codeunit "Item Jnl.-Post Line" · OnAfterInitItemLedgEntry   [50104]
       ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
-      ↓ ILE.DUoM Second Qty = Abs(ILE.Quantity) × Ratio  (o IJL.DUoM Second Qty si ratio = 0)
+      ↓ ILE.DUoM Second Qty = ILE.Quantity × Ratio  (signo coherente; negativo para salidas/anulaciones)
 Item Ledger Entry  ✓
 ```
 
@@ -167,7 +167,7 @@ Tracking Specification (con DUoM Ratio del lote)
 Item Journal Line
   → Table "Item Ledger Entry" · OnAfterCopyTrackingFromItemJnlLine [50110]
       ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
-      ↓ ILE.DUoM Second Qty = Abs(ILE.Quantity) × IJL.DUoM Ratio
+      ↓ ILE.DUoM Second Qty = ILE.Quantity × IJL.DUoM Ratio  (signo coherente; negativo para salidas)
 Item Ledger Entry  ✓
 ```
 
@@ -185,8 +185,9 @@ lote y `DUoM Ratio` de la línea de tracking es 0, el subscriber aplica como fal
 
 - La **línea origen** mantiene información DUoM como **total agregado**.
 - El **ILE por lote** contiene la segunda cantidad y el ratio propios de ese lote.
-- El posting calcula `ILE.DUoM Second Qty = Abs(ILE.Quantity) × DUoM Ratio` para garantizar
-  el valor correcto por lote, independientemente del número de lotes de la línea origen.
+- El posting calcula `ILE.DUoM Second Qty = ILE.Quantity × DUoM Ratio` para garantizar
+  el valor correcto por lote con signo coherente (negativo para salidas/correcciones).
+  Esto replica la regla estándar de BC: los movimientos inversos tienen signo contrario.
 - Si el `Tracking Specification` del lote aporta un ratio (via `IJLCopyTrackingFromSpec`),
   sobrescribe el ratio genérico de la línea. Si no (TrackingSpec.DUoM Ratio = 0), el split
   IJL hereda el ratio genérico de la línea origen.
@@ -198,8 +199,10 @@ lote y `DUoM Ratio` de la línea de tracking es 0, el subscriber aplica como fal
   `Reservation Entry` desde lógica de línea origen — puede haber N entradas.
 - No se debe asumir que `ItemJournalLine."DUoM Second Qty"` en eventos de posting
   es la cantidad correcta para el ILE: en multi-lote, es el total de la línea, no el del lote.
-- La distribución correcta de DUoM entre lotes usa `Abs(ILE.Quantity) × DUoM Ratio`
-  calculado en `ILECopyTrackingFromItemJnlLine` (codeunit 50110).
+- La distribución correcta de DUoM entre lotes usa `ILE.Quantity × DUoM Ratio`
+  calculado en `ILECopyTrackingFromItemJnlLine` (codeunit 50110). El signo sigue
+  a `ILE.Quantity`: positivo para entradas (compra), negativo para salidas (venta,
+  anulación recepción).
 - **`Item Journal Line`."Lot No." no es la fuente de verdad de la ratio DUoM por lote.**
   Usar `Validate("Lot No.")` en IJL como mecanismo para pre-rellenar DUoM es incorrecto
   porque asume 1 línea = 1 lote. La fuente de verdad real es el `Tracking Specification`
@@ -242,6 +245,15 @@ lote y `DUoM Ratio` de la línea de tracking es 0, el subscriber aplica como fal
   los campos DUoM del IJL **no** se borren cuando se limpia el tracking identificador
   (Lot No./Serial No./Package No.): son campos económicos, no identificadores de trazabilidad.
   Pruebas que lo confirman: T02, T03, T04–T09, T13, T14.
+- **Bug fix (sign + undo flow):** `DUoM Second Qty` en ILEs de salida y corrección ahora usa
+  `ILE.Quantity × DUoM Ratio` (con signo) en lugar de `Abs(ILE.Quantity) × DUoM Ratio`.
+  Esto garantiza que los ILEs de venta, anulación de recepción y anulación de envío tienen
+  `DUoM Second Qty` con el signo correcto (negativo para salidas/correcciones), replicando
+  la regla estándar de BC. Adicionalmente, `OnAfterInitItemLedgEntry` ahora cubre el flujo
+  de anulación sin trazabilidad de lote: cuando `IJL.DUoM = 0` y el IJL tiene
+  `Applies-to Entry`, el subscriber recupera el ratio del ILE original y lo aplica con signo
+  contrario. La misma lógica se aplica a `OnAfterInitValueEntry` para Value Entries.
+  Pruebas añadidas: `DUoM Undo Rcpt Shpt Tests` (50227), T-UNDO-01..05.
 
 ---
 

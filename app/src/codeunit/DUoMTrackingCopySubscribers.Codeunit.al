@@ -191,14 +191,16 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
             if DUoMLotRatio.Get(ItemJnlLine."Item No.", ItemJnlLine."Lot No.") then
                 AppliedRatio := DUoMLotRatio."Actual Ratio";
         ItemLedgerEntry."DUoM Ratio" := AppliedRatio;
-        if AppliedRatio <> 0 then
+        if AppliedRatio <> 0 then begin
             // Recalcular con la cantidad exacta del ILE (lote), no la cantidad total del IJL.
+            // ItemJnlLine.Signed() aplica el signo correcto según Entry Type (BC standard idiom):
+            // positivo para entradas (Purchase), negativo para salidas (Sale, anulación compra).
             ItemLedgerEntry."DUoM Second Qty" :=
-                Abs(ItemLedgerEntry.Quantity) * AppliedRatio
-        else begin
+                ItemJnlLine.Signed(Abs(ItemLedgerEntry.Quantity) * AppliedRatio);
+        end else begin
             if ItemJnlLine."Lot No." = '' then
-                // AlwaysVariable sin lote: copia directa del total (flujo sin tracking).
-                ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty"
+                // AlwaysVariable sin lote: copia con signo correcto via Signed() (BC standard idiom).
+                ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine."DUoM Second Qty"))
             else
                 // AlwaysVariable + Lot No. sin ratio: total no válido por ILE individual.
                 // Resetear a 0 (corrige posible valor previo de OnAfterInitItemLedgEntry).

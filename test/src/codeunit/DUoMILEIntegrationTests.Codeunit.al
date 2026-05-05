@@ -137,13 +137,13 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibrarySales.PostSalesDocument(SalesHeader, true, false);
 
         // [THEN] The resulting Sale ILE contains the correct DUoM fields
-        // DUoM Second Qty = Abs(ILE.Quantity) x DUoM Ratio = 10 x 0.8 = 8
-        // ILE.Quantity es negativo en ventas; se usa Abs() para el recálculo.
-        // El valor coincide con Sales Line pero la fuente es el recálculo, no la copia directa.
+        // DUoM Second Qty = ILE.Quantity x DUoM Ratio = -10 x 0.8 = -8
+        // ILE.Quantity es negativo en ventas; DUoM Second Qty sigue el signo de ILE.Quantity
+        // para coherencia con el estándar BC (movimientos de reversión con signo contrario).
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
         LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un Item Ledger Entry de venta tras la contabilización del pedido de venta');
-        LibraryAssert.AreEqual(8, ILE."DUoM Second Qty", 'ILE DUoM Second Qty must be 8 (copied from Sales Line) after sales posting');
+        LibraryAssert.AreEqual(-8, ILE."DUoM Second Qty", 'ILE DUoM Second Qty must be -8 (ILE.Quantity × DUoM Ratio = -10 × 0.8) after sales posting');
         LibraryAssert.AreEqual(0.8, ILE."DUoM Ratio", 'ILE DUoM Ratio must be 0.8 after sales posting');
     end;
 
@@ -371,13 +371,13 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibraryAssert.AreNearlyEqual(1.8, ILE."DUoM Ratio", 0.001,
             'T2: ILE DUoM Ratio debe ser 1.8 (introducido manualmente)');
         LibraryAssert.AreNearlyEqual(18, ILE."DUoM Second Qty", 0.001,
-            'T2: ILE DUoM Second Qty = Abs(10) × 1.8 = 18');
+            'T2: ILE DUoM Second Qty = 10 × 1.8 = 18');
     end;
 
     // -------------------------------------------------------------------------
     // TEST 3 — Variable sin lotes, venta → ILE
-    // Verifica que DUoM Second Qty se recalcula con Abs(ILE.Quantity) × Ratio
-    // (ILE.Quantity es negativo en ventas).
+    // Verifica que DUoM Second Qty = ILE.Quantity × Ratio (signo coherente con ILE.Quantity).
+    // ILE.Quantity es negativo en ventas → DUoM Second Qty negativo.
     // -------------------------------------------------------------------------
 
     [Test]
@@ -421,17 +421,17 @@ codeunit 50209 "DUoM ILE Integration Tests"
         // [WHEN] Se registra (solo envío)
         LibrarySales.PostSalesDocument(SalesHeader, true, false);
 
-        // [THEN] ILE Sale: DUoM Ratio = 1.5 · DUoM Second Qty = Abs(ILE.Quantity) × 1.5 = 15
-        // NOTA: DUoM Second Qty se recalcula con Abs(ILE.Quantity) × Ratio, no se copia
-        // de Sales Line. ILE.Quantity es negativo en ventas.
+        // [THEN] ILE Sale: DUoM Ratio = 1.5 · DUoM Second Qty = ILE.Quantity × 1.5 = -15
+        // ILE.Quantity es negativo en ventas; DUoM Second Qty toma signo negativo
+        // para coherencia con el estándar BC.
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
         LibraryAssert.IsTrue(ILE.FindFirst(),
             'T3: Se esperaba un ILE de venta para modo Variable');
         LibraryAssert.AreNearlyEqual(1.5, ILE."DUoM Ratio", 0.001,
             'T3: ILE Sale DUoM Ratio debe ser 1.5 (modo Variable)');
-        LibraryAssert.AreNearlyEqual(15, ILE."DUoM Second Qty", 0.001,
-            'T3: ILE Sale DUoM Second Qty = Abs(−10) × 1.5 = 15');
+        LibraryAssert.AreNearlyEqual(-15, ILE."DUoM Second Qty", 0.001,
+            'T3: ILE Sale DUoM Second Qty = ILE.Quantity × 1.5 = -10 × 1.5 = -15');
     end;
 
     // -------------------------------------------------------------------------
@@ -711,7 +711,8 @@ codeunit 50209 "DUoM ILE Integration Tests"
         // [WHEN] Se registra el pedido de venta (solo envío)
         LibrarySales.PostSalesDocument(SalesHeader, true, false);
 
-        // [THEN] ILE de venta: DUoM Ratio = 1.25 · DUoM Second Qty = 5 × 1.25 = 6.25
+        // [THEN] ILE de venta: DUoM Ratio = 1.25 · DUoM Second Qty = -5 × 1.25 = -6.25
+        // DUoM Second Qty sigue el signo de ILE.Quantity (negativo en ventas).
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
         ILE.SetRange("Lot No.", LotNo);
@@ -719,8 +720,8 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'T03: Se esperaba un ILE de venta para el lote LOT-ILE6.');
         LibraryAssert.AreNearlyEqual(1.25, ILE."DUoM Ratio", 0.001,
             'T03: ILE venta DUoM Ratio debe ser 1.25.');
-        LibraryAssert.AreNearlyEqual(6.25, ILE."DUoM Second Qty", 0.001,
-            'T03: ILE venta DUoM Second Qty = 5 × 1.25 = 6.25.');
+        LibraryAssert.AreNearlyEqual(-6.25, ILE."DUoM Second Qty", 0.001,
+            'T03: ILE venta DUoM Second Qty = ILE.Quantity × 1.25 = -5 × 1.25 = -6.25.');
     end;
 
 }
