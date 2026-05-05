@@ -247,10 +247,11 @@ lote y `DUoM Ratio` de la línea de tracking es 0, el subscriber aplica como fal
 
 ## Persistencia DUoM en Item Tracking Lines (Issues 22, 190)
 
-### Flujo de persistencia al cerrar la página
+### Flujo de persistencia al cerrar la página — path Insert (primera edición)
 
-Cuando el usuario acepta (OK) la página `Item Tracking Lines` (6510) desde un pedido de compra,
-BC transfiere el buffer `Tracking Specification` a `Reservation Entry` en **dos pasos internos**:
+Cuando el usuario acepta (OK) la página `Item Tracking Lines` (6510) por primera vez
+(no existe `Reservation Entry` para ese lote), BC transfiere el buffer `Tracking Specification`
+a `Reservation Entry` en **dos pasos internos**:
 
 ```
 Usuario informa Lot No. + DUoM Ratio + DUoM Second Qty en buffer TrackingSpec
@@ -275,6 +276,39 @@ Reservation Entry (tabla 337) ← fuente de verdad persistente por lote
 > `OnAfterCopyTrackingFromReservEntry` en Table "Reservation Entry", `InsertReservEntry`
 > quedaba con `DUoM Ratio = 0` aunque `ReservEntry1` ya lo tuviera correcto del Paso 1.
 > La corrección se implementa en el PR que cierra el issue de bug (tracking flow).
+
+### Flujo de persistencia al cerrar la página — path Modify (segunda edición o sucesivas)
+
+Cuando el usuario acepta (OK) la página en una **segunda apertura** (ya existe `Reservation Entry`
+para el lote), BC **modifica directamente** el registro existente sin llamar `CopyTrackingFromSpec`.
+Por tanto, `OnAfterCopyTrackingFromTrackingSpec` **no se dispara** y los campos DUoM de la RE
+quedarían con los valores de la primera edición.
+
+La corrección se implementa en el método `PersistDUoMToReservEntries` de la codeunit 50111
+(`DUoM Tracking Coherence Mgt`), llamado desde `OnQueryClosePage` en la pageextension 50112:
+
+```
+Usuario modifica DUoM Ratio / DUoM Second Qty en buffer TrackingSpec
+→ OK → OnQueryClosePage (50112):
+   1. ValidateTrackingSpecBufferEachLine  ← validación per-lot (barrera temprana)
+   2. SyncPurchLineFromTrackingBuffer     ← PurchLine = SUM del buffer
+   3. ValidateTrackingSpecBufferForPurchLine ← sanity check agregado
+   4. PersistDUoMToReservEntries (50111)  ← MODIFY PATH: actualiza RE existentes
+      por cada línea funcional en buffer con Lot No. ≠ '':
+        ReservEntry.SetSourceFilter(SourceType, Subtype, SourceID, RefNo, true)
+        ReservEntry.SetRange("Lot No.", TrackingSpec."Lot No.")
+        ReservEntry.SetRange(Positive, true)
+        if RE.DUoM Ratio ≠ TrackSpec.DUoM Ratio or RE.DUoM Second Qty ≠ TrackSpec.DUoM Second Qty:
+            RE.DUoM Ratio     := TrackSpec.DUoM Ratio
+            RE.DUoM Second Qty := TrackSpec.DUoM Second Qty
+            RE.Modify(false)
+→ BC (RegisterChange::Modify): modifica campos de tracking estándar en la RE existente
+  (los campos de extensión DUoM ya actualizados no son tocados por BC)
+```
+
+**Garantía:** Como los campos `DUoM Ratio` y `DUoM Second Qty` son campos de extensión
+(tableextension 50123), BC no los resetea al modificar la RE para sus propios campos
+de tracking. Los valores escritos por `PersistDUoMToReservEntries` se preservan.
 
 ### Flujo de recarga al reabrir la página
 
@@ -318,7 +352,7 @@ El subscriber `OnAfterValidateEvent["Quantity (Base)"]` (codeunit 50109) sí rec
 
 ### Test de regresión
 
-El flujo completo queda cubierto por cuatro tests en codeunit 50219 `DUoM Purch Tracking Persist`:
+El flujo completo queda cubierto por tests en codeunit 50219 `DUoM Purch Tracking Persist`:
 
 | Test | Escenario |
 |------|-----------|
@@ -326,9 +360,12 @@ El flujo completo queda cubierto por cuatro tests en codeunit 50219 `DUoM Purch 
 | `T-PERSIST-02` `PurchLine_ItemTracking_DUoMRatioPropagatedToILEOnPost` | AlwaysVariable — contabilizar PO con tracking → ILE tiene DUoM Ratio correcto |
 | `T-PERSIST-03` `ItemTracking_ModifyLotRatio_UpdatesReservEntry` | Variable — asignar lote con ratio registrado auto-asigna DUoM Ratio en ReservEntry |
 | `T-PERSIST-04` `ItemTracking_NoImpactOnItemsWithoutDUoM` | Sin DUoM — Item Tracking Lines no introduce DUoM en ReservEntry |
+| `T-REOPEN-07` `PurchLotTracking_SecondEdit_Variable_PersistsDUoMModify` | Variable — segunda edición persiste DUoM modificado (Modify path) |
+| `T-REOPEN-08` `PurchLotTracking_SecondEdit_AlwaysVariable_PersistsDUoMModify` | AlwaysVariable — segunda edición persiste DUoM modificado (Modify path) |
 
-Los tests T-PERSIST-01 y T-PERSIST-02 validan específicamente el Paso 2 (el eslabón reparado)
-al combinar la apertura de Item Tracking Lines vía TestPage con verificación de ReservEntry/ILE.
+Los tests T-PERSIST-01 y T-PERSIST-02 validan el path Insert (nueva RE).
+Los tests T-REOPEN-07 y T-REOPEN-08 validan el path Modify (RE existente actualizada
+vía `PersistDUoMToReservEntries` en codeunit 50111).
 
 ### Restricciones para no romper el Item Tracking estándar
 

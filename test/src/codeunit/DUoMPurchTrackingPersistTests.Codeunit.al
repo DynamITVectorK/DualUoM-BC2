@@ -20,11 +20,17 @@
 ///   T-REOPEN-05: Regression — reabrir Item Tracking Lines no crea Tracking Spec duplicadas
 ///   T-REOPEN-06: Regression — dos cierres consecutivos no duplican el tracking
 ///                (triple apertura: asignar → verificar → verificar con valores DUoM)
+///   T-REOPEN-07: Variable — segunda edición de Item Tracking Lines persiste DUoM modificado
+///                (Modify path: ReservEntry existente actualiza DUoM Ratio e DUoM Second Qty)
+///   T-REOPEN-08: AlwaysVariable — segunda edición persiste DUoM modificado
+///                (Modify path cubierto por PersistDUoMToReservEntries en 50111)
 ///
 /// Arquitectura cubierta:
-///   - Persistencia al cerrar: TrackingSpec buffer → ReservEntry1 (CopyTrackingFromSpec)
+///   - Persistencia al cerrar (Insert): TrackingSpec buffer → ReservEntry1 (CopyTrackingFromSpec)
 ///     → InsertReservEntry (CopyTrackingFromReservEntry) → BD
 ///     vía OnAfterCopyTrackingFromTrackingSpec y OnAfterCopyTrackingFromReservEntry (50110)
+///   - Persistencia al cerrar (Modify): ReservEntry existente actualizada desde buffer
+///     vía PersistDUoMToReservEntries (50111) — cubre segunda edición y sucesivas
 ///   - Recarga al reabrir: Reservation Entry → TrackingSpec buffer
 ///     vía OnAfterCopyTrackingFromReservEntry en Table "Tracking Specification" (50110)
 ///
@@ -927,8 +933,221 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchaseOrder.Close();
     end;
 
+    // -------------------------------------------------------------------------
+    // T-REOPEN-07 — Variable: segunda edición de Item Tracking Lines persiste DUoM modificado
+    //
+    // Verifica que cuando el usuario modifica DUoM Second Qty en una SEGUNDA apertura
+    // de Item Tracking Lines (cuando ya existe una Reservation Entry para el lote),
+    // los nuevos valores DUoM (Ratio y Second Qty) se persisten correctamente en
+    // Reservation Entry y se recuperan al reabrir por tercera vez.
+    //
+    // Esto cubre el MODIFY PATH: PersistDUoMToReservEntries (50111), llamado desde
+    // OnQueryClosePage (50112), actualiza explícitamente la RE existente desde el buffer.
+    //
+    // Valores de referencia:
+    //   Artículo: DUoM Variable, seguimiento por lote habilitado
+    //   Lote: LOT-MODIFY-T7V · Qty = 4
+    //   Primera edición:  DUoM Second Qty = 8  → DUoM Ratio = 8 / 4 = 2.0
+    //   Segunda edición:  DUoM Second Qty = 10 → DUoM Ratio = 10 / 4 = 2.5
+    //   Tercera apertura: DUoM Ratio = 2.5, DUoM Second Qty = 10 ✓
+    // -------------------------------------------------------------------------
+    [Test]
+    [HandlerFunctions('ItemTrackingLines_AssignAndVerify_MPH')]
+    procedure PurchLotTracking_SecondEdit_Variable_PersistsDUoMModify()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ReservEntry: Record "Reservation Entry";
+        PurchaseOrder: TestPage "Purchase Order";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable y seguimiento por lote
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(
+            Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] Pedido de compra con línea de 4 unidades
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(
+            PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(
+            PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 4);
+        PurchLine.Modify(true);
+
+        PurchaseOrder.OpenEdit();
+        PurchaseOrder.GotoRecord(PurchHeader);
+
+        // [WHEN] Primera apertura (HandlerStep = 15): asignar LOT-MODIFY-T7V
+        //        DUoM Second Qty = 8 → NormalizeTrackingDUoMSecondQty auto-calcula Ratio = 2.0
+        HandlerStep := 15;
+        PurchaseOrder.PurchLines.First();
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
+
+        // [THEN] Tras primera edición: Reservation Entry tiene DUoM Ratio = 2.0
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
+        ReservEntry.SetRange("Lot No.", 'LOT-MODIFY-T7V');
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T-REOPEN-07: Debe existir RE para LOT-MODIFY-T7V tras primera edición.');
+        LibraryAssert.AreNearlyEqual(
+            2.0, ReservEntry."DUoM Ratio", 0.001,
+            'T-REOPEN-07: RE.DUoM Ratio debe ser 2.0 tras primera edición.');
+        LibraryAssert.AreNearlyEqual(
+            8, ReservEntry."DUoM Second Qty", 0.001,
+            'T-REOPEN-07: RE.DUoM Second Qty debe ser 8 tras primera edición.');
+
+        // [WHEN] Segunda apertura (HandlerStep = 16): modificar DUoM Second Qty = 10
+        //        NormalizeTrackingDUoMSecondQty auto-calcula DUoM Ratio = 10 / 4 = 2.5
+        HandlerStep := 16;
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
+
+        // [THEN] Tras segunda edición: Reservation Entry actualizada con DUoM Ratio = 2.5
+        //        (cubre el Modify path vía PersistDUoMToReservEntries en 50111)
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
+        ReservEntry.SetRange("Lot No.", 'LOT-MODIFY-T7V');
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T-REOPEN-07: Debe existir RE para LOT-MODIFY-T7V tras segunda edición.');
+        LibraryAssert.AreNearlyEqual(
+            2.5, ReservEntry."DUoM Ratio", 0.001,
+            'T-REOPEN-07: RE.DUoM Ratio debe ser 2.5 tras segunda edición (Modify path).');
+        LibraryAssert.AreNearlyEqual(
+            10, ReservEntry."DUoM Second Qty", 0.001,
+            'T-REOPEN-07: RE.DUoM Second Qty debe ser 10 tras segunda edición (Modify path).');
+
+        // [WHEN] Tercera apertura (HandlerStep = 17): verificar que los valores actualizados
+        //        se recargan correctamente desde Reservation Entry al buffer
+        HandlerStep := 17;
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
+
+        PurchaseOrder.Close();
+    end;
+
+    // -------------------------------------------------------------------------
+    // T-REOPEN-08 — AlwaysVariable: segunda edición de Item Tracking Lines persiste DUoM
+    //
+    // Verifica el mismo Modify path que T-REOPEN-07 pero en modo AlwaysVariable,
+    // donde el usuario introduce DUoM Ratio y DUoM Second Qty de forma independiente.
+    //
+    // Valores de referencia:
+    //   Artículo: DUoM AlwaysVariable, seguimiento por lote habilitado
+    //   Lote: LOT-MODIFY-T8AV · Qty = 10
+    //   Primera edición:  DUoM Ratio = 0.8, DUoM Second Qty = 8 (introducidos manualmente)
+    //   Segunda edición:  DUoM Second Qty = 6 → DUoM Ratio = 6 / 10 = 0.6
+    //   Tercera apertura: DUoM Ratio = 0.6, DUoM Second Qty = 6 ✓
+    // -------------------------------------------------------------------------
+    [Test]
+    [HandlerFunctions('ItemTrackingLines_AssignAndVerify_MPH')]
+    procedure PurchLotTracking_SecondEdit_AlwaysVariable_PersistsDUoMModify()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ReservEntry: Record "Reservation Entry";
+        PurchaseOrder: TestPage "Purchase Order";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM AlwaysVariable y seguimiento por lote
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(
+            Item."No.", true, 'PCS', "DUoM Conversion Mode"::AlwaysVariable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] Pedido de compra con línea de 10 unidades
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(
+            PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(
+            PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+
+        PurchaseOrder.OpenEdit();
+        PurchaseOrder.GotoRecord(PurchHeader);
+
+        // [WHEN] Primera apertura (HandlerStep = 18): asignar LOT-MODIFY-T8AV
+        //        DUoM Ratio = 0.8, DUoM Second Qty = 8 (introducidos manualmente)
+        HandlerStep := 18;
+        PurchaseOrder.PurchLines.First();
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
+
+        // [THEN] Tras primera edición: Reservation Entry tiene DUoM Ratio = 0.8
+        // SetSourceFilter applies the complete standard BC source identity.
+        // See docs/development/coding-standards.md.
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
+        ReservEntry.SetRange("Lot No.", 'LOT-MODIFY-T8AV');
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T-REOPEN-08: Debe existir RE para LOT-MODIFY-T8AV tras primera edición.');
+        LibraryAssert.AreNearlyEqual(
+            0.8, ReservEntry."DUoM Ratio", 0.001,
+            'T-REOPEN-08: RE.DUoM Ratio debe ser 0.8 tras primera edición.');
+        LibraryAssert.AreNearlyEqual(
+            8, ReservEntry."DUoM Second Qty", 0.001,
+            'T-REOPEN-08: RE.DUoM Second Qty debe ser 8 tras primera edición.');
+
+        // [WHEN] Segunda apertura (HandlerStep = 19): modificar DUoM Second Qty = 6
+        //        NormalizeTrackingDUoMSecondQty auto-calcula DUoM Ratio = 6 / 10 = 0.6
+        HandlerStep := 19;
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
+
+        // [THEN] Tras segunda edición: Reservation Entry actualizada con DUoM Ratio = 0.6
+        //        (cubre el Modify path vía PersistDUoMToReservEntries en 50111)
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
+        ReservEntry.SetRange("Lot No.", 'LOT-MODIFY-T8AV');
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T-REOPEN-08: Debe existir RE para LOT-MODIFY-T8AV tras segunda edición.');
+        LibraryAssert.AreNearlyEqual(
+            0.6, ReservEntry."DUoM Ratio", 0.001,
+            'T-REOPEN-08: RE.DUoM Ratio debe ser 0.6 tras segunda edición (Modify path).');
+        LibraryAssert.AreNearlyEqual(
+            6, ReservEntry."DUoM Second Qty", 0.001,
+            'T-REOPEN-08: RE.DUoM Second Qty debe ser 6 tras segunda edición (Modify path).');
+
+        // [WHEN] Tercera apertura (HandlerStep = 20): verificar que los valores actualizados
+        //        se recargan correctamente desde Reservation Entry al buffer
+        HandlerStep := 20;
+        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
+
+        PurchaseOrder.Close();
+    end;
+
     /// <summary>
-    /// ModalPageHandler para Item Tracking Lines — usado en catorce pasos:
+    /// ModalPageHandler para Item Tracking Lines — usado en veinte pasos:
     ///
     ///   HandlerStep = 1: simula que el usuario introduce lote y valores DUoM manualmente.
     ///                    Lote: LOT-DUOM-001 · DUoM Ratio = 0.8 (= 8/10) · DUoM Second Qty = 8
@@ -967,13 +1186,27 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     ///   HandlerStep = 14: verifica que al reabrir (tercera vez) solo existe 1 línea,
     ///                     y que DUoM Second Qty = 5 y DUoM Ratio = 2.5 siguen correctos.
     ///                     Usado en T-REOPEN-06.
+    ///   HandlerStep = 15: primera edición T-REOPEN-07 (Variable). Asigna LOT-MODIFY-T7V,
+    ///                     qty = 4, DUoM Second Qty = 8 → DUoM Ratio auto = 2.0.
+    ///   HandlerStep = 16: segunda edición T-REOPEN-07 (Variable). Modifica DUoM Second Qty
+    ///                     de la línea existente a 10 → DUoM Ratio auto = 2.5.
+    ///                     Cubre el Modify path: PersistDUoMToReservEntries actualiza la RE.
+    ///   HandlerStep = 17: tercera apertura T-REOPEN-07. Verifica DUoM Ratio = 2.5
+    ///                     y DUoM Second Qty = 10 recargados desde Reservation Entry.
+    ///   HandlerStep = 18: primera edición T-REOPEN-08 (AlwaysVariable). Asigna
+    ///                     LOT-MODIFY-T8AV, qty = 10, DUoM Ratio = 0.8, DUoM Second Qty = 8.
+    ///   HandlerStep = 19: segunda edición T-REOPEN-08 (AlwaysVariable). Modifica
+    ///                     DUoM Second Qty a 6 → DUoM Ratio auto = 0.6.
+    ///                     Cubre el Modify path: PersistDUoMToReservEntries actualiza la RE.
+    ///   HandlerStep = 20: tercera apertura T-REOPEN-08. Verifica DUoM Ratio = 0.6
+    ///                     y DUoM Second Qty = 6 recargados desde Reservation Entry.
     ///
     /// DUoM Ratio = 0.8 en modo AlwaysVariable: el trigger OnValidate de DUoM Ratio
     /// en DUoMTrackingSpecExt NO recalcula DUoM Second Qty (exit explícito para AlwaysVariable),
     /// por lo que DUoM Second Qty = 8 se mantiene como valor manual independiente.
     ///
-    /// Verificación en pasos 2, 6, 8, 10, 12, 14: los valores recargados son los persistidos
-    /// en ReservEntry (copia directa sin OnValidate, por lo que no hay recálculo en carga).
+    /// Verificación en pasos 2, 6, 8, 10, 12, 14, 17, 20: los valores recargados son los
+    /// persistidos en ReservEntry (copia directa sin OnValidate, sin recálculo en carga).
     /// </summary>
     [ModalPageHandler]
     procedure ItemTrackingLines_AssignAndVerify_MPH(
@@ -1221,6 +1454,87 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                         5,
                         2.5,
                         'T-REOPEN-06');
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            15:
+                begin
+                    // T-REOPEN-07: Primera edición — asignar lote en modo Variable
+                    // NormalizeTrackingDUoMSecondQty auto-calcula DUoM Ratio = 8 / 4 = 2.0
+                    ItemTrackingLines.New();
+                    ItemTrackingLines."Lot No.".SetValue('LOT-MODIFY-T7V');
+                    ItemTrackingLines."Quantity (Base)".SetValue(4);
+                    ItemTrackingLines."DUoM Second Qty".SetValue(8);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            16:
+                begin
+                    // T-REOPEN-07: Segunda edición — modificar DUoM Second Qty a 10
+                    // NormalizeTrackingDUoMSecondQty auto-calcula DUoM Ratio = 10 / 4 = 2.5
+                    // PersistDUoMToReservEntries actualiza la RE existente (Modify path)
+                    ItemTrackingLines.First();
+                    ItemTrackingLines."DUoM Second Qty".SetValue(10);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            17:
+                begin
+                    // T-REOPEN-07: Tercera apertura — verificar DUoM Ratio = 2.5 y
+                    // DUoM Second Qty = 10 recargados desde Reservation Entry actualizada
+                    ItemTrackingLines.First();
+                    LibraryAssert.AreEqual(
+                        'LOT-MODIFY-T7V',
+                        ItemTrackingLines."Lot No.".Value,
+                        'T-REOPEN-07: Lot No. debe ser LOT-MODIFY-T7V al reabrir.');
+                    LibraryAssert.AreNearlyEqual(
+                        2.5,
+                        ItemTrackingLines."DUoM Ratio".AsDecimal(),
+                        0.001,
+                        'T-REOPEN-07: DUoM Ratio debe ser 2.5 al reabrir (Modify path persistido).');
+                    LibraryAssert.AreNearlyEqual(
+                        10,
+                        ItemTrackingLines."DUoM Second Qty".AsDecimal(),
+                        0.001,
+                        'T-REOPEN-07: DUoM Second Qty debe ser 10 al reabrir (Modify path persistido).');
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            18:
+                begin
+                    // T-REOPEN-08: Primera edición — asignar lote en modo AlwaysVariable
+                    // DUoM Ratio = 0.8 y DUoM Second Qty = 8 introducidos manualmente
+                    ItemTrackingLines.New();
+                    ItemTrackingLines."Lot No.".SetValue('LOT-MODIFY-T8AV');
+                    ItemTrackingLines."Quantity (Base)".SetValue(10);
+                    ItemTrackingLines."DUoM Ratio".SetValue(0.8);
+                    ItemTrackingLines."DUoM Second Qty".SetValue(8);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            19:
+                begin
+                    // T-REOPEN-08: Segunda edición — modificar DUoM Second Qty a 6
+                    // NormalizeTrackingDUoMSecondQty auto-calcula DUoM Ratio = 6 / 10 = 0.6
+                    // PersistDUoMToReservEntries actualiza la RE existente (Modify path)
+                    ItemTrackingLines.First();
+                    ItemTrackingLines."DUoM Second Qty".SetValue(6);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            20:
+                begin
+                    // T-REOPEN-08: Tercera apertura — verificar DUoM Ratio = 0.6 y
+                    // DUoM Second Qty = 6 recargados desde Reservation Entry actualizada
+                    ItemTrackingLines.First();
+                    LibraryAssert.AreEqual(
+                        'LOT-MODIFY-T8AV',
+                        ItemTrackingLines."Lot No.".Value,
+                        'T-REOPEN-08: Lot No. debe ser LOT-MODIFY-T8AV al reabrir.');
+                    LibraryAssert.AreNearlyEqual(
+                        0.6,
+                        ItemTrackingLines."DUoM Ratio".AsDecimal(),
+                        0.001,
+                        'T-REOPEN-08: DUoM Ratio debe ser 0.6 al reabrir (Modify path persistido).');
+                    LibraryAssert.AreNearlyEqual(
+                        6,
+                        ItemTrackingLines."DUoM Second Qty".AsDecimal(),
+                        0.001,
+                        'T-REOPEN-08: DUoM Second Qty debe ser 6 al reabrir (Modify path persistido).');
                     ItemTrackingLines.OK().Invoke();
                 end;
         end;
