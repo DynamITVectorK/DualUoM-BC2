@@ -17,17 +17,9 @@ jobs:
       - name: Detect nested/chain if patterns in AL
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
-
-          changed_files="$(git diff --name-only --diff-filter=ACMRT "origin/${{ github.base_ref }}...HEAD" | rg '\.al$' || true)"
-          if [ -z "${changed_files}" ]; then
-            echo "No hay archivos .al modificados en el PR."
-            exit 0
-          fi
-
-          # Heurística simple en archivos tocados por el PR:
-          # identifica if dentro de un bloque if/else begin..end sin parseo AL completo.
-          if rg -nUP "if\s+.+\s+then\s+begin[\s\S]{0,400}?\bif\s+.+\s+then" ${changed_files}; then
+          # Aplica sobre TODO el código existente y nuevo del repositorio.
+          # Si hay deuda técnica previa, este check fallará hasta que quede depurada.
+          if rg -nUP "if\s+.+\s+then\s+begin[\s\S]{0,400}?\bif\s+.+\s+then" app/src test/src; then
             echo "Se detectaron posibles if anidados/encadenados."
             exit 1
           fi

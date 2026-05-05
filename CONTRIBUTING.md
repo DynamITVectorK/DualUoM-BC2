@@ -240,6 +240,7 @@ Un PR sin esta declaración explícita no cumple la definición de trabajo compl
 
 - Todo PR debe declarar explícitamente que revisó esta regla en el checklist.
 - Si hay una excepción, documentarla y justificar por qué no se pudo simplificar.
+- La regla aplica al **código existente y nuevo**: no se admite deuda técnica activa de `if` anidados/encadenados.
 
 ### Norma de creación de datos de test (obligatoria)
 
