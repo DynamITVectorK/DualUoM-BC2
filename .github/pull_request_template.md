@@ -29,6 +29,7 @@
 ## Checklist general AL
 
 - [ ] Los identificadores AL no superan 30 caracteres (límite AL0305).
+- [ ] No hay `if` anidados/encadenados evitables; he aplicado guard clauses, `case` o helpers cuando corresponde.
 - [ ] Todos los textos visibles al usuario son `Label` con `Comment` de descripción de placeholders.
 - [ ] Los archivos XLF (`en-US` y `es-ES`) están actualizados si se añadieron o cambiaron cadenas.
 - [ ] Los nuevos objetos `table` tienen entrada en `DUoM - All` y en `DUoM - Test All`.

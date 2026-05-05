@@ -73,6 +73,9 @@ Los identificadores AL (nombres de objetos, campos, procedimientos, variables) y
 - **Object name length limit:** All AL object names (tables, pages, codeunits, page extensions,
   etc.) **must not exceed 30 characters** (compiler limit AL0305). Verify length before opening
   a PR. Page extension names must be especially compact to leave room for the `DUoM` prefix.
+- **Readability rule (mandatory):** avoid nested/chained `if` structures. Use at most one
+  nesting level per logic block and prefer guard clauses, `case`, or helper extraction.
+  This rule applies to both existing and new code.
 
 ## AL object ID rules (mandatory)
 
