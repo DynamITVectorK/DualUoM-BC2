@@ -36,7 +36,7 @@
 /// Convenciones de test:
 ///   - Patrón [GIVEN] / [WHEN] / [THEN].
 ///   - LibraryPurchase, LibrarySales, LibraryInventory, LibraryAssert según norma.
-///   - Anulación via CODEUNIT.Run("Undo Purchase Receipt" / "Undo Sales Shipment").
+///   - Anulación via CODEUNIT.Run("Undo Purchase Receipt Line" / "Undo Sales Shipment Line").
 /// </summary>
 codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
 {
@@ -86,7 +86,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibraryAssert.IsTrue(PurchRcptHeader.FindFirst(), 'T-UNDO-01: Se esperaba albarán contabilizado');
         PurchRcptLine.SetRange("Document No.", PurchRcptHeader."No.");
         LibraryAssert.IsTrue(PurchRcptLine.FindFirst(), 'T-UNDO-01: Se esperaba línea de albarán');
-        CODEUNIT.Run(CODEUNIT::"Undo Purchase Receipt", PurchRcptLine);
+        CODEUNIT.Run(CODEUNIT::"Undo Purchase Receipt Line", PurchRcptLine);
 
         // [THEN] ILE original: Qty = +10, DUoM Ratio = 0.8, DUoM Second Qty = +8
         ILE.SetRange("Item No.", Item."No.");
@@ -154,7 +154,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibraryAssert.IsTrue(PurchRcptHeader.FindFirst(), 'T-UNDO-02: Se esperaba albarán contabilizado');
         PurchRcptLine.SetRange("Document No.", PurchRcptHeader."No.");
         LibraryAssert.IsTrue(PurchRcptLine.FindFirst(), 'T-UNDO-02: Se esperaba línea de albarán');
-        CODEUNIT.Run(CODEUNIT::"Undo Purchase Receipt", PurchRcptLine);
+        CODEUNIT.Run(CODEUNIT::"Undo Purchase Receipt Line", PurchRcptLine);
 
         // [THEN] ILE original: Qty = +10, DUoM Ratio = 0.8, DUoM Second Qty = +8
         ILE.SetRange("Item No.", Item."No.");
@@ -226,7 +226,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibraryAssert.IsTrue(PurchRcptHeader.FindFirst(), 'T-UNDO-03: Se esperaba albarán contabilizado');
         PurchRcptLine.SetRange("Document No.", PurchRcptHeader."No.");
         LibraryAssert.IsTrue(PurchRcptLine.FindFirst(), 'T-UNDO-03: Se esperaba línea de albarán');
-        CODEUNIT.Run(CODEUNIT::"Undo Purchase Receipt", PurchRcptLine);
+        CODEUNIT.Run(CODEUNIT::"Undo Purchase Receipt Line", PurchRcptLine);
 
         // [THEN] Suma de DUoM Second Qty de ILEs originales = +14.4
         ILE.SetRange("Item No.", Item."No.");
@@ -309,7 +309,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         SalesShipmentLine.SetRange("Document No.", SalesShipmentHeader."No.");
         SalesShipmentLine.SetRange(Type, SalesShipmentLine.Type::Item);
         LibraryAssert.IsTrue(SalesShipmentLine.FindFirst(), 'T-UNDO-04: Se esperaba línea albarán venta');
-        CODEUNIT.Run(CODEUNIT::"Undo Sales Shipment", SalesShipmentLine);
+        CODEUNIT.Run(CODEUNIT::"Undo Sales Shipment Line", SalesShipmentLine);
 
         // [THEN] ILE original (venta): Qty = -10, DUoM Second Qty = -8
         ILE.SetRange("Item No.", Item."No.");
@@ -389,7 +389,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         SalesShipmentLine.SetRange("Document No.", SalesShipmentHeader."No.");
         SalesShipmentLine.SetRange(Type, SalesShipmentLine.Type::Item);
         LibraryAssert.IsTrue(SalesShipmentLine.FindFirst(), 'T-UNDO-05: Se esperaba línea albarán venta');
-        CODEUNIT.Run(CODEUNIT::"Undo Sales Shipment", SalesShipmentLine);
+        CODEUNIT.Run(CODEUNIT::"Undo Sales Shipment Line", SalesShipmentLine);
 
         // [THEN] ILE original (venta): Qty = -5, DUoM Ratio = 1.25, Second Qty = -6.25
         ILE.SetRange("Item No.", Item."No.");
