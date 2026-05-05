@@ -150,44 +150,53 @@ Línea origen (Purchase Line, Sales Line, IJL)  →  N lotes (vía Item Tracking
 
 Dos mecanismos paralelos cubren los dos paths de posting:
 
+**NORMA OBLIGATORIA**: `ILE."DUoM Second Qty"` **siempre** recibe sus datos del IJL.
+Nunca se calcula desde campos del ILE. La fórmula canónica es:
+```al
+ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL."DUoM Second Qty"))
+```
+`Signed()` aplica el signo correcto según Entry Type (idioma estándar Microsoft BC):
+positivo para entradas (compra), negativo para salidas (venta, anulaciones).
+
 **SIN Item Tracking** (artículos sin lotes):
 ```
-IJL (DUoM Ratio del artículo/variante)
+IJL (DUoM Ratio del artículo/variante, DUoM Second Qty ya calculado)
   → Codeunit "Item Jnl.-Post Line" · OnAfterInitItemLedgEntry   [50104]
       ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
-      ↓ ILE.DUoM Second Qty = ILE.Quantity × Ratio  (signo coherente; negativo para salidas/anulaciones)
+      ↓ ILE.DUoM Second Qty = IJL.Signed(Abs(IJL.DUoM Second Qty))
 Item Ledger Entry  ✓
 ```
 
 **CON Item Tracking** (por lote — patrón de `Package Management (6516)`):
 ```
-Tracking Specification (con DUoM Ratio del lote)
+Tracking Specification (con DUoM Ratio y DUoM Second Qty del lote)
   → Table "Item Journal Line" · OnAfterCopyTrackingFromSpec      [50110]
       ↓ IJL.DUoM Ratio = ratio del lote (si TrackingSpec.DUoM Ratio ≠ 0)
-Item Journal Line
+      ↓ IJL.DUoM Second Qty = DUoM Second Qty del lote
+Item Journal Line  (ya tiene los valores correctos del lote)
+  → Codeunit "Item Jnl.-Post Line" · OnAfterInitItemLedgEntry   [50104]
+      ↓ actualiza IJL si DUoM Lot Ratio (50102) lo sobreescribe
   → Table "Item Ledger Entry" · OnAfterCopyTrackingFromItemJnlLine [50110]
       ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
-      ↓ ILE.DUoM Second Qty = ILE.Quantity × IJL.DUoM Ratio  (signo coherente; negativo para salidas)
+      ↓ ILE.DUoM Second Qty = IJL.Signed(Abs(IJL.Quantity) × DUoM Ratio)
 Item Ledger Entry  ✓
 ```
 
 Los dos paths coexisten sin conflicto: cuando hay Item Tracking activo, `OnAfterInitItemLedgEntry`
-copia primero los valores del IJL original; después `ILECopyTrackingFromItemJnlLine` sobrescribe
-con el ratio específico del lote (más preciso). La sobreescritura posterior siempre prevalece.
+actualiza el IJL con el ratio de lote específico si `DUoM Lot Ratio (50102)` lo sobreescribe;
+después `ILECopyTrackingFromItemJnlLine` lee del IJL ya actualizado. El IJL es siempre
+la fuente de verdad inmediata desde la que el ILE recibe sus valores DUoM.
 
-`DUoM Lot Ratio (50102)` ya no interviene directamente en el posting. Sigue siendo la
-fuente para pre-rellenar el DUoM Ratio en la UI de `Item Tracking Lines` (via `DUoM Tracking
-Subscribers`, codeunit 50109) al asignar un lote. Cuando no existe `DUoM Lot Ratio` para el
-lote y `DUoM Ratio` de la línea de tracking es 0, el subscriber aplica como fallback el
-`DUoM Ratio` de la `Purchase Line` origen (leído por Source Type/Subtype/ID/Ref. No.).
+`DUoM Lot Ratio (50102)` actúa como fallback en el posting (cuando el IJL llega sin ratio
+de lote específico). Ambos subscribers (`OnAfterInitItemLedgEntry` y `ILECopyTrackingFromItemJnlLine`)
+aplican este fallback actualizando el IJL primero y leyendo del IJL al asignar el ILE.
 
 ### Principios de implementación
 
 - La **línea origen** mantiene información DUoM como **total agregado**.
 - El **ILE por lote** contiene la segunda cantidad y el ratio propios de ese lote.
-- El posting calcula `ILE.DUoM Second Qty = ILE.Quantity × DUoM Ratio` para garantizar
-  el valor correcto por lote con signo coherente (negativo para salidas/correcciones).
-  Esto replica la regla estándar de BC: los movimientos inversos tienen signo contrario.
+- El IJL (ya dividido por lote por BC) es la fuente inmediata del ILE: `ILE.DUoM Second Qty`
+  **nunca** se calcula desde `ILE.Quantity`. Siempre viene del IJL via `Signed()`.
 - Si el `Tracking Specification` del lote aporta un ratio (via `IJLCopyTrackingFromSpec`),
   sobrescribe el ratio genérico de la línea. Si no (TrackingSpec.DUoM Ratio = 0), el split
   IJL hereda el ratio genérico de la línea origen.
@@ -197,16 +206,13 @@ lote y `DUoM Ratio` de la línea de tracking es 0, el subscriber aplica como fal
 
 - No se debe acceder a datos DUoM de lote a través de un único `FindFirst()` sobre
   `Reservation Entry` desde lógica de línea origen — puede haber N entradas.
-- No se debe asumir que `ItemJournalLine."DUoM Second Qty"` en eventos de posting
-  es la cantidad correcta para el ILE: en multi-lote, es el total de la línea, no el del lote.
-- La distribución correcta de DUoM entre lotes usa `ILE.Quantity × DUoM Ratio`
-  calculado en `ILECopyTrackingFromItemJnlLine` (codeunit 50110). El signo sigue
-  a `ILE.Quantity`: positivo para entradas (compra), negativo para salidas (venta,
-  anulación recepción).
 - **`Item Journal Line`."Lot No." no es la fuente de verdad de la ratio DUoM por lote.**
   Usar `Validate("Lot No.")` en IJL como mecanismo para pre-rellenar DUoM es incorrecto
   porque asume 1 línea = 1 lote. La fuente de verdad real es el `Tracking Specification`
   del lote específico durante el split de posting (ver `IJLCopyTrackingFromSpec`).
+- **No usar `ILE.Quantity` como base de cálculo de `ILE.DUoM Second Qty`.** El IJL (split
+  por lote) ya contiene la cantidad correcta del lote. Calcular desde `ILE.Quantity`
+  viola la norma ILE←IJL y produce inconsistencias en modo AlwaysVariable.
 
 ### Historial de decisión
 
