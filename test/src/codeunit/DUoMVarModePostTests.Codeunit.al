@@ -182,7 +182,7 @@ codeunit 50214 "DUoM Variable Mode Post Tests"
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
         LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un ILE de venta tras la contabilización en modo Variable');
-        LibraryAssert.AreEqual(8, ILE."DUoM Second Qty", 'Modo Variable venta ILE: DUoM Second Qty debe ser 10 × 0.8 = 8');
+        LibraryAssert.AreEqual(-8, ILE."DUoM Second Qty", 'Modo Variable venta ILE: DUoM Second Qty debe ser ILE.Quantity × 0.8 = -10 × 0.8 = -8');
         LibraryAssert.AreEqual(0.8, ILE."DUoM Ratio", 'Modo Variable venta ILE: DUoM Ratio debe ser 0.8 tras la contabilización');
     end;
 }

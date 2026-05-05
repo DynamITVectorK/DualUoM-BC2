@@ -21,7 +21,7 @@
 ///
 /// Tests mecanismo OnAfterCopyTracking* sin pre-registro en DUoM Lot Ratio (Issue 23):
 ///   T13 — Variable + dos lotes sin pre-registro en 50102 → cada ILE proporcional al ratio del IJL
-///          Verifica que ILECopyTrackingFromItemJnlLine calcula Abs(ILE.Qty) × IJL.DUoM Ratio
+///          Verifica que ILECopyTrackingFromItemJnlLine calcula ILE.Qty × IJL.DUoM Ratio
 ///          por lote sin necesitar TryApplyLotRatioToILE ni DUoM Lot Ratio (50102).
 ///   T14 — AlwaysVariable + lote único + ratio manual en IJL sin 50102 → ILE con ratio correcto
 ///          Verifica la rama DUoM Ratio ≠ 0 en ILECopyTrackingFromItemJnlLine.
@@ -308,12 +308,13 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     // -------------------------------------------------------------------------
     // T06 — Contabilización IJL salida (Sale), lote con ratio 0,42, modo Variable → ILE
     //
-    // Verifica que DUoM Second Qty = Abs(ILE.Quantity) × ratio de lote para salidas.
-    // ILE.Quantity es negativo para salidas; Abs() garantiza valor positivo.
+    // Verifica que DUoM Second Qty = ILE.Quantity × ratio de lote para salidas.
+    // ILE.Quantity es negativo para salidas; DUoM Second Qty toma signo negativo
+    // para coherencia con el estándar BC (movimientos inversos con signo contrario).
     // -------------------------------------------------------------------------
 
     [Test]
-    procedure IJLPosting_SaleLot_ILEHasAbsQtyTimesLotRatio()
+    procedure IJLPosting_SaleLot_ILEHasSignedQtyTimesLotRatio()
     var
         Item: Record Item;
         ItemJnlTemplate: Record "Item Journal Template";
@@ -369,9 +370,10 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LibraryAssert.AreEqual(0.42, ILE."DUoM Ratio",
             'T06: ILE salida — DUoM Ratio debe ser el ratio del lote (0,42)');
 
-        // [THEN] DUoM Second Qty = Abs(ILE.Quantity) × 0,42 = Abs(-10) × 0,42 = 4,2
-        LibraryAssert.AreNearlyEqual(4.2, ILE."DUoM Second Qty", 0.001,
-            'T06: ILE salida — DUoM Second Qty debe ser Abs(-10) × 0,42 = 4,2');
+        // [THEN] DUoM Second Qty = ILE.Quantity × 0,42 = -10 × 0,42 = -4,2
+        // Signo negativo para salidas: coherente con ILE.Quantity y estándar BC.
+        LibraryAssert.AreNearlyEqual(-4.2, ILE."DUoM Second Qty", 0.001,
+            'T06: ILE salida — DUoM Second Qty debe ser -10 × 0,42 = -4,2 (signo negativo para salidas)');
     end;
 
     // -------------------------------------------------------------------------
@@ -697,7 +699,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
     //        → cada ILE con DUoM Second Qty proporcional al ratio del IJL.
     //
     // Verifica que el mecanismo OnAfterCopyTracking* (Issue 23) calcula correctamente
-    // Abs(ILE.Quantity) × IJL.DUoM Ratio para cada lote sin necesitar DUoM Lot Ratio (50102).
+    // ILE.Quantity × IJL.DUoM Ratio para cada lote sin necesitar DUoM Lot Ratio (50102).
     //
     // El ratio del IJL proviene de OnAfterValidateItemJnlLineQty (ratio por defecto del artículo).
     // IJLCopyTrackingFromSpec no sobrescribe porque TrackingSpec.DUoM Ratio = 0 (sin 50102).
@@ -747,7 +749,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
 
         // [THEN] ILE Lote A: DUoM Ratio = 1,5 (del IJL); DUoM Second Qty = 6 × 1,5 = 9,0
-        // El nuevo mecanismo calcula Abs(ILE.Quantity) × IJL.DUoM Ratio (no copia el total).
+        // ILECopyTrackingFromItemJnlLine calcula ILE.Quantity × IJL.DUoM Ratio (signo coherente).
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Lot No.", LotNoA);
         LibraryAssert.IsTrue(ILE.FindFirst(), 'T13: Se esperaba ILE para LOTE-T13A');
@@ -767,7 +769,7 @@ codeunit 50217 "DUoM Lot Ratio Tests"
 
     // -------------------------------------------------------------------------
     // T14 — AlwaysVariable + lote único + ratio manual en IJL (sin 50102)
-    //        → ILE con DUoM Ratio = ratio manual; DUoM Second Qty = Abs(Qty) × ratio.
+    //        → ILE con DUoM Ratio = ratio manual; DUoM Second Qty = Qty × ratio.
     //
     // Verifica que ILECopyTrackingFromItemJnlLine (Issue 23) propaga correctamente
     // un DUoM Ratio introducido manualmente en el IJL para AlwaysVariable cuando:
@@ -825,10 +827,10 @@ codeunit 50217 "DUoM Lot Ratio Tests"
         LibraryAssert.AreEqual(2.5, ILE."DUoM Ratio",
             'T14: ILE — DUoM Ratio debe ser 2,5 (ratio manual del IJL, sin 50102)');
 
-        // [THEN] ILE: DUoM Second Qty = Abs(10) × 2,5 = 25
-        // ILECopyTrackingFromItemJnlLine calcula Abs(ILE.Quantity) × DUoM Ratio (no copia el total del IJL).
+        // [THEN] ILE: DUoM Second Qty = 10 × 2,5 = 25
+        // ILECopyTrackingFromItemJnlLine calcula ILE.Quantity × DUoM Ratio (signo coherente con ILE.Quantity).
         LibraryAssert.AreNearlyEqual(25.0, ILE."DUoM Second Qty", 0.001,
-            'T14: ILE — DUoM Second Qty debe ser Abs(10) × 2,5 = 25');
+            'T14: ILE — DUoM Second Qty debe ser 10 × 2,5 = 25');
     end;
 }
 

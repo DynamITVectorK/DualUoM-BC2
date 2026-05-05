@@ -279,7 +279,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
     // Verifica que el modelo 1 línea = N lotes funciona correctamente:
     // una única IJL con dos lotes asignados vía Item Tracking produce dos ILEs,
     // cada uno con el ratio específico de su lote y su DUoM Second Qty calculada
-    // de forma independiente (Abs(ILE.Quantity) × ratio del lote).
+    // de forma independiente (ILE.Quantity × ratio del lote, con signo coherente).
     //
     // Este test demuestra explícitamente que NO se asume 1 línea = 1 lote.
     // -------------------------------------------------------------------------
