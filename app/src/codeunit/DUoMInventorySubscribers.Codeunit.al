@@ -267,10 +267,11 @@ codeunit 50104 "DUoM Inventory Subscribers"
             if ItemJournalLine."Applies-to Entry" <> 0 then
                 if OrigILE.Get(ItemJournalLine."Applies-to Entry") then
                     if OrigILE."DUoM Ratio" <> 0 then begin
-                        // Anulación: signo contrario al movimiento original (ILE.Quantity < 0).
+                        // Anulación: ItemJournalLine.Signed() aplica signo contrario al original
+                        // (BC standard idiom: positivo para entradas, negativo para salidas).
                         NewItemLedgEntry."DUoM Ratio" := OrigILE."DUoM Ratio";
                         NewItemLedgEntry."DUoM Second Qty" :=
-                            NewItemLedgEntry.Quantity * OrigILE."DUoM Ratio";
+                            ItemJournalLine.Signed(Abs(NewItemLedgEntry.Quantity) * OrigILE."DUoM Ratio");
                     end;
             exit;
         end;
@@ -297,15 +298,15 @@ codeunit 50104 "DUoM Inventory Subscribers"
 
         NewItemLedgEntry."DUoM Ratio" := AppliedRatio;
         if AppliedRatio <> 0 then
-            // Signo coherente con ILE.Quantity: negativo para salidas (ventas, anulación compra).
-            // Replica la regla estándar de BC: movimientos inversos tienen signo contrario.
-            NewItemLedgEntry."DUoM Second Qty" := NewItemLedgEntry.Quantity * AppliedRatio
+            // ItemJournalLine.Signed() aplica el signo correcto según Entry Type (BC standard idiom):
+            // positivo para entradas (Purchase), negativo para salidas (Sale, anulación compra).
+            NewItemLedgEntry."DUoM Second Qty" :=
+                ItemJournalLine.Signed(Abs(NewItemLedgEntry.Quantity) * AppliedRatio)
         else begin
-            // AlwaysVariable sin lote: copia con signo correcto (negativo para salidas).
+            // AlwaysVariable sin lote: copia con signo correcto via Signed() (BC standard idiom).
             // Solo alcanzable en flujo sin Item Tracking (ratio = 0, sin lote).
-            NewItemLedgEntry."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-            if NewItemLedgEntry.Quantity < 0 then
-                NewItemLedgEntry."DUoM Second Qty" := -NewItemLedgEntry."DUoM Second Qty";
+            NewItemLedgEntry."DUoM Second Qty" :=
+                ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
         end;
     end;
 
@@ -323,7 +324,6 @@ codeunit 50104 "DUoM Inventory Subscribers"
     local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
     var
         OrigILE: Record "Item Ledger Entry";
-        SecondQty: Decimal;
     begin
         if ItemJournalLine."DUoM Second Qty" = 0 then begin
             // Anulación sin trazabilidad: el IJL llega con DUoM Second Qty = 0 porque
@@ -331,18 +331,15 @@ codeunit 50104 "DUoM Inventory Subscribers"
             // recuperamos el ratio del ILE original y lo aplicamos con signo correcto.
             if ItemJournalLine."Applies-to Entry" <> 0 then
                 if OrigILE.Get(ItemJournalLine."Applies-to Entry") then
-                    if OrigILE."DUoM Ratio" <> 0 then begin
-                        SecondQty := Abs(ItemLedgEntry.Quantity) * OrigILE."DUoM Ratio";
-                        if ItemLedgEntry.Quantity < 0 then
-                            SecondQty := -SecondQty;
-                        ValueEntry."DUoM Second Qty" := SecondQty;
-                    end;
+                    if OrigILE."DUoM Ratio" <> 0 then
+                        // ItemJournalLine.Signed() aplica el signo correcto según Entry Type.
+                        ValueEntry."DUoM Second Qty" :=
+                            ItemJournalLine.Signed(Abs(ItemLedgEntry.Quantity) * OrigILE."DUoM Ratio");
             exit;
         end;
-        // Apply the same sign as the ILE Quantity: negative for outbound transactions (e.g. sales).
-        SecondQty := Abs(ItemJournalLine."DUoM Second Qty");
-        if ItemLedgEntry.Quantity < 0 then
-            SecondQty := -SecondQty;
-        ValueEntry."DUoM Second Qty" := SecondQty;
+        // ItemJournalLine.Signed() aplica el signo correcto según Entry Type (BC standard idiom):
+        // positivo para entradas (Purchase), negativo para salidas (Sale).
+        ValueEntry."DUoM Second Qty" :=
+            ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
     end;
 }
