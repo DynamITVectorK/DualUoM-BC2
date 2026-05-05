@@ -71,6 +71,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
     // → OnAfterInitItemLedgEntry recupera ratio del ILE original.
     // -------------------------------------------------------------------------
     [Test]
+    [HandlerFunctions('ConfirmHandlerTrue')]    
     procedure UndoPurchaseReceipt_NoLot_CorrILEHasDUoMFields()
     var
         Item: Record Item;
@@ -137,6 +138,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
     // Flujo con trazabilidad: TrackSpec → IJL → ILE vía OnAfterCopyTracking*.
     // -------------------------------------------------------------------------
     [Test]
+    [HandlerFunctions('ConfirmHandlerTrue')]   
     procedure UndoPurchaseReceipt_OneLot_CorrILEHasDUoMFields()
     var
         Item: Record Item;
@@ -206,6 +208,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
     // Verifica: Suma(ILE corrección Second Qty) = −Suma(ILE originales Second Qty).
     // -------------------------------------------------------------------------
     [Test]
+    [HandlerFunctions('ConfirmHandlerTrue')]   
     procedure UndoPurchaseReceipt_TwoLots_SumOfCorrILEIsOppositeSign()
     var
         Item: Record Item;
@@ -287,6 +290,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
     //   ILE corrección (undo):   Qty = +10, DUoM Second Qty = +8 (signo contrario)
     // -------------------------------------------------------------------------
     [Test]
+    [HandlerFunctions('ConfirmHandlerTrue')]   
     procedure UndoSalesShipment_NoLot_CorrILEHasDUoMFields()
     var
         Item: Record Item;
@@ -364,6 +368,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
     //   ILE corrección (undo):   Qty = +5,  DUoM Second Qty = +6.25
     // -------------------------------------------------------------------------
     [Test]
+    [HandlerFunctions('ConfirmHandlerTrue')]   
     procedure UndoSalesShipment_OneLot_CorrILEHasDUoMFields()
     var
         Item: Record Item;
@@ -436,6 +441,12 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
             'T-UNDO-05: ILE corrección venta DUoM Ratio debe ser 1.25');
         LibraryAssert.AreNearlyEqual(6.25, ILE."DUoM Second Qty", 0.001,
             'T-UNDO-05: ILE corrección venta DUoM Second Qty = +5 × 1.25 = +6.25 (signo contrario)');
+    end;
+
+    [ConfirmHandler]
+    procedure ConfirmHandlerTrue(Question: Text[1024]; var Reply: Boolean)
+    begin
+        Reply := true;
     end;
 
     var
