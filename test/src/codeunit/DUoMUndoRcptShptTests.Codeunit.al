@@ -41,6 +41,19 @@
 codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
 {
     Subtype = Test;
+    TestPermissions = Disabled;
+
+    [TestInitialize]
+    procedure InitializeDUoMSetupSeed()
+    var
+        DUoMItemSetup: Record "DUoM Item Setup";
+    begin
+        if not DUoMItemSetup.Get('DUOM-TEST-SEED') then begin
+            DUoMItemSetup.Init();
+            DUoMItemSetup."Item No." := 'DUOM-TEST-SEED';
+            DUoMItemSetup.Insert();
+        end;
+    end;
 
     // -------------------------------------------------------------------------
     // T-UNDO-01 — Anulación albarán compra sin lote
