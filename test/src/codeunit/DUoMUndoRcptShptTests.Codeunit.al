@@ -43,16 +43,20 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
     Subtype = Test;
     TestPermissions = Disabled;
 
-    [TestInitialize]
-    procedure InitializeDUoMSetupSeed()
+    local procedure Initialize()
     var
         DUoMItemSetup: Record "DUoM Item Setup";
     begin
+        if IsInitialized then
+            exit;
+
         if not DUoMItemSetup.Get('DUOM-TEST-SEED') then begin
             DUoMItemSetup.Init();
             DUoMItemSetup."Item No." := 'DUOM-TEST-SEED';
             DUoMItemSetup.Insert();
         end;
+
+        IsInitialized := true;
     end;
 
     // -------------------------------------------------------------------------
@@ -81,6 +85,8 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
     begin
+        Initialize();
+
         // [GIVEN] Artículo con DUoM Fixed, ratio = 0.8
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
@@ -146,6 +152,8 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibraryAssert: Codeunit "Library Assert";
         LotNo: Code[50];
     begin
+        Initialize();
+
         // [GIVEN] Artículo con DUoM Variable, lot tracking activo
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
@@ -216,6 +224,8 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         OriginalSum: Decimal;
         CorrectionSum: Decimal;
     begin
+        Initialize();
+
         // [GIVEN] Artículo con DUoM Variable, lot tracking activo
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
@@ -295,6 +305,8 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibrarySales: Codeunit "Library - Sales";
         LibraryAssert: Codeunit "Library Assert";
     begin
+        Initialize();
+
         // [GIVEN] Artículo con DUoM Fixed, ratio = 0.8
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
@@ -371,6 +383,8 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibraryAssert: Codeunit "Library Assert";
         LotNo: Code[50];
     begin
+        Initialize();
+
         // [GIVEN] Artículo con DUoM Variable, lot tracking activo
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
@@ -423,4 +437,7 @@ codeunit 50227 "DUoM Undo Rcpt Shpt Tests"
         LibraryAssert.AreNearlyEqual(6.25, ILE."DUoM Second Qty", 0.001,
             'T-UNDO-05: ILE corrección venta DUoM Second Qty = +5 × 1.25 = +6.25 (signo contrario)');
     end;
+
+    var
+        IsInitialized: Boolean;
 }
