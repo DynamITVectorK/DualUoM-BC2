@@ -116,6 +116,12 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
         // against the freshly-synced value (which always matches the tracking sum).
         DUoMCoherenceMgt.SyncPurchLineFromTrackingBuffer(Rec);
         DUoMCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(Rec);
+        // Persist DUoM fields to existing Reservation Entries (Modify path).
+        // When a Reservation Entry already exists for a lot (second or subsequent edit),
+        // BC modifies it directly without calling CopyTrackingFromSpec, so
+        // OnAfterCopyTrackingFromTrackingSpec does not fire. This explicit sync ensures
+        // that DUoM Ratio and DUoM Second Qty from the buffer reach the existing RE.
+        DUoMCoherenceMgt.PersistDUoMToReservEntries(Rec);
         exit(true);
     end;
 

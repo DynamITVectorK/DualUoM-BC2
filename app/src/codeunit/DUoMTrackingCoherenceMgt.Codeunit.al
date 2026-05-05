@@ -520,6 +520,97 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         exit(SecondQty / BaseQty);
     end;
 
+    /// <summary>
+    /// Persists DUoM fields from the Tracking Specification buffer to existing Reservation Entries.
+    ///
+    /// This covers the MODIFY path in Item Tracking Lines: when a Reservation Entry already
+    /// exists for a lot (second or subsequent edit), BC calls a direct Modify on the record
+    /// without going through CopyTrackingFromSpec. As a result, the existing event
+    /// OnAfterCopyTrackingFromTrackingSpec is NOT fired and DUoM fields are left with their
+    /// previous values from the first edit.
+    ///
+    /// This method explicitly syncs DUoM Ratio and DUoM Second Qty from each functional
+    /// Tracking Specification buffer line to all matching positive Reservation Entries
+    /// (filtered by Source Type, Source Subtype, Source ID, Source Ref. No. and Lot No.).
+    ///
+    /// No-op if:
+    ///   - Source Type is not Purchase Line
+    ///   - DUoM is not active for the item
+    ///   - No functional tracking lines exist in the buffer
+    ///
+    /// Uses Modify(false) to persist DUoM fields without triggering standard RE triggers
+    /// that could interfere with the Item Tracking Lines close flow.
+    ///
+    /// Cursor safety: uses LocalTrackingSpec.Copy(Rec, true) per BC 27 cursor safety rules.
+    ///
+    /// Called from: DUoM Item Tracking Lines pageextension (50112) — OnQueryClosePage,
+    /// after all validation and sync have already succeeded.
+    /// </summary>
+    procedure PersistDUoMToReservEntries(var TrackingSpec: Record "Tracking Specification")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        LocalTrackingSpec: Record "Tracking Specification" temporary;
+        ReservEntry: Record "Reservation Entry";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        ItemNo: Code[20];
+        VariantCode: Code[10];
+        SourceSubtype: Integer;
+        SourceID: Code[20];
+        SourceRefNo: Integer;
+    begin
+        if TrackingSpec."Source Type" <> Database::"Purchase Line" then
+            exit;
+
+        ItemNo := TrackingSpec."Item No.";
+        VariantCode := TrackingSpec."Variant Code";
+        SourceSubtype := TrackingSpec."Source Subtype";
+        SourceID := TrackingSpec."Source ID";
+        SourceRefNo := TrackingSpec."Source Ref. No.";
+
+        if ItemNo = '' then
+            exit;
+
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 ItemNo, VariantCode, SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        // Use a LOCAL COPY of TrackingSpec with the same shared temp-table data but
+        // an independent cursor. Prevents Reset()/FindSet()/Next() from interfering
+        // with BC's standard Item Tracking Lines close mechanism.
+        LocalTrackingSpec.Copy(TrackingSpec, true);
+        LocalTrackingSpec.Reset();
+        LocalTrackingSpec.SetSourceFilter(
+            Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
+
+        if not LocalTrackingSpec.FindSet() then
+            exit;
+
+        repeat
+            if IsFunctionalTrackingLine(LocalTrackingSpec) and (LocalTrackingSpec."Lot No." <> '') then begin
+                // Find all positive Reservation Entries matching this lot on this source line.
+                // SetSourceFilter applies the complete standard BC source identity.
+                // See docs/development/coding-standards.md.
+                ReservEntry.Reset();
+                ReservEntry.SetSourceFilter(
+                    Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
+                ReservEntry.SetRange("Lot No.", LocalTrackingSpec."Lot No.");
+                ReservEntry.SetRange(Positive, true);
+                if ReservEntry.FindSet() then
+                    repeat
+                        if (ReservEntry."DUoM Ratio" <> LocalTrackingSpec."DUoM Ratio") or
+                           (ReservEntry."DUoM Second Qty" <> LocalTrackingSpec."DUoM Second Qty")
+                        then begin
+                            ReservEntry."DUoM Ratio" := LocalTrackingSpec."DUoM Ratio";
+                            ReservEntry."DUoM Second Qty" := LocalTrackingSpec."DUoM Second Qty";
+                            ReservEntry.Modify(false);
+                        end;
+                    until ReservEntry.Next() = 0;
+            end;
+        until LocalTrackingSpec.Next() = 0;
+    end;
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     local procedure FilterReservEntriesForPurchLine(
