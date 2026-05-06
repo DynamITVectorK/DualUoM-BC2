@@ -28,30 +28,27 @@
 /// Propagation strategy for ILE:
 ///   Two parallel mechanisms cover both paths.
 ///
-///   NORMA: ILE."DUoM Second Qty" SIEMPRE viene del IJL — nunca se calcula desde campos del ILE.
-///   Fórmula canónica: signo sigue a ILE.Quantity (NewItemLedgEntry.Quantity), NO a IJL.Quantity.
-///   IJL.Quantity es siempre positivo en BC 27 (sin signo; la dirección la da el Entry Type),
-///   por lo que "IJL.Quantity < 0" nunca se cumple. Signed() falla en undo/corrección porque
-///   el Entry Type no cambia aunque la dirección del movimiento sí.
+///   NORMA: ILE."DUoM Second Qty" SIEMPRE viene del IJL — asignación pura, sin cálculos.
+///   La responsabilidad de que el IJL llegue con los valores correctos (signo incluido)
+///   corresponde a los subscribers upstream de cada flujo.
 ///
 ///   SIN Item Tracking (artículos sin lotes / sin trazabilidad activa):
 ///     OnPostItemJnlLineOnAfterCopyDocumentFields → Purchase/Sales Line → IJL  (ya existe)
-///     OnAfterInitItemLedgEntry → actualiza IJL si necesario → ILE lee del IJL
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (asignación pura)
 ///     Este subscriber siempre se dispara, con o sin tracking activo.
 ///
 ///   CON Item Tracking (por lote, BC llama CopyTrackingFromItemJnlLine solo cuando hay Lot/Serial):
 ///     ReservEntry → TrackingSpec (OnAfterCopyTrackingFromReservEntry, codeunit 50110)
 ///     OnAfterCopyTrackingFromSpec → TrackingSpec → IJL  (refinamiento por lote)
-///     OnAfterInitItemLedgEntry → actualiza IJL con DUoM Lot Ratio si aplica
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (asignación pura)
 ///     OnAfterCopyTrackingFromItemJnlLine → IJL → ILE  (codeunit 50110, ILE lee del IJL)
 ///     Orden garantizado BC 27: OnAfterInitItemLedgEntry se ejecuta ANTES de
-///     ILECopyTrackingFromItemJnlLine. Por eso el IJL ya está actualizado cuando
-///     ILECopyTrackingFromItemJnlLine lo lee para asignar el ILE.
+///     ILECopyTrackingFromItemJnlLine.
 ///
-///   IMPORTANTE: OnAfterInitItemLedgEntry no llama a TryApplyLotRatioToILE.
-///   La lógica de ratio de lote específico (DUoM Lot Ratio 50102) se aplica en ambos
-///   subscribers: este codeunit actualiza el IJL (var), y 50110 aplica el mismo fallback
-///   como salvaguarda. En todos los casos el ILE recibe sus datos del IJL.
+///   IMPORTANTE: OnAfterInitItemLedgEntry es una asignación pura. Copia DUoM Ratio y
+///   DUoM Second Qty directamente del IJL al ILE sin cálculos ni lógica condicional.
+///   La responsabilidad de que el IJL llegue con valores correctos corresponde a los
+///   subscribers upstream (flujo undo, tracking copy, etc.).
 ///
 /// Estrategia de propagación para Value Entry:
 ///   OnAfterInitValueEntry en Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
@@ -224,17 +221,12 @@ codeunit 50104 "DUoM Inventory Subscribers"
     end;
 
     /// <summary>
-    /// Inicializa campos DUoM en el nuevo Item Ledger Entry desde el Item Journal Line
-    /// antes del Insert() — sin llamada a Modify().
+    /// Asignación pura de campos DUoM desde el Item Journal Line al nuevo Item Ledger Entry
+    /// antes del Insert() — sin cálculos, sin lógica condicional, sin llamadas externas.
     ///
-    /// NORMA: ILE."DUoM Second Qty" siempre viene del IJL — nunca se calcula desde campos
-    /// del ILE. El signo se toma de NewItemLedgEntry.Quantity (ya inicializado por BC):
-    ///   positivo → entrada (Purchase, Positive Adjmt., corrección undo venta)
-    ///   negativo → salida (Sale, Negative Adjmt., corrección undo compra)
-    /// NO se usa ItemJournalLine.Quantity: en BC 27 el IJL.Quantity es SIEMPRE positivo
-    /// (sin signo; la dirección la da el Entry Type), por lo que "IJL.Quantity < 0"
-    /// nunca se cumple. NO se usa Signed(): falla en undo/corrección porque el Entry Type
-    /// no cambia aunque la dirección del movimiento sí.
+    /// Responsabilidad única: copiar DUoM Ratio y DUoM Second Qty del IJL al ILE.
+    /// La responsabilidad de que el IJL llegue con los valores correctos (signo, ratio,
+    /// flujos undo, flujos con lote) corresponde a los subscribers upstream.
     ///
     /// Este subscriber cubre el flujo SIN Item Tracking (artículos sin lotes):
     ///   OnAfterCopyTrackingFromItemJnlLine (codeunit 50110) no se dispara cuando
@@ -245,130 +237,32 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// Para artículos CON Item Tracking (Lot No. / Serial No.):
     ///   ILECopyTrackingFromItemJnlLine (codeunit 50110) se dispara después de este
     ///   subscriber y consolida el valor final en el ILE leyendo del IJL (mismo patrón).
-    ///   Porque este subscriber actualiza el IJL antes de salir, ILECopyTrackingFromItemJnlLine
-    ///   recibe el IJL ya con el ratio de lote correcto.
-    ///
-    /// Orden de ejecución confirmado — BC 27 / runtime 15:
-    ///   OnAfterInitItemLedgEntry se ejecuta ANTES de ILE.CopyTrackingFromItemJnlLine().
-    ///   Este subscriber actualiza var ItemJournalLine cuando es necesario (caso undo y
-    ///   DUoM Lot Ratio) para que el ILE lea siempre del IJL.
-    ///
-    /// Lógica de prioridad:
-    ///   1. Flujo de anulación sin trazabilidad: BC no propaga DUoM al IJL (llega con 0).
-    ///      Se recupera del ILE original y se actualiza el IJL → flujo normal continúa.
-    ///   2. AlwaysVariable + Lot No. + DUoM Ratio = 0: el total de la línea no es válido
-    ///      por ILE individual. ILE.DUoM Second Qty queda en 0. Ver T10.
-    ///   2b. AlwaysVariable + Lot No. + DUoM Ratio ≠ 0 (ratio manual en IJL): caída al
-    ///      flujo normal. Ver T14.
-    ///   3. DUoM Lot Ratio (50102) > ratio del IJL cuando hay Lot No.: se actualiza el IJL
-    ///      con el ratio específico del lote y la cantidad recalculada desde IJL.Quantity.
-    ///   4. Resto: usa directamente IJL."DUoM Second Qty" ya calculado.
     ///
     /// Publisher: Codeunit "Item Jnl.-Post Line", evento OnAfterInitItemLedgEntry.
     /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al).
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitItemLedgEntry', '', false, false)]
     local procedure OnAfterInitItemLedgEntry(var NewItemLedgEntry: Record "Item Ledger Entry"; var ItemJournalLine: Record "Item Journal Line"; var ItemLedgEntryNo: Integer)
-    var
-        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
-        DUoMLotRatio: Record "DUoM Lot Ratio";
-        OrigILE: Record "Item Ledger Entry";
-        ConversionMode: Enum "DUoM Conversion Mode";
-        SecondUoMCode: Code[10];
-        FixedRatio: Decimal;
-        AppliedRatio: Decimal;
     begin
-        // Flujo de anulación sin trazabilidad de lote: BC no propaga DUoM al IJL.
-        // El IJL llega con DUoM = 0 pero tiene Applies-to Entry apuntando al ILE original.
-        // Norma ILE←IJL: actualizamos el IJL con los datos del ILE original para que
-        // la asignación al ILE nuevo siga el mismo patrón que el flujo normal.
-        if (ItemJournalLine."DUoM Ratio" = 0) and (ItemJournalLine."DUoM Second Qty" = 0) then begin
-            if ItemJournalLine."Applies-to Entry" <> 0 then
-                if OrigILE.Get(ItemJournalLine."Applies-to Entry") then
-                    if OrigILE."DUoM Ratio" <> 0 then begin
-                        ItemJournalLine."DUoM Ratio" := OrigILE."DUoM Ratio";
-                        ItemJournalLine."DUoM Second Qty" := Abs(OrigILE."DUoM Second Qty");
-                        // No exit: continúa al flujo normal → ILE recibe datos del IJL.
-                    end else
-                        exit
-                else
-                    exit
-            else
-                exit;
-        end;
-
-        // AlwaysVariable con lote y sin ratio manual: el total de la línea no es válido
-        // por ILE individual. ILE."DUoM Second Qty" queda en 0. Ver T10.
-        // Excepción: si el IJL tiene DUoM Ratio manual (≠ 0), caída al cálculo general. Ver T14.
-        if ItemJournalLine."Lot No." <> '' then
-            if DUoMSetupResolver.GetEffectiveSetup(
-                   ItemJournalLine."Item No.", ItemJournalLine."Variant Code",
-                   SecondUoMCode, ConversionMode, FixedRatio) then
-                if ConversionMode = ConversionMode::AlwaysVariable then
-                    if ItemJournalLine."DUoM Ratio" = 0 then
-                        exit;
-
-        // Determinar ratio efectivo.
-        // Prioridad: DUoM Lot Ratio (50102) > ratio del IJL (fallback para flujo
-        // PostItemJournalLine directo donde OnAfterCopyTrackingFromReservEntry no actúa).
-        // Norma ILE←IJL: cuando el ratio cambia, actualizamos el IJL para que el ILE
-        // reciba siempre sus datos del IJL y no recalcule desde campos propios.
-        AppliedRatio := ItemJournalLine."DUoM Ratio";
-        if ItemJournalLine."Lot No." <> '' then begin
-            if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
-                AppliedRatio := DUoMLotRatio."Actual Ratio";
-                ItemJournalLine."DUoM Ratio" := AppliedRatio;
-            end;
-            // Recalcular DUoM Second Qty proporcional a la cantidad del lote.
-            // Evita que el split del IJL herede el total del padre en lugar del
-            // proporcional al lote. Se aplica con o sin registro en 50102. Ver T13.
-            if AppliedRatio <> 0 then
-                ItemJournalLine."DUoM Second Qty" := Abs(ItemJournalLine.Quantity) * AppliedRatio;
-        end;
-
-        // Norma ILE←IJL: ILE."DUoM Second Qty" siempre viene del IJL.
-        // El signo sigue al de la cantidad EFECTIVA del ILE (NewItemLedgEntry.Quantity),
-        // no al del IJL. ItemJournalLine.Quantity es SIEMPRE positivo en BC 27 (sin signo;
-        // la dirección la da el Entry Type), por lo que "IJL.Quantity < 0" nunca se cumple.
-        //
-        // IMPORTANTE — ILEs de corrección (Correction = true, flujos undo):
-        // Cuando BC crea un ILE de corrección, en el momento en que OnAfterInitItemLedgEntry
-        // se dispara NewItemLedgEntry.Quantity todavía tiene el mismo signo que el ILE original
-        // (BC no ha aplicado la inversión aún). Por eso hay que invertir el signo una vez
-        // más cuando Correction = true. Sin esta inversión adicional:
-        //   undo compra: ILE.Qty aparece +10 → no se niega → DUoM Second Qty = +8 (incorrecto)
-        //   undo venta:  ILE.Qty aparece -10 → se niega   → DUoM Second Qty = -8 (incorrecto)
-        // Con la inversión adicional los valores quedan correctos para T-UNDO-01..05.
-        NewItemLedgEntry."DUoM Ratio" := AppliedRatio;
-        NewItemLedgEntry."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-        if NewItemLedgEntry.Quantity < 0 then
-            NewItemLedgEntry."DUoM Second Qty" := -NewItemLedgEntry."DUoM Second Qty";
-        if NewItemLedgEntry.Correction then
-            NewItemLedgEntry."DUoM Second Qty" := -NewItemLedgEntry."DUoM Second Qty";
+        NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
+        NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
     end;
 
     /// <summary>
-    /// Propaga DUoM Second Qty desde el Item Journal Line al nuevo Value Entry
-    /// antes de que se inserte — sin llamada a Modify().
+    /// Asignación pura de DUoM Second Qty desde el Item Journal Line al nuevo Value Entry
+    /// antes de Insert() — sin cálculos ni lógica condicional, sin llamada a Modify().
+    ///
+    /// Responsabilidad única: copiar DUoM Second Qty del IJL al Value Entry.
+    /// La responsabilidad de que el IJL llegue con el valor correcto (signo incluido)
+    /// corresponde a los subscribers upstream.
+    ///
     /// Publisher: Codeunit "Item Jnl.-Post Line", evento OnAfterInitValueEntry.
-    /// Evento elegido porque inicializa el Value Entry desde el Item Journal Line
-    /// en el mismo flujo de contabilización que OnAfterInitItemLedgEntry.
     /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al):
     ///   OnAfterInitValueEntry(var ValueEntry; var ItemJnlLine; var ValueEntryNo; var ItemLedgEntry).
-    /// Patrón SaaS: OnAfterInit* + asignación directa (sin Modify sobre tabla base).
-    ///
-    /// NORMA ILE←IJL: ValueEntry."DUoM Second Qty" := IJL.Signed(Abs(IJL."DUoM Second Qty")).
-    /// OnAfterInitItemLedgEntry (var ItemJournalLine, ejecutado antes de este evento)
-    /// garantiza que el IJL tiene el DUoM Second Qty definitivo, incluyendo flujos de
-    /// anulación donde el IJL llega inicialmente con DUoM = 0.
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
     local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
     begin
-        // Norma ILE←IJL: asignación directa del campo del IJL — sin cálculos en destino.
-        // Signed() aplica el signo correcto según Entry Type (BC standard idiom):
-        // positivo para entradas (Purchase), negativo para salidas (Sale, anulaciones).
-        ValueEntry."DUoM Second Qty" :=
-            ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+        ValueEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
     end;
 }
