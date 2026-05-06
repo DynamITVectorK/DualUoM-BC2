@@ -132,15 +132,19 @@ ReservationEntry.SetRange("Lot No.", LotNo);
 
 `Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
 Siempre debe recibir sus datos del `Item Journal Line` (IJL) mediante asignación directa
-del mismo campo:
+del mismo campo. El signo sigue al de `IJL.Quantity`, no al Entry Type:
 
 ```al
-// ✅ CORRECTO — asignación directa del campo del IJL; Signed() aplica el signo
-ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+// ✅ CORRECTO — asignación directa del campo del IJL; signo desde IJL.Quantity
+ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
+if ItemJournalLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
-`Signed()` es el idioma estándar de Microsoft BC para aplicar el signo correcto según
-Entry Type: positivo para entradas (Purchase), negativo para salidas (Sale, anulaciones).
+**¿Por qué no `Signed()`?** `Signed()` aplica el signo según Entry Type (Purchase → +,
+Sale → −), pero en flujos de corrección (undo) el Entry Type no cambia mientras que
+Quantity sí invierte su signo. Por tanto, `Signed()` produce signo incorrecto para
+ILEs de corrección. El signo desde `IJL.Quantity` es correcto para todos los flujos.
 
 ### Patrones prohibidos
 
@@ -153,10 +157,13 @@ ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL.Quantity) * AppliedRatio);
 
 // ❌ PROHIBIDO — calcula desde campos del ILE sin pasar por IJL
 ILE."DUoM Second Qty" := Abs(ILE.Quantity) * ILE."DUoM Ratio";
+
+// ❌ PROHIBIDO — Signed() falla en undo/correction entries
+ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
 ```
 
 Los cálculos intermedios pertenecen al IJL (actualizando `var IJL`), no a la asignación
-final al ILE. La asignación al ILE siempre es `IJL.Signed(Abs(IJL."DUoM Second Qty"))`.
+final al ILE.
 
 ### Patrón con DUoM Lot Ratio
 
@@ -167,12 +174,14 @@ Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio del IJL, el IJL debe actua
 // ✅ CORRECTO — actualizar IJL primero, luego ILE ← IJL (asignación directa)
 if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
     ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
-    if ItemJournalLine."DUoM Ratio" <> 0 then
-        ItemJournalLine."DUoM Second Qty" :=
-            Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
 end;
-// Asignación directa del campo del IJL — sin repetir el cálculo aquí:
-ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+if ItemJournalLine."DUoM Ratio" <> 0 then
+    ItemJournalLine."DUoM Second Qty" :=
+        Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
+// Asignación directa del campo del IJL — signo desde Quantity:
+ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
+if ItemJournalLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
 Cuando el IJL es parámetro por valor (no `var`) en un subscriber posterior, el IJL ya
@@ -181,7 +190,9 @@ subscriber anterior). Por lo que la asignación directa del campo del IJL sigue 
 
 ```al
 // ✅ CORRECTO — asignación directa; el IJL ya tiene el valor actualizado
-ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine."DUoM Second Qty"));
+ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
+if ItemJnlLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
 ### Patrón para flujo de anulación (undo sin trazabilidad)
@@ -193,11 +204,13 @@ El IJL tiene `Applies-to Entry` apuntando al ILE original. La norma se respeta a
 // ✅ CORRECTO — poblar IJL desde ILE original; ILE recibe datos del IJL (asignación directa)
 if OrigILE.Get(ItemJournalLine."Applies-to Entry") then begin
     ItemJournalLine."DUoM Ratio" := OrigILE."DUoM Ratio";
-    ItemJournalLine."DUoM Second Qty" := OrigILE."DUoM Second Qty";
+    ItemJournalLine."DUoM Second Qty" := Abs(OrigILE."DUoM Second Qty");
     // No exit: continúa al flujo normal donde ILE lee del IJL actualizado.
 end;
-// Asignación directa del campo del IJL:
-ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+// Asignación directa con signo desde Quantity:
+ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
+if ItemJournalLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
 ### Implementación de referencia

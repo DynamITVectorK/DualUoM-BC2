@@ -175,12 +175,15 @@ follow these rules to avoid fragile and build-breaking subscriber signatures:
 Siempre debe recibir sus datos del `Item Journal Line`. Fórmula canónica:
 
 ```al
-// ✅ OBLIGATORIO — datos vienen del IJL; Signed() aplica el signo correcto (Microsoft standard idiom)
-ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+// ✅ OBLIGATORIO — datos vienen del IJL; signo sigue a IJL.Quantity (no al Entry Type)
+ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
+if ItemJournalLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
-`Signed()` es el idioma estándar de Microsoft BC para el signo según Entry Type:
-positivo para entradas (Purchase), negativo para salidas (Sale, anulaciones).
+El signo sigue a `IJL.Quantity` porque `Signed()` (basado en Entry Type) falla en flujos
+de corrección (undo): el Entry Type = Purchase/Sale no cambia, pero Quantity invierte su
+signo. El patrón con `Quantity` es correcto para todos los flujos (normal y undo).
 
 ```al
 // ❌ PROHIBIDO — usa ILE.Quantity como fuente (viola norma ILE←IJL)
@@ -189,19 +192,30 @@ ILE."DUoM Second Qty" := IJL.Signed(Abs(ItemLedgEntry.Quantity) * Ratio);
 
 // ❌ PROHIBIDO — calcula desde IJL.Quantity × Ratio al asignar al ILE
 ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL.Quantity) * AppliedRatio);
+
+// ❌ PROHIBIDO — Signed() falla en undo/correction entries
+ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
 ```
 
 Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio, el IJL debe actualizarse primero
 (si es `var`), y el ILE leer del campo del IJL actualizado:
 
 ```al
-// ✅ CORRECTO — actualizar IJL, luego ILE ← IJL (asignación directa del campo)
-ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
-ItemJournalLine."DUoM Second Qty" := Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
-ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+// ✅ CORRECTO — actualizar IJL, luego ILE ← IJL (signo desde Quantity)
+if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
+    ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
+end;
+if ItemJournalLine."DUoM Ratio" <> 0 then
+    ItemJournalLine."DUoM Second Qty" :=
+        Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
+ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
+if ItemJournalLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 
 // ✅ CORRECTO — parámetro por valor: el IJL ya refleja actualizaciones del subscriber anterior
-ILE."DUoM Second Qty" := ItemJnlLine.Signed(Abs(ItemJnlLine."DUoM Second Qty"));
+ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
+if ItemJnlLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
 Ver norma completa en `docs/development/coding-standards.md` (sección "Norma: ILE ← IJL siempre").
