@@ -131,44 +131,56 @@ ReservationEntry.SetRange("Lot No.", LotNo);
 ### Regla obligatoria
 
 `Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
-Siempre debe recibir sus datos del `Item Journal Line` (IJL) mediante asignación directa
-del mismo campo. El signo sigue al de `ILE.Quantity` (ya inicializado por BC antes del evento),
-con una inversión adicional para ILEs de corrección (`Correction = true`):
+Siempre debe recibir sus datos del `Item Journal Line` (IJL) mediante asignación directa.
+
+### `OnAfterInitItemLedgEntry` — asignación pura (codeunit 50104)
+
+El subscriber `OnAfterInitItemLedgEntry` de `DUoM Inventory Subscribers` (50104) es una
+**asignación pura**: copia los campos DUoM directamente del IJL al ILE, sin cálculos ni
+lógica condicional. La responsabilidad de que el IJL llegue con los valores correctos
+(signo incluido) corresponde a los subscribers upstream de cada flujo.
 
 ```al
-// ✅ CORRECTO — asignación directa del campo del IJL; signo desde ILE.Quantity
-//              más inversión para ILEs de corrección (flujos undo)
-ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-if NewItemLedgEntry.Quantity < 0 then
+// ✅ CORRECTO — asignación pura en OnAfterInitItemLedgEntry (50104)
+NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
+NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+```
+
+### `ILECopyTrackingFromItemJnlLine` — asignación con signo (codeunit 50110)
+
+Para artículos con Item Tracking (lotes / series), el subscriber
+`ILECopyTrackingFromItemJnlLine` en `DUoM Tracking Copy Subscribers` (50110) aplica
+la fórmula canónica de signo. El signo sigue al de `ItemLedgerEntry.Quantity`
+(ya inicializado por BC antes del evento), con inversión adicional para ILEs de
+corrección (`Correction = true`):
+
+```al
+// ✅ CORRECTO — en ILECopyTrackingFromItemJnlLine (50110)
+ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
+if ItemLedgerEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
-if NewItemLedgEntry.Correction then
+if ItemLedgerEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
-**¿Por qué `NewItemLedgEntry.Quantity` y no `IJL.Quantity`?** En BC 27, `ItemJournalLine.Quantity`
+**¿Por qué `ItemLedgerEntry.Quantity` y no `IJL.Quantity`?** En BC 27, `ItemJournalLine.Quantity`
 es **siempre positivo** (sin signo; la dirección la da el Entry Type), por lo que
 `IJL.Quantity < 0` nunca se cumple y no puede usarse para determinar el signo.
-`NewItemLedgEntry.Quantity` está inicializado con signo correcto por BC antes de que
-el evento `OnAfterInitItemLedgEntry` se dispare:
+`ItemLedgerEntry.Quantity` está inicializado con signo correcto por BC antes del evento:
   - positivo → entrada (Purchase, Positive Adjmt.)
   - negativo → salida (Sale, Negative Adjmt.)
 
-**¿Por qué la inversión adicional con `Correction`?** En BC 27, cuando `OnAfterInitItemLedgEntry`
-se dispara para ILEs de corrección (flujos undo: Undo Purchase Receipt, Undo Sales Shipment),
-`NewItemLedgEntry.Quantity` todavía tiene el **mismo signo que el ILE original**, no el de
-la corrección. BC aplica la inversión de cantidad **después** del evento. Por eso se necesita
-una inversión adicional cuando `Correction = true`. Las dos inversiones operan encadenadas:
-  - undo compra (original Qty=+10): Qty en evento = +10
-    → 1ª inversión (Qty<0): 10<0 es FALSO → sin cambio: +8
-    → 2ª inversión (Correction): negar → **-8** ✓
-  - undo venta (original Qty=-10): Qty en evento = -10
-    → 1ª inversión (Qty<0): -10<0 es VERDAD → negar: -8
-    → 2ª inversión (Correction): negar de nuevo → **+8** ✓
+**¿Por qué la inversión adicional con `Correction`?** En BC 27, cuando se crea un ILE
+de corrección (flujos undo), `ItemLedgerEntry.Quantity` todavía tiene el **mismo signo
+que el ILE original** en el momento del evento. BC aplica la inversión de cantidad
+**después** del evento. Las dos inversiones encadenadas producen el signo correcto:
+  - undo compra (original Qty=+10): Qty=+10 → sin negar → +8 → negar (Correction) → **-8** ✓
+  - undo venta (original Qty=-10): Qty=-10 → negar → -8 → negar (Correction) → **+8** ✓
 
 **¿Por qué no `Signed()`?** `Signed()` aplica el signo según Entry Type (Purchase → +,
-Sale → −), pero en flujos de corrección (undo) el Entry Type no cambia mientras que
-la dirección del movimiento sí invierte. Por tanto, `Signed()` produce signo incorrecto
-para ILEs de corrección.
+Sale → −), pero en flujos de corrección el Entry Type no cambia mientras que la dirección
+del movimiento sí invierte. Por tanto, `Signed()` produce signo incorrecto para ILEs
+de corrección.
 
 ### Patrones prohibidos
 
@@ -188,68 +200,56 @@ ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second
 // ❌ PROHIBIDO — IJL.Quantity es siempre positivo en BC 27; esta condición nunca se cumple
 if ItemJournalLine.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
-```
 
-Los cálculos intermedios pertenecen al IJL (actualizando `var IJL`), no a la asignación
-final al ILE.
-
-### Patrón con DUoM Lot Ratio
-
-Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio del IJL, el IJL debe actualizarse
-**primero** (si es `var`), y el ILE leer del IJL actualizado:
-
-```al
-// ✅ CORRECTO — actualizar IJL primero, luego ILE ← IJL (asignación directa)
-if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
-    ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
-end;
-if ItemJournalLine."DUoM Ratio" <> 0 then
-    ItemJournalLine."DUoM Second Qty" :=
-        Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
-// Asignación directa del campo del IJL — signo desde ILE.Quantity + inversión para correcciones:
+// ❌ PROHIBIDO — lógica de signo o cálculo en OnAfterInitItemLedgEntry (50104)
+// Este subscriber es una asignación pura; la lógica de signo va en 50110 o en upstream.
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
-    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
-if NewItemLedgEntry.Correction then
-    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
-```
-
-Cuando en el subscriber `ILECopyTrackingFromItemJnlLine` (50110) el IJL es parámetro
-por valor, se usa `ItemLedgerEntry.Quantity` (ya inicializado por BC):
-
-```al
-// ✅ CORRECTO en ILECopyTrackingFromItemJnlLine — signo desde ILE.Quantity + corrección
-ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
-if ItemLedgerEntry.Quantity < 0 then
-    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
-if ItemLedgerEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
 ### Patrón para flujo de anulación (undo sin trazabilidad)
 
 En el flujo de anulación sin lote, BC no propaga DUoM al IJL (llega con DUoM = 0).
-El IJL tiene `Applies-to Entry` apuntando al ILE original. La norma se respeta así:
+Los subscribers upstream `OnAfterCopyItemJnlLineFromPurchRcpt` y
+`OnAfterCopyItemJnlLineFromSalesShpt` en `DUoM Inventory Subscribers` (50104) preparan
+el IJL antes del posting. La responsabilidad de cada subscriber es:
+
+- **Guard**: si `IJL."DUoM Ratio" ≠ 0`, el flujo de trazabilidad ya poblará los valores
+  per-lote correctamente — no sobrescribir.
+- Copiar `DUoM Ratio` desde la línea del documento contabilizado.
+- Establecer `DUoM Second Qty` con el signo correcto para el tipo de corrección:
+  - Undo recepción compra → ILE corrección con Qty < 0 → `IJL.DUoM Second Qty = -Abs(PurchRcptLine.DUoM Second Qty)`
+  - Undo envío venta → ILE corrección con Qty > 0 → `IJL.DUoM Second Qty = +Abs(SalesShipmentLine.DUoM Second Qty)`
+
+Para artículos CON trazabilidad de lote/serie en undo, los valores per-lote se propagan
+mediante `IJLCopyTrackingFromItemLedgEntry` (50110), que copia directamente del ILE original.
+Después, `ILECopyTrackingFromItemJnlLine` (50110) aplica el signo correcto mediante
+`Abs() + ILE.Quantity + Correction`.
 
 ```al
-// ✅ CORRECTO — poblar IJL desde ILE original; ILE recibe datos del IJL (asignación directa)
-if OrigILE.Get(ItemJournalLine."Applies-to Entry") then begin
-    ItemJournalLine."DUoM Ratio" := OrigILE."DUoM Ratio";
-    ItemJournalLine."DUoM Second Qty" := Abs(OrigILE."DUoM Second Qty");
-    // No exit: continúa al flujo normal donde ILE lee del IJL actualizado.
-end;
-// Asignación directa con signo desde ILE.Quantity + inversión para correcciones:
-ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-if NewItemLedgEntry.Quantity < 0 then
-    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
-if NewItemLedgEntry.Correction then
-    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+// ✅ CORRECTO — upstream subscriber para undo receipt (sin trazabilidad)
+if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') then
+    exit;  // trazabilidad ya pobló los valores per-lote desde el ILE original (50110)
+if PurchRcptLine."DUoM Ratio" = 0 then
+    exit;  // artículo sin DUoM
+ItemJournalLine."DUoM Ratio" := PurchRcptLine."DUoM Ratio";
+ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");  // signo negativo
+
+// ✅ CORRECTO — upstream subscriber para undo shipment (sin trazabilidad)
+if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') then
+    exit;
+if SalesShipmentLine."DUoM Ratio" = 0 then
+    exit;
+ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
+ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");  // signo positivo
 ```
 
 ### Implementación de referencia
 
 Ver codeunit 50104 `DUoM Inventory Subscribers` (subscriber `OnAfterInitItemLedgEntry`)
-y codeunit 50110 `DUoM Tracking Copy Subscribers` (subscriber `ILECopyTrackingFromItemJnlLine`).
+para el patrón de asignación pura, y codeunit 50110 `DUoM Tracking Copy Subscribers`
+(subscriber `ILECopyTrackingFromItemJnlLine`) para el patrón con lógica de signo.
 
 ---
 
