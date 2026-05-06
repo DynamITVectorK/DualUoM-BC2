@@ -132,12 +132,16 @@ ReservationEntry.SetRange("Lot No.", LotNo);
 
 `Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
 Siempre debe recibir sus datos del `Item Journal Line` (IJL) mediante asignación directa
-del mismo campo. El signo sigue al de `ILE.Quantity` (ya inicializado por BC antes del evento):
+del mismo campo. El signo sigue al de `ILE.Quantity` (ya inicializado por BC antes del evento),
+con una inversión adicional para ILEs de corrección (`Correction = true`):
 
 ```al
 // ✅ CORRECTO — asignación directa del campo del IJL; signo desde ILE.Quantity
+//              más inversión para ILEs de corrección (flujos undo)
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+if NewItemLedgEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
@@ -146,8 +150,16 @@ es **siempre positivo** (sin signo; la dirección la da el Entry Type), por lo q
 `IJL.Quantity < 0` nunca se cumple y no puede usarse para determinar el signo.
 `NewItemLedgEntry.Quantity` está inicializado con signo correcto por BC antes de que
 el evento `OnAfterInitItemLedgEntry` se dispare:
-  - positivo → entrada (Purchase, Positive Adjmt., corrección undo venta)
-  - negativo → salida (Sale, Negative Adjmt., corrección undo compra)
+  - positivo → entrada (Purchase, Positive Adjmt.)
+  - negativo → salida (Sale, Negative Adjmt.)
+
+**¿Por qué la inversión adicional con `Correction`?** En BC 27, cuando `OnAfterInitItemLedgEntry`
+se dispara para ILEs de corrección (flujos undo: Undo Purchase Receipt, Undo Sales Shipment),
+`NewItemLedgEntry.Quantity` todavía tiene el **mismo signo que el ILE original**, no el de
+la corrección. BC aplica la inversión de cantidad **después** del evento. Por eso se necesita
+una inversión adicional cuando `Correction = true`:
+  - undo compra (original Qty=+10): Qty en evento = +10 → sin inversión adicional daría +8 (incorrecto); con inversión → -8 ✓
+  - undo venta (original Qty=-10): Qty en evento = -10 → sin inversión adicional daría -8 (incorrecto); con inversión → +8 ✓
 
 **¿Por qué no `Signed()`?** `Signed()` aplica el signo según Entry Type (Purchase → +,
 Sale → −), pero en flujos de corrección (undo) el Entry Type no cambia mientras que
@@ -190,9 +202,11 @@ end;
 if ItemJournalLine."DUoM Ratio" <> 0 then
     ItemJournalLine."DUoM Second Qty" :=
         Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
-// Asignación directa del campo del IJL — signo desde ILE.Quantity (NewItemLedgEntry):
+// Asignación directa del campo del IJL — signo desde ILE.Quantity + inversión para correcciones:
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+if NewItemLedgEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
@@ -200,9 +214,11 @@ Cuando en el subscriber `ILECopyTrackingFromItemJnlLine` (50110) el IJL es pará
 por valor, se usa `ItemLedgerEntry.Quantity` (ya inicializado por BC):
 
 ```al
-// ✅ CORRECTO en ILECopyTrackingFromItemJnlLine — signo desde ILE.Quantity
+// ✅ CORRECTO en ILECopyTrackingFromItemJnlLine — signo desde ILE.Quantity + corrección
 ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
 if ItemLedgerEntry.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+if ItemLedgerEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
@@ -218,9 +234,11 @@ if OrigILE.Get(ItemJournalLine."Applies-to Entry") then begin
     ItemJournalLine."DUoM Second Qty" := Abs(OrigILE."DUoM Second Qty");
     // No exit: continúa al flujo normal donde ILE lee del IJL actualizado.
 end;
-// Asignación directa con signo desde ILE.Quantity (NewItemLedgEntry):
+// Asignación directa con signo desde ILE.Quantity + inversión para correcciones:
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+if NewItemLedgEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 

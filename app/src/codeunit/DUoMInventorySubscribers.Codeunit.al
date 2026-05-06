@@ -287,7 +287,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
                 if OrigILE.Get(ItemJournalLine."Applies-to Entry") then
                     if OrigILE."DUoM Ratio" <> 0 then begin
                         ItemJournalLine."DUoM Ratio" := OrigILE."DUoM Ratio";
-                        ItemJournalLine."DUoM Second Qty" := OrigILE."DUoM Second Qty";
+                        ItemJournalLine."DUoM Second Qty" := Abs(OrigILE."DUoM Second Qty");
                         // No exit: continúa al flujo normal → ILE recibe datos del IJL.
                     end else
                         exit
@@ -327,18 +327,23 @@ codeunit 50104 "DUoM Inventory Subscribers"
         end;
 
         // Norma ILE←IJL: ILE."DUoM Second Qty" siempre viene del IJL.
-        // El signo sigue al de la cantidad del ILE (NewItemLedgEntry.Quantity), no al del IJL.
-        // ItemJournalLine.Quantity es SIEMPRE positivo en BC 27 (sin signo; la dirección
-        // la da el Entry Type), por lo que la comprobación "IJL.Quantity < 0" nunca se
-        // cumple y no puede usarse para determinar el signo. NewItemLedgEntry.Quantity ya
-        // está inicializado con signo correcto por BC antes de que este evento se dispare:
-        //   positivo → entrada (Purchase, Positive Adjmt., undo Sale correction)
-        //   negativo → salida (Sale, Negative Adjmt., undo Purchase correction)
-        // Esto cubre correctamente los flujos de anulación (T-UNDO-01..05) donde
-        // Signed() fallaba porque el Entry Type no cambia aunque la dirección sí.
+        // El signo sigue al de la cantidad EFECTIVA del ILE (NewItemLedgEntry.Quantity),
+        // no al del IJL. ItemJournalLine.Quantity es SIEMPRE positivo en BC 27 (sin signo;
+        // la dirección la da el Entry Type), por lo que "IJL.Quantity < 0" nunca se cumple.
+        //
+        // IMPORTANTE — ILEs de corrección (Correction = true, flujos undo):
+        // Cuando BC crea un ILE de corrección, en el momento en que OnAfterInitItemLedgEntry
+        // se dispara NewItemLedgEntry.Quantity todavía tiene el mismo signo que el ILE original
+        // (BC no ha aplicado la inversión aún). Por eso hay que invertir el signo una vez
+        // más cuando Correction = true. Sin esta inversión adicional:
+        //   undo compra: ILE.Qty aparece +10 → no se niega → DUoM Second Qty = +8 (incorrecto)
+        //   undo venta:  ILE.Qty aparece -10 → se niega   → DUoM Second Qty = -8 (incorrecto)
+        // Con la inversión adicional los valores quedan correctos para T-UNDO-01..05.
         NewItemLedgEntry."DUoM Ratio" := AppliedRatio;
         NewItemLedgEntry."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
         if NewItemLedgEntry.Quantity < 0 then
+            NewItemLedgEntry."DUoM Second Qty" := -NewItemLedgEntry."DUoM Second Qty";
+        if NewItemLedgEntry.Correction then
             NewItemLedgEntry."DUoM Second Qty" := -NewItemLedgEntry."DUoM Second Qty";
     end;
 
