@@ -132,19 +132,27 @@ ReservationEntry.SetRange("Lot No.", LotNo);
 
 `Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
 Siempre debe recibir sus datos del `Item Journal Line` (IJL) mediante asignación directa
-del mismo campo. El signo sigue al de `IJL.Quantity`, no al Entry Type:
+del mismo campo. El signo sigue al de `ILE.Quantity` (ya inicializado por BC antes del evento):
 
 ```al
-// ✅ CORRECTO — asignación directa del campo del IJL; signo desde IJL.Quantity
+// ✅ CORRECTO — asignación directa del campo del IJL; signo desde ILE.Quantity
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-if ItemJournalLine.Quantity < 0 then
+if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
+**¿Por qué `NewItemLedgEntry.Quantity` y no `IJL.Quantity`?** En BC 27, `ItemJournalLine.Quantity`
+es **siempre positivo** (sin signo; la dirección la da el Entry Type), por lo que
+`IJL.Quantity < 0` nunca se cumple y no puede usarse para determinar el signo.
+`NewItemLedgEntry.Quantity` está inicializado con signo correcto por BC antes de que
+el evento `OnAfterInitItemLedgEntry` se dispare:
+  - positivo → entrada (Purchase, Positive Adjmt., corrección undo venta)
+  - negativo → salida (Sale, Negative Adjmt., corrección undo compra)
+
 **¿Por qué no `Signed()`?** `Signed()` aplica el signo según Entry Type (Purchase → +,
 Sale → −), pero en flujos de corrección (undo) el Entry Type no cambia mientras que
-Quantity sí invierte su signo. Por tanto, `Signed()` produce signo incorrecto para
-ILEs de corrección. El signo desde `IJL.Quantity` es correcto para todos los flujos.
+la dirección del movimiento sí invierte. Por tanto, `Signed()` produce signo incorrecto
+para ILEs de corrección.
 
 ### Patrones prohibidos
 
@@ -160,6 +168,10 @@ ILE."DUoM Second Qty" := Abs(ILE.Quantity) * ILE."DUoM Ratio";
 
 // ❌ PROHIBIDO — Signed() falla en undo/correction entries
 ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+
+// ❌ PROHIBIDO — IJL.Quantity es siempre positivo en BC 27; esta condición nunca se cumple
+if ItemJournalLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
 Los cálculos intermedios pertenecen al IJL (actualizando `var IJL`), no a la asignación
@@ -178,20 +190,19 @@ end;
 if ItemJournalLine."DUoM Ratio" <> 0 then
     ItemJournalLine."DUoM Second Qty" :=
         Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
-// Asignación directa del campo del IJL — signo desde Quantity:
+// Asignación directa del campo del IJL — signo desde ILE.Quantity (NewItemLedgEntry):
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-if ItemJournalLine.Quantity < 0 then
+if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
-Cuando el IJL es parámetro por valor (no `var`) en un subscriber posterior, el IJL ya
-refleja los valores actualizados porque BC pasa el mismo `ItemJournalLine` (var en el
-subscriber anterior). Por lo que la asignación directa del campo del IJL sigue siendo válida:
+Cuando en el subscriber `ILECopyTrackingFromItemJnlLine` (50110) el IJL es parámetro
+por valor, se usa `ItemLedgerEntry.Quantity` (ya inicializado por BC):
 
 ```al
-// ✅ CORRECTO — asignación directa; el IJL ya tiene el valor actualizado
+// ✅ CORRECTO en ILECopyTrackingFromItemJnlLine — signo desde ILE.Quantity
 ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
-if ItemJnlLine.Quantity < 0 then
+if ItemLedgerEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
@@ -207,9 +218,9 @@ if OrigILE.Get(ItemJournalLine."Applies-to Entry") then begin
     ItemJournalLine."DUoM Second Qty" := Abs(OrigILE."DUoM Second Qty");
     // No exit: continúa al flujo normal donde ILE lee del IJL actualizado.
 end;
-// Asignación directa con signo desde Quantity:
+// Asignación directa con signo desde ILE.Quantity (NewItemLedgEntry):
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-if ItemJournalLine.Quantity < 0 then
+if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
