@@ -37,8 +37,8 @@ codeunit 50108 "DUoM Lot Subscribers"
     ///
     /// ADVERTENCIA ARQUITECTÓNICA: Este método NO es el mecanismo productivo principal
     /// para la integración DUoM con lotes. En Business Central, una IJL puede tener N
-    /// lotes asignados vía Item Tracking. Para el flujo productivo real, la ratio DUoM
-    /// se aplica por lote en OnAfterInitItemLedgEntry → TryApplyLotRatioToILE.
+    /// lotes asignados vía Item Tracking. Para el flujo productivo real, el ratio DUoM
+    /// viaja con el Tracking Specification vía OnAfterCopyTrackingFromSpec (codeunit 50110).
     ///
     /// Uso legítimo: tests unitarios de bajo nivel que verifican la lógica interna
     /// del helper (T12 en DUoM Lot Ratio Tests). No usar como sustituto del flujo
