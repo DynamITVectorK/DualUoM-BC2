@@ -178,15 +178,20 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         if ItemJnlLine."DUoM Ratio" = 0 then
             exit;
         // Norma ILE←IJL: asignación directa del campo del IJL.
-        // El signo sigue al de la cantidad del ILE (ItemLedgerEntry.Quantity), ya
-        // inicializado por BC con signo correcto antes de disparar este evento.
+        // El signo sigue a la cantidad EFECTIVA del ILE (ItemLedgerEntry.Quantity).
         // ItemJnlLine.Quantity es SIEMPRE positivo en BC 27 (sin signo; la dirección
         // la da el Entry Type), por lo que "IJL.Quantity < 0" nunca se cumple.
-        // Signed() fallaba en flujos de corrección (undo): Entry Type = Purchase/Sale
-        // no cambia, pero la dirección del ILE sí. Ver T-UNDO-01..05.
+        //
+        // IMPORTANTE — ILEs de corrección (Correction = true, flujos undo):
+        // Cuando BC llama CopyTrackingFromItemJnlLine para ILEs de corrección,
+        // ItemLedgerEntry.Quantity todavía tiene el mismo signo que el ILE original
+        // (BC no ha aplicado la inversión aún). Se necesita invertir el signo una vez
+        // más cuando Correction = true. Ver T-UNDO-02..05.
         ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
         ItemLedgerEntry."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
         if ItemLedgerEntry.Quantity < 0 then
+            ItemLedgerEntry."DUoM Second Qty" := -ItemLedgerEntry."DUoM Second Qty";
+        if ItemLedgerEntry.Correction then
             ItemLedgerEntry."DUoM Second Qty" := -ItemLedgerEntry."DUoM Second Qty";
     end;
 

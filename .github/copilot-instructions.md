@@ -176,8 +176,11 @@ Siempre debe recibir sus datos del `Item Journal Line`. Fórmula canónica:
 
 ```al
 // ✅ OBLIGATORIO — datos vienen del IJL; signo desde ILE.Quantity (NewItemLedgEntry)
+//                 más inversión adicional para ILEs de corrección (flujos undo)
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+if NewItemLedgEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
@@ -186,6 +189,13 @@ porque `IJL.Quantity` es **siempre positivo** en BC 27 (sin signo; la dirección
 el Entry Type) y por tanto `IJL.Quantity < 0` nunca se cumple.
 `Signed()` (basado en Entry Type) falla en flujos de corrección (undo): el Entry Type
 = Purchase/Sale no cambia, pero la dirección del movimiento sí.
+
+**Flujos undo (Correction = true):** cuando BC crea ILEs de corrección (Undo Purchase
+Receipt, Undo Sales Shipment), `NewItemLedgEntry.Quantity` en el momento del evento
+todavía tiene el mismo signo que el ILE original (BC aplica la inversión después del
+evento). La inversión adicional `if Correction then negate` corrige esto:
+  - undo compra (original Qty=+10): Qty en evento = +10 → inversión Correction → -8 ✓
+  - undo venta (original Qty=-10): Qty en evento = -10 → primera inversión da -8, segunda → +8 ✓
 
 ```al
 // ❌ PROHIBIDO — usa ILE.Quantity como fuente (viola norma ILE←IJL)
@@ -207,7 +217,7 @@ Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio, el IJL debe actualizarse 
 (si es `var`), y el ILE leer del campo del IJL actualizado:
 
 ```al
-// ✅ CORRECTO — actualizar IJL, luego ILE ← IJL (signo desde ILE.Quantity)
+// ✅ CORRECTO — actualizar IJL, luego ILE ← IJL (signo desde ILE.Quantity + Correction)
 if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
     ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
 end;
@@ -217,10 +227,14 @@ if ItemJournalLine."DUoM Ratio" <> 0 then
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+if NewItemLedgEntry.Correction then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 
-// ✅ CORRECTO en ILECopyTrackingFromItemJnlLine — signo desde ILE.Quantity
+// ✅ CORRECTO en ILECopyTrackingFromItemJnlLine — signo desde ILE.Quantity + Correction
 ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
 if ItemLedgerEntry.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
+if ItemLedgerEntry.Correction then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
