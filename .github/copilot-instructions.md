@@ -175,15 +175,17 @@ follow these rules to avoid fragile and build-breaking subscriber signatures:
 Siempre debe recibir sus datos del `Item Journal Line`. Fórmula canónica:
 
 ```al
-// ✅ OBLIGATORIO — datos vienen del IJL; signo sigue a IJL.Quantity (no al Entry Type)
+// ✅ OBLIGATORIO — datos vienen del IJL; signo desde ILE.Quantity (NewItemLedgEntry)
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-if ItemJournalLine.Quantity < 0 then
+if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
-El signo sigue a `IJL.Quantity` porque `Signed()` (basado en Entry Type) falla en flujos
-de corrección (undo): el Entry Type = Purchase/Sale no cambia, pero Quantity invierte su
-signo. El patrón con `Quantity` es correcto para todos los flujos (normal y undo).
+El signo sigue a `NewItemLedgEntry.Quantity` (ya inicializado por BC antes del evento)
+porque `IJL.Quantity` es **siempre positivo** en BC 27 (sin signo; la dirección la da
+el Entry Type) y por tanto `IJL.Quantity < 0` nunca se cumple.
+`Signed()` (basado en Entry Type) falla en flujos de corrección (undo): el Entry Type
+= Purchase/Sale no cambia, pero la dirección del movimiento sí.
 
 ```al
 // ❌ PROHIBIDO — usa ILE.Quantity como fuente (viola norma ILE←IJL)
@@ -195,13 +197,17 @@ ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL.Quantity) * AppliedRatio);
 
 // ❌ PROHIBIDO — Signed() falla en undo/correction entries
 ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+
+// ❌ PROHIBIDO — IJL.Quantity es siempre positivo en BC 27; nunca se cumple
+if ItemJournalLine.Quantity < 0 then
+    ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
 Cuando `DUoM Lot Ratio (50102)` sobreescribe el ratio, el IJL debe actualizarse primero
 (si es `var`), y el ILE leer del campo del IJL actualizado:
 
 ```al
-// ✅ CORRECTO — actualizar IJL, luego ILE ← IJL (signo desde Quantity)
+// ✅ CORRECTO — actualizar IJL, luego ILE ← IJL (signo desde ILE.Quantity)
 if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
     ItemJournalLine."DUoM Ratio" := DUoMLotRatio."Actual Ratio";
 end;
@@ -209,12 +215,12 @@ if ItemJournalLine."DUoM Ratio" <> 0 then
     ItemJournalLine."DUoM Second Qty" :=
         Abs(ItemJournalLine.Quantity) * ItemJournalLine."DUoM Ratio";
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
-if ItemJournalLine.Quantity < 0 then
+if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 
-// ✅ CORRECTO — parámetro por valor: el IJL ya refleja actualizaciones del subscriber anterior
+// ✅ CORRECTO en ILECopyTrackingFromItemJnlLine — signo desde ILE.Quantity
 ILE."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
-if ItemJnlLine.Quantity < 0 then
+if ItemLedgerEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 

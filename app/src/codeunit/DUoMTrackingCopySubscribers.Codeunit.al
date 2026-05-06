@@ -160,12 +160,13 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     // Orden de ejecución (BC 27): este evento se dispara DESPUÉS de OnAfterInitItemLedgEntry.
     // OnAfterInitItemLedgEntry (50104, parámetro var ItemJournalLine) ya garantiza que el
     // IJL tiene los valores definitivos: DUoM Ratio del lote (DUoM Lot Ratio si aplica) y
-    // DUoM Second Qty calculado desde IJL.Quantity. Por tanto, aquí se asigna directamente
-    // del campo del IJL — sin recálculo ni consulta a DUoM Lot Ratio (50102).
+    // DUoM Second Qty (módulo). El signo se aplica aquí usando ItemLedgerEntry.Quantity
+    // (ya inicializado con signo correcto por BC antes de este evento).
     //
-    // NORMA ILE←IJL: el signo de ILE."DUoM Second Qty" sigue al de IJL.Quantity.
-    // Signed() fallaba en flujos de corrección (undo): Entry Type = Purchase/Sale pero
-    // Quantity tiene signo contrario al flujo normal. Ver T-UNDO-01..05.
+    // NORMA ILE←IJL: el signo de ILE."DUoM Second Qty" sigue al de ILE.Quantity.
+    // IJL.Quantity es SIEMPRE positivo en BC 27 (sin signo; la dirección la da Entry Type),
+    // por lo que "IJL.Quantity < 0" nunca se cumple. Signed() falla en undo porque el
+    // Entry Type no cambia aunque la dirección del movimiento sí. Ver T-UNDO-01..05.
     [EventSubscriber(ObjectType::Table, Database::"Item Ledger Entry",
         'OnAfterCopyTrackingFromItemJnlLine', '', false, false)]
     local procedure ILECopyTrackingFromItemJnlLine(
@@ -177,12 +178,15 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         if ItemJnlLine."DUoM Ratio" = 0 then
             exit;
         // Norma ILE←IJL: asignación directa del campo del IJL.
-        // El signo sigue al de la cantidad del IJL, no al Entry Type.
+        // El signo sigue al de la cantidad del ILE (ItemLedgerEntry.Quantity), ya
+        // inicializado por BC con signo correcto antes de disparar este evento.
+        // ItemJnlLine.Quantity es SIEMPRE positivo en BC 27 (sin signo; la dirección
+        // la da el Entry Type), por lo que "IJL.Quantity < 0" nunca se cumple.
         // Signed() fallaba en flujos de corrección (undo): Entry Type = Purchase/Sale
-        // pero Quantity tiene signo contrario al flujo normal. Ver T-UNDO-01..05.
+        // no cambia, pero la dirección del ILE sí. Ver T-UNDO-01..05.
         ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
         ItemLedgerEntry."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
-        if ItemJnlLine.Quantity < 0 then
+        if ItemLedgerEntry.Quantity < 0 then
             ItemLedgerEntry."DUoM Second Qty" := -ItemLedgerEntry."DUoM Second Qty";
     end;
 
