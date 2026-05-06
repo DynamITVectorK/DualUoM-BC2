@@ -157,9 +157,13 @@ el evento `OnAfterInitItemLedgEntry` se dispare:
 se dispara para ILEs de corrección (flujos undo: Undo Purchase Receipt, Undo Sales Shipment),
 `NewItemLedgEntry.Quantity` todavía tiene el **mismo signo que el ILE original**, no el de
 la corrección. BC aplica la inversión de cantidad **después** del evento. Por eso se necesita
-una inversión adicional cuando `Correction = true`:
-  - undo compra (original Qty=+10): Qty en evento = +10 → sin inversión adicional daría +8 (incorrecto); con inversión → -8 ✓
-  - undo venta (original Qty=-10): Qty en evento = -10 → sin inversión adicional daría -8 (incorrecto); con inversión → +8 ✓
+una inversión adicional cuando `Correction = true`. Las dos inversiones operan encadenadas:
+  - undo compra (original Qty=+10): Qty en evento = +10
+    → 1ª inversión (Qty<0): 10<0 es FALSO → sin cambio: +8
+    → 2ª inversión (Correction): negar → **-8** ✓
+  - undo venta (original Qty=-10): Qty en evento = -10
+    → 1ª inversión (Qty<0): -10<0 es VERDAD → negar: -8
+    → 2ª inversión (Correction): negar de nuevo → **+8** ✓
 
 **¿Por qué no `Signed()`?** `Signed()` aplica el signo según Entry Type (Purchase → +,
 Sale → −), pero en flujos de corrección (undo) el Entry Type no cambia mientras que
