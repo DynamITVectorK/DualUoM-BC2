@@ -136,32 +136,37 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     // Patrón: Codeunit 6516 "Package Management" línea 774. Firma BC 27 confirmada.
     // Motivo: BC llama esto al dividir el IJL por lote. TrackingSpecification es el del
     // lote específico. DUoM Ratio del lote llega al IJL sin ningún FindFirst().
-    // Guard: sin ratio en TrackingSpec, se sale sin sobrescribir el ratio que ya propagó
-    // OnPurchPostCopyDocFieldsToItemJnlLine desde Purchase Line (flujo sin Item Tracking
-    // o lote sin ratio DUoM registrado).
+    // Guard/fallback: si TrackingSpec no trae ratio, se intenta resolver DUoM Lot Ratio
+    // (50102) por Item/Lot antes de mantener el ratio de la línea.
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line",
         'OnAfterCopyTrackingFromSpec', '', false, false)]
     local procedure IJLCopyTrackingFromSpec(
         var ItemJournalLine: Record "Item Journal Line";
         TrackingSpecification: Record "Tracking Specification")
+    var
+        DUoMLotSubscribers: Codeunit "DUoM Lot Subscribers";
     begin
-        if TrackingSpecification."DUoM Ratio" = 0 then
+        if TrackingSpecification."DUoM Ratio" <> 0 then begin
+            ItemJournalLine."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
+            ItemJournalLine."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
             exit;
-        ItemJournalLine."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
-        ItemJournalLine."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
+        end;
+
+        ItemJournalLine."Lot No." := TrackingSpecification."Lot No.";
+        if DUoMLotSubscribers.ApplyLotRatioToItemJournalLine(ItemJournalLine) then
+            exit;
     end;
 
     // ── Item Journal Line → Item Ledger Entry ─────────────────────────────────
     // Publisher: Table "Item Ledger Entry" (32), evento OnAfterCopyTrackingFromItemJnlLine.
     // Patrón: Codeunit 6516 "Package Management" línea 551. Firma BC 27 confirmada.
-    // Motivo: BC llama esto antes de Insert() del ILE. Consolida los campos DUoM del IJL
-    // en el ILE siguiendo la norma ILE←IJL.
+    // Motivo: BC llama esto antes de Insert() del ILE. Consolida los campos DUoM por
+    // lote en el ILE siguiendo la prioridad 50102 > Tracking/IJL.
     //
     // Orden de ejecución (BC 27): este evento se dispara DESPUÉS de OnAfterInitItemLedgEntry.
-    // OnAfterInitItemLedgEntry (50104, parámetro var ItemJournalLine) ya garantiza que el
-    // IJL tiene los valores definitivos: DUoM Ratio del lote (DUoM Lot Ratio si aplica) y
-    // DUoM Second Qty (módulo). El signo se aplica aquí usando ItemLedgerEntry.Quantity
-    // (ya inicializado con signo correcto por BC antes de este evento).
+    // OnAfterInitItemLedgEntry (50104, parámetro var ItemJournalLine) puede haber copiado
+    // el total del IJL. Este subscriber recalcula DUoM Second Qty con la cantidad real del
+    // ILE split por lote para evitar duplicar totales en escenarios 1:N.
     //
     // NORMA ILE←IJL: el signo de ILE."DUoM Second Qty" sigue al de ILE.Quantity.
     // IJL.Quantity es SIEMPRE positivo en BC 27 (sin signo; la dirección la da Entry Type),
@@ -172,23 +177,31 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     local procedure ILECopyTrackingFromItemJnlLine(
         var ItemLedgerEntry: Record "Item Ledger Entry";
         ItemJnlLine: Record "Item Journal Line")
+    var
+        DUoMLotSubscribers: Codeunit "DUoM Lot Subscribers";
+        EffectiveItemJnlLine: Record "Item Journal Line";
+        EffectiveRatio: Decimal;
     begin
-        // Guard: sin ratio DUoM en el IJL, nada que propagar al ILE.
-        // Cubre AlwaysVariable + Lot No. sin ratio (T10): Ratio = 0 aunque SecondQty ≠ 0.
-        if ItemJnlLine."DUoM Ratio" = 0 then
+        EffectiveItemJnlLine := ItemJnlLine;
+        if EffectiveItemJnlLine."Lot No." = '' then
+            EffectiveItemJnlLine."Lot No." := ItemLedgerEntry."Lot No.";
+
+        DUoMLotSubscribers.TryApplyLotRatioToILE(ItemLedgerEntry, EffectiveItemJnlLine);
+        EffectiveRatio := ItemLedgerEntry."DUoM Ratio";
+        if EffectiveRatio = 0 then
+            EffectiveRatio := EffectiveItemJnlLine."DUoM Ratio";
+
+        // Guard: sin ratio DUoM en el IJL ni ratio de lote, no hay base segura para
+        // repartir el total de la línea entre ILEs por lote. Limpia cualquier total
+        // copiado por OnAfterInitItemLedgEntry (T10).
+        if EffectiveRatio = 0 then begin
+            ItemLedgerEntry."DUoM Ratio" := 0;
+            ItemLedgerEntry."DUoM Second Qty" := 0;
             exit;
-        // Norma ILE←IJL: asignación directa del campo del IJL.
-        // El signo sigue a la cantidad EFECTIVA del ILE (ItemLedgerEntry.Quantity).
-        // ItemJnlLine.Quantity es SIEMPRE positivo en BC 27 (sin signo; la dirección
-        // la da el Entry Type), por lo que "IJL.Quantity < 0" nunca se cumple.
-        //
-        // IMPORTANTE — ILEs de corrección (Correction = true, flujos undo):
-        // Cuando BC llama CopyTrackingFromItemJnlLine para ILEs de corrección,
-        // ItemLedgerEntry.Quantity todavía tiene el mismo signo que el ILE original
-        // (BC no ha aplicado la inversión aún). Se necesita invertir el signo una vez
-        // más cuando Correction = true. Ver T-UNDO-02..05.
-        ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-        ItemLedgerEntry."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
+        end;
+
+        ItemLedgerEntry."DUoM Ratio" := EffectiveRatio;
+        ItemLedgerEntry."DUoM Second Qty" := Abs(ItemLedgerEntry.Quantity) * EffectiveRatio;
         if ItemLedgerEntry.Quantity < 0 then
             ItemLedgerEntry."DUoM Second Qty" := -ItemLedgerEntry."DUoM Second Qty";
         if ItemLedgerEntry.Correction then

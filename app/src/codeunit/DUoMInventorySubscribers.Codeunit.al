@@ -28,32 +28,32 @@
 /// Propagation strategy for ILE:
 ///   Two parallel mechanisms cover both paths.
 ///
-///   NORMA: ILE."DUoM Second Qty" SIEMPRE viene del IJL — asignación pura, sin cálculos.
-///   La responsabilidad de que el IJL llegue con los valores correctos (signo incluido)
-///   corresponde a los subscribers upstream de cada flujo.
+///   NORMA: ILE."DUoM Second Qty" toma el módulo desde el IJL y se firma según
+///   la dirección real del ILE. La responsabilidad de que el IJL llegue con el
+///   módulo correcto corresponde a los subscribers upstream de cada flujo.
 ///
 ///   SIN Item Tracking (artículos sin lotes / sin trazabilidad activa):
 ///     OnPostItemJnlLineOnAfterCopyDocumentFields → Purchase/Sales Line → IJL  (ya existe)
 ///     OnAfterCopyItemJnlLineFromPurchRcpt / OnAfterCopyItemJnlLineFromSalesShpt → flujo undo
-///     OnAfterInitItemLedgEntry → ILE ← IJL  (asignación pura)
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (módulo IJL + signo ILE)
 ///     Este subscriber siempre se dispara, con o sin tracking activo.
 ///
 ///   CON Item Tracking (por lote, BC llama CopyTrackingFromItemJnlLine solo cuando hay Lot/Serial):
 ///     ReservEntry → TrackingSpec (OnAfterCopyTrackingFromReservEntry, codeunit 50110)
 ///     OnAfterCopyTrackingFromSpec → TrackingSpec → IJL  (refinamiento por lote)
-///     OnAfterInitItemLedgEntry → ILE ← IJL  (asignación pura)
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (módulo IJL + signo ILE)
 ///     OnAfterCopyTrackingFromItemJnlLine → IJL → ILE  (codeunit 50110, ILE lee del IJL)
 ///     Orden garantizado BC 27: OnAfterInitItemLedgEntry se ejecuta ANTES de
 ///     ILECopyTrackingFromItemJnlLine.
 ///
-///   IMPORTANTE: OnAfterInitItemLedgEntry es una asignación pura. Copia DUoM Ratio y
-///   DUoM Second Qty directamente del IJL al ILE sin cálculos ni lógica condicional.
-///   La responsabilidad de que el IJL llegue con valores correctos corresponde a los
-///   subscribers upstream (flujo undo, tracking copy, etc.).
+///   IMPORTANTE: OnAfterInitItemLedgEntry copia DUoM Ratio y toma DUoM Second Qty
+///   desde el IJL, normalizando únicamente el signo contra ILE.Quantity / Signed().
+///   La responsabilidad de que el IJL llegue con el módulo correcto corresponde a
+///   los subscribers upstream (flujo undo, tracking copy, etc.).
 ///
 /// Estrategia de propagación para Value Entry:
 ///   OnAfterInitValueEntry en Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
-///   copia DUoM Second Qty desde la Item Journal Line al nuevo Value Entry
+///   copia DUoM Second Qty desde el Item Ledger Entry ya firmado al nuevo Value Entry
 ///   antes de Insert() — no se necesita ninguna llamada a Modify().
 ///   Firma verificada: (var ValueEntry; var ItemJournalLine; var ValueEntryNo; var ItemLedgEntry).
 /// </summary>
@@ -345,16 +345,15 @@ codeunit 50104 "DUoM Inventory Subscribers"
     local procedure OnAfterInitItemLedgEntry(var NewItemLedgEntry: Record "Item Ledger Entry"; var ItemJournalLine: Record "Item Journal Line"; var ItemLedgEntryNo: Integer)
     begin
         NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
-        NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+        NewItemLedgEntry."DUoM Second Qty" := GetSignedSecondQtyForILE(
+            NewItemLedgEntry, ItemJournalLine, ItemJournalLine."DUoM Second Qty");
     end;
 
     /// <summary>
-    /// Asignación pura de DUoM Second Qty desde el Item Journal Line al nuevo Value Entry
-    /// antes de Insert() — sin cálculos ni lógica condicional, sin llamada a Modify().
+    /// Copia DUoM Second Qty desde el Item Ledger Entry ya firmado al nuevo Value Entry
+    /// antes de Insert() — sin llamada a Modify().
     ///
-    /// Responsabilidad única: copiar DUoM Second Qty del IJL al Value Entry.
-    /// La responsabilidad de que el IJL llegue con el valor correcto (signo incluido)
-    /// corresponde a los subscribers upstream.
+    /// Responsabilidad única: alinear el Value Entry con el ILE definitivo.
     ///
     /// Publisher: Codeunit "Item Jnl.-Post Line", evento OnAfterInitValueEntry.
     /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al):
@@ -363,6 +362,21 @@ codeunit 50104 "DUoM Inventory Subscribers"
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
     local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
     begin
-        ValueEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+        ValueEntry."DUoM Second Qty" := ItemLedgEntry."DUoM Second Qty";
+    end;
+
+    local procedure GetSignedSecondQtyForILE(ItemLedgerEntry: Record "Item Ledger Entry"; ItemJournalLine: Record "Item Journal Line"; SecondQty: Decimal): Decimal
+    var
+        SignedSecondQty: Decimal;
+    begin
+        SignedSecondQty := Abs(SecondQty);
+        if ItemLedgerEntry.Quantity < 0 then
+            SignedSecondQty := -SignedSecondQty
+        else
+            if ItemLedgerEntry.Quantity = 0 then
+                SignedSecondQty := ItemJournalLine.Signed(SignedSecondQty);
+        if ItemLedgerEntry.Correction then
+            SignedSecondQty := -SignedSecondQty;
+        exit(SignedSecondQty);
     end;
 }
