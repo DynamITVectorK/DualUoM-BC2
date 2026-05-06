@@ -208,6 +208,43 @@ if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
 ```
 
+### Patrón para flujo de anulación (undo sin trazabilidad)
+
+En el flujo de anulación sin lote, BC no propaga DUoM al IJL (llega con DUoM = 0).
+Los subscribers upstream `OnAfterCopyItemJnlLineFromPurchRcpt` y
+`OnAfterCopyItemJnlLineFromSalesShpt` en `DUoM Inventory Subscribers` (50104) preparan
+el IJL antes del posting. La responsabilidad de cada subscriber es:
+
+- **Guard**: si `IJL."DUoM Ratio" ≠ 0`, el flujo de trazabilidad ya poblará los valores
+  per-lote correctamente — no sobrescribir.
+- Copiar `DUoM Ratio` desde la línea del documento contabilizado.
+- Establecer `DUoM Second Qty` con el signo correcto para el tipo de corrección:
+  - Undo recepción compra → ILE corrección con Qty < 0 → `IJL.DUoM Second Qty = -Abs(PurchRcptLine.DUoM Second Qty)`
+  - Undo envío venta → ILE corrección con Qty > 0 → `IJL.DUoM Second Qty = +Abs(SalesShipmentLine.DUoM Second Qty)`
+
+Para artículos CON trazabilidad de lote/serie en undo, los valores per-lote se propagan
+mediante `IJLCopyTrackingFromItemLedgEntry` (50110), que copia directamente del ILE original.
+Después, `ILECopyTrackingFromItemJnlLine` (50110) aplica el signo correcto mediante
+`Abs() + ILE.Quantity + Correction`.
+
+```al
+// ✅ CORRECTO — upstream subscriber para undo receipt (sin trazabilidad)
+if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') then
+    exit;  // trazabilidad ya pobló los valores per-lote desde el ILE original (50110)
+if PurchRcptLine."DUoM Ratio" = 0 then
+    exit;  // artículo sin DUoM
+ItemJournalLine."DUoM Ratio" := PurchRcptLine."DUoM Ratio";
+ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");  // signo negativo
+
+// ✅ CORRECTO — upstream subscriber para undo shipment (sin trazabilidad)
+if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') then
+    exit;
+if SalesShipmentLine."DUoM Ratio" = 0 then
+    exit;
+ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
+ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");  // signo positivo
+```
+
 ### Implementación de referencia
 
 Ver codeunit 50104 `DUoM Inventory Subscribers` (subscriber `OnAfterInitItemLedgEntry`)

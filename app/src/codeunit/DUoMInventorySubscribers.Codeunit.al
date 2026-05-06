@@ -34,6 +34,7 @@
 ///
 ///   SIN Item Tracking (artículos sin lotes / sin trazabilidad activa):
 ///     OnPostItemJnlLineOnAfterCopyDocumentFields → Purchase/Sales Line → IJL  (ya existe)
+///     OnAfterCopyItemJnlLineFromPurchRcpt / OnAfterCopyItemJnlLineFromSalesShpt → flujo undo
 ///     OnAfterInitItemLedgEntry → ILE ← IJL  (asignación pura)
 ///     Este subscriber siempre se dispara, con o sin tracking activo.
 ///
@@ -114,6 +115,105 @@ codeunit 50104 "DUoM Inventory Subscribers"
     begin
         ItemJournalLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         ItemJournalLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+    end;
+
+    /// <summary>
+    /// Durante la anulación de un albarán de compra (Undo Purchase Receipt), copia los
+    /// campos DUoM desde la Purch. Rcpt. Line al Item Journal Line antes del posting.
+    ///
+    /// Responsabilidad: preparar el IJL con DUoM Ratio y DUoM Second Qty correctos para
+    /// artículos SIN trazabilidad de lote/serie. Para artículos CON trazabilidad, el flujo
+    /// OnAfterCopyTrackingFromItemLedgEntry (codeunit 50110) ya popula los valores per-lote
+    /// desde el ILE original; el guard en este subscriber evita sobrescribir esos valores.
+    ///
+    /// La anulación de una recepción de compra crea un ILE de corrección con Qty < 0
+    /// (negativo). OnAfterInitItemLedgEntry (50104) es una asignación pura, por lo que
+    /// el IJL debe llegar con DUoM Second Qty con signo negativo para artículos sin
+    /// trazabilidad. Para artículos con trazabilidad, ILECopyTrackingFromItemJnlLine (50110)
+    /// aplica Abs() + signo desde ILE.Quantity + Correction, por lo que el signo del IJL
+    /// no afecta al resultado final.
+    ///
+    /// Publisher: Codeunit "Undo Purchase Receipt Line".
+    /// Evento: OnAfterCopyItemJnlLineFromPurchRcpt.
+    /// Motivo: único punto donde el IJL está disponible junto a la PurchRcptLine
+    ///         antes de la contabilización del asiento de corrección.
+    /// Firma verificada en BC 27 / runtime 15 (UndoPurchaseReceiptLine.Codeunit.al).
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Undo Purchase Receipt Line",
+        'OnAfterCopyItemJnlLineFromPurchRcpt', '', false, false)]
+    local procedure OnAfterCopyItemJnlLineFromPurchRcpt(
+        var ItemJournalLine: Record "Item Journal Line";
+        PurchRcptHeader: Record "Purch. Rcpt. Header";
+        var PurchRcptLine: Record "Purch. Rcpt. Line";
+        var WhseUndoQty: Codeunit "Whse. Undo Quantity";
+        var ItemLedgEntryNo: Integer;
+        var NextLineNo: Integer;
+        var TempWhseJnlLine: Record "Warehouse Journal Line" temporary;
+        var TempGlobalItemLedgerEntry: Record "Item Ledger Entry" temporary;
+        var TempGlobalItemEntryRelation: Record "Item Entry Relation" temporary;
+        var IsHandled: Boolean)
+    begin
+        // Guard: en el flujo undo con trazabilidad de lote/serie, BC llama
+        // CopyTrackingFromItemLedgEntry antes de este evento, lo que dispara
+        // IJLCopyTrackingFromItemLedgEntry (50110) y popula los valores DUoM per-lote
+        // directamente del ILE original. Verificar el Lot No. / Serial No. es más
+        // explícito y robusto que inferirlo del estado del campo DUoM Ratio.
+        if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') then
+            exit;
+        if PurchRcptLine."DUoM Ratio" = 0 then
+            exit;
+        ItemJournalLine."DUoM Ratio" := PurchRcptLine."DUoM Ratio";
+        // La corrección invierte la recepción original (Qty > 0) → ILE corrección con Qty < 0.
+        // OnAfterInitItemLedgEntry (50104) asigna directamente; el IJL debe llegar con signo correcto.
+        ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");
+    end;
+
+    /// <summary>
+    /// Durante la anulación de un albarán de venta (Undo Sales Shipment), copia los
+    /// campos DUoM desde la Sales Shipment Line al Item Journal Line antes del posting.
+    ///
+    /// Responsabilidad: preparar el IJL con DUoM Ratio y DUoM Second Qty correctos para
+    /// artículos SIN trazabilidad de lote/serie. Para artículos CON trazabilidad, el flujo
+    /// OnAfterCopyTrackingFromItemLedgEntry (codeunit 50110) ya popula los valores per-lote
+    /// desde el ILE original; el guard en este subscriber evita sobrescribir esos valores.
+    ///
+    /// La anulación de un envío de venta crea un ILE de corrección con Qty > 0
+    /// (positivo, invertiendo la venta original con Qty < 0). OnAfterInitItemLedgEntry (50104)
+    /// es una asignación pura, por lo que el IJL debe llegar con DUoM Second Qty positivo.
+    ///
+    /// Publisher: Codeunit "Undo Sales Shipment Line".
+    /// Evento: OnAfterCopyItemJnlLineFromSalesShpt.
+    /// Motivo: único punto donde el IJL está disponible junto a la SalesShipmentLine
+    ///         antes de la contabilización del asiento de corrección.
+    /// Firma verificada en BC 27 / runtime 15 (UndoSalesShipmentLine.Codeunit.al).
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Undo Sales Shipment Line",
+        'OnAfterCopyItemJnlLineFromSalesShpt', '', false, false)]
+    local procedure OnAfterCopyItemJnlLineFromSalesShpt(
+        var ItemJournalLine: Record "Item Journal Line";
+        SalesShipmentHeader: Record "Sales Shipment Header";
+        SalesShipmentLine: Record "Sales Shipment Line";
+        var TempWhseJnlLine: Record "Warehouse Journal Line" temporary;
+        var WhseUndoQty: Codeunit "Whse. Undo Quantity";
+        var ItemLedgEntryNo: Integer;
+        var NextLineNo: Integer;
+        var TempGlobalItemLedgerEntry: Record "Item Ledger Entry" temporary;
+        var TempGlobalItemEntryRelation: Record "Item Entry Relation" temporary;
+        var IsHandled: Boolean)
+    begin
+        // Guard: en el flujo undo con trazabilidad de lote/serie, BC llama
+        // CopyTrackingFromItemLedgEntry antes de este evento, lo que dispara
+        // IJLCopyTrackingFromItemLedgEntry (50110) y popula los valores DUoM per-lote
+        // directamente del ILE original. Verificar el Lot No. / Serial No. es más
+        // explícito y robusto que inferirlo del estado del campo DUoM Ratio.
+        if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') then
+            exit;
+        if SalesShipmentLine."DUoM Ratio" = 0 then
+            exit;
+        ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
+        // La corrección invierte el envío original (Qty < 0) → ILE corrección con Qty > 0.
+        // OnAfterInitItemLedgEntry (50104) asigna directamente; el IJL debe llegar con signo correcto.
+        ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");
     end;
 
     /// <summary>
