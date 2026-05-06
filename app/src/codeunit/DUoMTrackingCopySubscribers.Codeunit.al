@@ -155,6 +155,12 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         ItemJournalLine."Lot No." := TrackingSpecification."Lot No.";
         if DUoMLotSubscribers.ApplyLotRatioToItemJournalLine(ItemJournalLine) then
             exit;
+
+        // Si no existe ratio específico de lote, conserva el ratio del IJL origen
+        // pero reparte DUoM Second Qty con la cantidad real del split de tracking.
+        // Evita que cada ILE herede el total de la línea origen en escenarios 1:N.
+        if ItemJournalLine."DUoM Ratio" <> 0 then
+            ItemJournalLine."DUoM Second Qty" := Abs(TrackingSpecification."Quantity (Base)") * ItemJournalLine."DUoM Ratio";
     end;
 
     // ── Item Journal Line → Item Ledger Entry ─────────────────────────────────
@@ -201,10 +207,10 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         end;
 
         ItemLedgerEntry."DUoM Ratio" := EffectiveRatio;
-        ItemLedgerEntry."DUoM Second Qty" := Abs(ItemLedgerEntry.Quantity) * EffectiveRatio;
+        ItemLedgerEntry."DUoM Second Qty" := Abs(EffectiveItemJnlLine."DUoM Second Qty");
+        if ItemLedgerEntry."DUoM Second Qty" = 0 then
+            ItemLedgerEntry."DUoM Second Qty" := Abs(ItemLedgerEntry.Quantity) * EffectiveRatio;
         if ItemLedgerEntry.Quantity < 0 then
-            ItemLedgerEntry."DUoM Second Qty" := -ItemLedgerEntry."DUoM Second Qty";
-        if ItemLedgerEntry.Correction then
             ItemLedgerEntry."DUoM Second Qty" := -ItemLedgerEntry."DUoM Second Qty";
     end;
 

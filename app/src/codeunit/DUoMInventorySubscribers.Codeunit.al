@@ -35,13 +35,13 @@
 ///   SIN Item Tracking (artículos sin lotes / sin trazabilidad activa):
 ///     OnPostItemJnlLineOnAfterCopyDocumentFields → Purchase/Sales Line → IJL  (ya existe)
 ///     OnAfterCopyItemJnlLineFromPurchRcpt / OnAfterCopyItemJnlLineFromSalesShpt → flujo undo
-///     OnAfterInitItemLedgEntry → ILE ← IJL  (módulo IJL + signo ILE)
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (módulo IJL + signo ILE.Quantity)
 ///     Este subscriber siempre se dispara, con o sin tracking activo.
 ///
 ///   CON Item Tracking (por lote, BC llama CopyTrackingFromItemJnlLine solo cuando hay Lot/Serial):
 ///     ReservEntry → TrackingSpec (OnAfterCopyTrackingFromReservEntry, codeunit 50110)
 ///     OnAfterCopyTrackingFromSpec → TrackingSpec → IJL  (refinamiento por lote)
-///     OnAfterInitItemLedgEntry → ILE ← IJL  (módulo IJL + signo ILE)
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (módulo IJL + signo ILE.Quantity)
 ///     OnAfterCopyTrackingFromItemJnlLine → IJL → ILE  (codeunit 50110, ILE lee del IJL)
 ///     Orden garantizado BC 27: OnAfterInitItemLedgEntry se ejecuta ANTES de
 ///     ILECopyTrackingFromItemJnlLine.
@@ -127,10 +127,11 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// desde el ILE original; el guard en este subscriber evita sobrescribir esos valores.
     ///
     /// La anulación de una recepción de compra crea un ILE de corrección con Qty < 0
-    /// (negativo). OnAfterInitItemLedgEntry (50104) es una asignación pura, por lo que
-    /// el IJL debe llegar con DUoM Second Qty con signo negativo para artículos sin
-    /// trazabilidad. Para artículos con trazabilidad, ILECopyTrackingFromItemJnlLine (50110)
-    /// aplica Abs() + signo desde ILE.Quantity + Correction, por lo que el signo del IJL
+    /// (negativo). OnAfterInitItemLedgEntry (50104) normaliza el signo contra
+    /// ILE.Quantity, por lo que el IJL debe llegar con el módulo correcto de
+    /// DUoM Second Qty para artículos sin trazabilidad. Para artículos con trazabilidad,
+    /// ILECopyTrackingFromItemJnlLine (50110) aplica Abs() + signo desde ILE.Quantity,
+    /// por lo que el signo del IJL
     /// no afecta al resultado final.
     ///
     /// Publisher: Codeunit "Undo Purchase Receipt Line".
@@ -164,7 +165,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
             exit;
         ItemJournalLine."DUoM Ratio" := PurchRcptLine."DUoM Ratio";
         // La corrección invierte la recepción original (Qty > 0) → ILE corrección con Qty < 0.
-        // OnAfterInitItemLedgEntry (50104) asigna directamente; el IJL debe llegar con signo correcto.
+        // OnAfterInitItemLedgEntry (50104) firma contra ILE.Quantity; el IJL debe llegar con módulo correcto.
         ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");
     end;
 
@@ -179,7 +180,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
     ///
     /// La anulación de un envío de venta crea un ILE de corrección con Qty > 0
     /// (positivo, invertiendo la venta original con Qty < 0). OnAfterInitItemLedgEntry (50104)
-    /// es una asignación pura, por lo que el IJL debe llegar con DUoM Second Qty positivo.
+    /// normaliza el signo contra ILE.Quantity, por lo que el IJL debe llegar con
+    /// el módulo correcto de DUoM Second Qty.
     ///
     /// Publisher: Codeunit "Undo Sales Shipment Line".
     /// Evento: OnAfterCopyItemJnlLineFromSalesShpt.
@@ -212,7 +214,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
             exit;
         ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
         // La corrección invierte el envío original (Qty < 0) → ILE corrección con Qty > 0.
-        // OnAfterInitItemLedgEntry (50104) asigna directamente; el IJL debe llegar con signo correcto.
+        // OnAfterInitItemLedgEntry (50104) firma contra ILE.Quantity; el IJL debe llegar con módulo correcto.
         ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");
     end;
 
@@ -321,11 +323,12 @@ codeunit 50104 "DUoM Inventory Subscribers"
     end;
 
     /// <summary>
-    /// Asignación pura de campos DUoM desde el Item Journal Line al nuevo Item Ledger Entry
-    /// antes del Insert() — sin cálculos, sin lógica condicional, sin llamadas externas.
+    /// Propagación base de campos DUoM desde el Item Journal Line al nuevo Item Ledger Entry
+    /// antes del Insert(): copia DUoM Ratio y firma DUoM Second Qty según ILE.Quantity.
     ///
-    /// Responsabilidad única: copiar DUoM Ratio y DUoM Second Qty del IJL al ILE.
-    /// La responsabilidad de que el IJL llegue con los valores correctos (signo, ratio,
+    /// Responsabilidad única: copiar DUoM Ratio y llevar el módulo de DUoM Second Qty
+    /// del IJL al ILE con el signo real del movimiento.
+    /// La responsabilidad de que el IJL llegue con los valores correctos (módulo, ratio,
     /// flujos undo, flujos con lote) corresponde a los subscribers upstream.
     ///
     /// Este subscriber cubre el flujo SIN Item Tracking (artículos sin lotes):
@@ -375,8 +378,6 @@ codeunit 50104 "DUoM Inventory Subscribers"
         else
             if ItemLedgerEntry.Quantity = 0 then
                 SignedSecondQty := ItemJournalLine.Signed(SignedSecondQty);
-        if ItemLedgerEntry.Correction then
-            SignedSecondQty := -SignedSecondQty;
         exit(SignedSecondQty);
     end;
 }
