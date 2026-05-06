@@ -163,24 +163,27 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     // DUoM Second Qty calculado desde IJL.Quantity. Por tanto, aquí se asigna directamente
     // del campo del IJL — sin recálculo ni consulta a DUoM Lot Ratio (50102).
     //
-    // NORMA ILE←IJL: ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL."DUoM Second Qty")).
-    // No hay × Ratio ni × Quantity en la asignación al ILE. Signed() aplica el signo
-    // correcto según Entry Type (BC standard idiom): positivo para entradas, negativo
-    // para salidas.
+    // NORMA ILE←IJL: el signo de ILE."DUoM Second Qty" sigue al de IJL.Quantity.
+    // Signed() fallaba en flujos de corrección (undo): Entry Type = Purchase/Sale pero
+    // Quantity tiene signo contrario al flujo normal. Ver T-UNDO-01..05.
     [EventSubscriber(ObjectType::Table, Database::"Item Ledger Entry",
         'OnAfterCopyTrackingFromItemJnlLine', '', false, false)]
     local procedure ILECopyTrackingFromItemJnlLine(
         var ItemLedgerEntry: Record "Item Ledger Entry";
         ItemJnlLine: Record "Item Journal Line")
     begin
-        // Guard: sin datos DUoM en el IJL, nada que propagar al ILE.
-        // Cubre AlwaysVariable + Lot No. sin ratio (T10): ambos campos son 0.
-        if (ItemJnlLine."DUoM Ratio" = 0) and (ItemJnlLine."DUoM Second Qty" = 0) then
+        // Guard: sin ratio DUoM en el IJL, nada que propagar al ILE.
+        // Cubre AlwaysVariable + Lot No. sin ratio (T10): Ratio = 0 aunque SecondQty ≠ 0.
+        if ItemJnlLine."DUoM Ratio" = 0 then
             exit;
-        // Norma ILE←IJL: asignación directa del campo del IJL — sin cálculos.
+        // Norma ILE←IJL: asignación directa del campo del IJL.
+        // El signo sigue al de la cantidad del IJL, no al Entry Type.
+        // Signed() fallaba en flujos de corrección (undo): Entry Type = Purchase/Sale
+        // pero Quantity tiene signo contrario al flujo normal. Ver T-UNDO-01..05.
         ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-        ItemLedgerEntry."DUoM Second Qty" :=
-            ItemJnlLine.Signed(Abs(ItemJnlLine."DUoM Second Qty"));
+        ItemLedgerEntry."DUoM Second Qty" := Abs(ItemJnlLine."DUoM Second Qty");
+        if ItemJnlLine.Quantity < 0 then
+            ItemLedgerEntry."DUoM Second Qty" := -ItemLedgerEntry."DUoM Second Qty";
     end;
 
     // ── Item Ledger Entry → Item Journal Line (flujo inverso) ─────────────────

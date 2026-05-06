@@ -29,8 +29,8 @@
 ///   Two parallel mechanisms cover both paths.
 ///
 ///   NORMA: ILE."DUoM Second Qty" SIEMPRE viene del IJL — nunca se calcula desde campos del ILE.
-///   Fórmula canónica: ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL."DUoM Second Qty"))
-///   Signed() aplica el signo correcto según Entry Type (BC standard idiom).
+///   Fórmula canónica: signo sigue a IJL.Quantity (no al Entry Type).
+///   Signed() falla en undo/correction entries donde Entry Type no cambia pero Quantity sí.
 ///
 ///   SIN Item Tracking (artículos sin lotes / sin trazabilidad activa):
 ///     OnPostItemJnlLineOnAfterCopyDocumentFields → Purchase/Sales Line → IJL  (ya existe)
@@ -309,20 +309,26 @@ codeunit 50104 "DUoM Inventory Subscribers"
         // Norma ILE←IJL: cuando el ratio cambia, actualizamos el IJL para que el ILE
         // reciba siempre sus datos del IJL y no recalcule desde campos propios.
         AppliedRatio := ItemJournalLine."DUoM Ratio";
-        if ItemJournalLine."Lot No." <> '' then
+        if ItemJournalLine."Lot No." <> '' then begin
             if DUoMLotRatio.Get(ItemJournalLine."Item No.", ItemJournalLine."Lot No.") then begin
                 AppliedRatio := DUoMLotRatio."Actual Ratio";
                 ItemJournalLine."DUoM Ratio" := AppliedRatio;
-                if AppliedRatio <> 0 then
-                    ItemJournalLine."DUoM Second Qty" := Abs(ItemJournalLine.Quantity) * AppliedRatio;
             end;
+            // Recalcular DUoM Second Qty proporcional a la cantidad del lote.
+            // Evita que el split del IJL herede el total del padre en lugar del
+            // proporcional al lote. Se aplica con o sin registro en 50102. Ver T13.
+            if AppliedRatio <> 0 then
+                ItemJournalLine."DUoM Second Qty" := Abs(ItemJournalLine.Quantity) * AppliedRatio;
+        end;
 
         // Norma ILE←IJL: ILE."DUoM Second Qty" siempre viene del IJL.
-        // ItemJournalLine.Signed() aplica el signo correcto según Entry Type (BC standard idiom):
-        // positivo para entradas (Purchase), negativo para salidas (Sale, anulación compra).
+        // El signo sigue al de la cantidad del IJL, no al Entry Type.
+        // Signed() fallaba en flujos de corrección (undo): Entry Type = Purchase/Sale
+        // pero Quantity tiene signo contrario al flujo normal. Ver T-UNDO-01..05.
         NewItemLedgEntry."DUoM Ratio" := AppliedRatio;
-        NewItemLedgEntry."DUoM Second Qty" :=
-            ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
+        NewItemLedgEntry."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
+        if ItemJournalLine.Quantity < 0 then
+            NewItemLedgEntry."DUoM Second Qty" := -NewItemLedgEntry."DUoM Second Qty";
     end;
 
     /// <summary>
