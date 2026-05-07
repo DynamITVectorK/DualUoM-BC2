@@ -106,7 +106,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
     ///   PurchInvHeader; PurchCrMemoHeader)
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforeItemJnlPostLine', '', false, false)]
-    local procedure OnPurchPostBeforeItemJnlPostLine(var ItemJournalLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
+    local procedure OnPurchPostCopyDocFieldsToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
     var
         DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
     begin
