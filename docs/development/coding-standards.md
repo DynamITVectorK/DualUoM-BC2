@@ -234,6 +234,38 @@ ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
 ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");  // signo positivo
 ```
 
+### Patrón para flujo de corrección (OnBeforeInsertCorrItemLedgEntry)
+
+`OnAfterInitItemLedgEntry` e `ILECopyTrackingFromItemJnlLine` no pueden determinar el signo
+correcto para ILEs de corrección porque `NewItemLedgEntry.Quantity` aún no refleja el signo
+definitivo en el momento en que se disparan. El evento `OnBeforeInsertCorrItemLedgEntry` se
+dispara justo antes de insertar el ILE de corrección, cuando el ILE original (`OldItemLedgEntry`)
+está disponible y el signo está definido.
+
+Regla: `NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty"`.
+
+Cubre todos los escenarios de undo: sin lote, con lote y con múltiples lotes.
+
+```al
+// ✅ CORRECTO — OnBeforeInsertCorrItemLedgEntry (50104)
+[EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line",
+    'OnBeforeInsertCorrItemLedgEntry', '', false, false)]
+local procedure OnBeforeInsertCorrItemLedgEntry(
+    var NewItemLedgEntry: Record "Item Ledger Entry";
+    var OldItemLedgEntry: Record "Item Ledger Entry";
+    var ItemJournalLine: Record "Item Journal Line")
+begin
+    if OldItemLedgEntry."DUoM Ratio" = 0 then
+        exit;
+    NewItemLedgEntry."DUoM Ratio" := OldItemLedgEntry."DUoM Ratio";
+    NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty";
+end;
+
+// ❌ PROHIBIDO — usar Correction como parche en OnAfterInitItemLedgEntry
+if ItemJournalLine.Correction then
+    NewItemLedgEntry."DUoM Second Qty" := -NewItemLedgEntry."DUoM Second Qty";
+```
+
 ### Implementación de referencia
 
 Ver codeunit 50104 `DUoM Inventory Subscribers` (subscribers `OnAfterInitItemLedgEntry`

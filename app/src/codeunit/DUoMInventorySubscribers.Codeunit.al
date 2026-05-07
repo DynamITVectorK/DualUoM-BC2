@@ -33,6 +33,7 @@
 ///     Sales-Post OnPostItemJnlLineOnAfterCopyDocumentFields → Sales Line → IJL  (Qty ya asignada)
 ///     OnAfterCopyItemJnlLineFromPurchRcpt / OnAfterCopyItemJnlLineFromSalesShpt → flujo undo
 ///     OnAfterInitItemLedgEntry → ILE ← IJL  (ratio + DUoM Second Qty con signo normalizado)
+///     OnBeforeInsertCorrItemLedgEntry → override para ILE de corrección  (signo = -OldILE)
 ///     Este subscriber siempre se dispara, con o sin tracking activo.
 ///
 ///   CON Item Tracking (por lote, BC llama CopyTrackingFromItemJnlLine solo cuando hay Lot/Serial):
@@ -40,11 +41,15 @@
 ///     OnAfterCopyTrackingFromSpec → TrackingSpec → IJL  (refinamiento por lote)
 ///     OnAfterInitItemLedgEntry → ILE ← IJL  (ratio + DUoM Second Qty con signo normalizado)
 ///     OnAfterCopyTrackingFromItemJnlLine → IJL → ILE  (codeunit 50110, ratio + signo normalizado)
+///     OnBeforeInsertCorrItemLedgEntry → override para ILE de corrección  (signo = -OldILE)
 ///     Orden garantizado BC 27: OnAfterInitItemLedgEntry se ejecuta ANTES de
-///     ILECopyTrackingFromItemJnlLine.
+///     ILECopyTrackingFromItemJnlLine, y ambos ANTES de OnBeforeInsertCorrItemLedgEntry.
 ///
 ///   NORMA FINAL: Item Journal Line es la fuente de ratio y magnitud DUoM para Item Ledger Entry
 ///   y Value Entry, pero el signo final de DUoM Second Qty se normaliza contra ILE.Quantity.
+///   Para movimientos de corrección (Correction = true), OnBeforeInsertCorrItemLedgEntry
+///   sobreescribe con -OldItemLedgEntry."DUoM Second Qty" porque en ese momento el signo
+///   del ILE original es la única fuente fiable (NewItemLedgEntry.Quantity no está definido aún).
 ///   Los subscribers de esta capa no recalculan ratio ni consultan tablas.
 ///
 /// Estrategia de propagación para Value Entry:
@@ -353,6 +358,38 @@ codeunit 50104 "DUoM Inventory Subscribers"
         NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
         NewItemLedgEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
             NewItemLedgEntry, ItemJournalLine."DUoM Second Qty");
+    end;
+
+    /// <summary>
+    /// Durante la inserción de un movimiento de corrección (undo de recepción/envío), fija
+    /// los campos DUoM en el nuevo ILE de corrección invirtiendo los valores del ILE original.
+    ///
+    /// Contexto: OnAfterInitItemLedgEntry e ILECopyTrackingFromItemJnlLine se ejecutan antes
+    /// de este evento pero no pueden determinar el signo correcto para correcciones porque
+    /// NewItemLedgEntry.Quantity aún no refleja el signo definitivo de corrección en ese momento.
+    /// Este evento se dispara cuando ambos ILEs están disponibles y el signo está definido.
+    ///
+    /// Regla funcional: una corrección invierte el movimiento original.
+    ///   Undo Purchase Receipt: ILE original DUoM Second Qty > 0 → corrección < 0.
+    ///   Undo Sales Shipment:   ILE original DUoM Second Qty < 0 → corrección > 0.
+    ///
+    /// Cubre artículos sin lote y con lote (por cada ILE original se dispara una vez).
+    ///
+    /// Publisher: Codeunit "Item Jnl.-Post Line" (22), evento OnBeforeInsertCorrItemLedgEntry.
+    /// Motivo: único punto donde OldItemLedgEntry (ILE original) está disponible junto al
+    ///         NewItemLedgEntry (ILE corrección) antes de la inserción definitiva.
+    /// Firma verificada en BC 27 / runtime 15 contra el patrón ABP (ItemJnlPostLine.Codeunit.al).
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnBeforeInsertCorrItemLedgEntry', '', false, false)]
+    local procedure OnBeforeInsertCorrItemLedgEntry(
+        var NewItemLedgEntry: Record "Item Ledger Entry";
+        var OldItemLedgEntry: Record "Item Ledger Entry";
+        var ItemJournalLine: Record "Item Journal Line")
+    begin
+        if OldItemLedgEntry."DUoM Ratio" = 0 then
+            exit;
+        NewItemLedgEntry."DUoM Ratio" := OldItemLedgEntry."DUoM Ratio";
+        NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty";
     end;
 
     /// <summary>
