@@ -29,7 +29,8 @@
 ///   Two parallel mechanisms cover both paths.
 ///
 ///   SIN Item Tracking (artículos sin lotes / sin trazabilidad activa):
-///     OnPostItemJnlLineOnAfterCopyDocumentFields → Purchase/Sales Line → IJL  (ya existe)
+///     Purch.-Post OnBeforeItemJnlPostLine → Purchase Line → IJL  (Qty ya asignada)
+///     Sales-Post OnPostItemJnlLineOnAfterCopyDocumentFields → Sales Line → IJL  (Qty ya asignada)
 ///     OnAfterCopyItemJnlLineFromPurchRcpt / OnAfterCopyItemJnlLineFromSalesShpt → flujo undo
 ///     OnAfterInitItemLedgEntry → ILE ← IJL  (copia pura de campos DUoM)
 ///     Este subscriber siempre se dispara, con o sin tracking activo.
@@ -90,11 +91,21 @@ codeunit 50104 "DUoM Inventory Subscribers"
     end;
 
     /// <summary>
-    /// During Purchase posting, copies DUoM fields from the Purchase Line to the
-    /// Item Journal Line before it is posted, so that DUoM Tracking Copy Subscribers
-    /// (50110) can transfer them to the ILE via OnAfterCopyTrackingFromItemJnlLine.
+    /// Durante el registro de compras, proyecta los campos DUoM de la Purchase Line
+    /// al Item Journal Line justo antes de que se ejecute RunItemJnlPostLine.
+    ///
+    /// Publisher: Codeunit "Purch.-Post" (90), evento OnBeforeItemJnlPostLine.
+    /// Motivo: OnBeforeItemJnlPostLine se dispara DESPUÉS de que BC asigna
+    ///   ItemJnlLine.Quantity := QtyToBeReceived y ItemJnlLine."Quantity (Base)" := QtyToBeReceivedBase.
+    ///   El evento anterior OnPostItemJnlLineOnAfterCopyDocumentFields se dispara
+    ///   ANTES de esa asignación, por lo que la cantidad de posting era siempre 0
+    ///   y CalcProjectedSecondQty devolvía 0 (bug de proyección).
+    /// Firma BC 27 confirmada: (var ItemJournalLine; PurchaseLine; PurchaseHeader; CommitIsSupressed;
+    ///   var IsHandled; WhseReceiptHeader; WhseShipmentHeader;
+    ///   TempItemChargeAssignmentPurch temp; TempWarehouseReceiptHeader temp;
+    ///   PurchInvHeader; PurchCrMemoHeader)
     /// </summary>
-    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnBeforeItemJnlPostLine', '', false, false)]
     local procedure OnPurchPostCopyDocFieldsToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
     var
         DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
@@ -103,9 +114,15 @@ codeunit 50104 "DUoM Inventory Subscribers"
     end;
 
     /// <summary>
-    /// During Sales posting, copies DUoM fields from the Sales Line to the
-    /// Item Journal Line before it is posted, so that DUoM Tracking Copy Subscribers
-    /// (50110) can transfer them to the ILE via OnAfterCopyTrackingFromItemJnlLine.
+    /// Durante el registro de ventas, proyecta los campos DUoM de la Sales Line
+    /// al Item Journal Line justo antes de que se ejecute RunItemJnlPostLine.
+    ///
+    /// Publisher: Codeunit "Sales-Post" (80), evento OnPostItemJnlLineOnAfterCopyDocumentFields.
+    /// Motivo: en Sales-Post, este evento se dispara DESPUÉS de que BC asigna
+    ///   ItemJnlLine.Quantity := -QtyToBeShipped y ItemJnlLine."Quantity (Base)" := -QtyToBeShippedBase.
+    ///   Por tanto, la cantidad de posting ya tiene el signo técnico de salida negativo,
+    ///   y ApplyItemJnlSign produce correctamente DUoM Second Qty negativo en el IJL.
+    /// Firma BC 27 confirmada: (var ItemJournalLine; SalesLine; WarehouseReceiptHeader; WarehouseShipmentHeader)
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
     local procedure OnSalesPostCopyDocFieldsToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; SalesLine: Record "Sales Line")
