@@ -32,26 +32,25 @@
 ///     Purch.-Post OnBeforeItemJnlPostLine → Purchase Line → IJL  (Qty ya asignada)
 ///     Sales-Post OnPostItemJnlLineOnAfterCopyDocumentFields → Sales Line → IJL  (Qty ya asignada)
 ///     OnAfterCopyItemJnlLineFromPurchRcpt / OnAfterCopyItemJnlLineFromSalesShpt → flujo undo
-///     OnAfterInitItemLedgEntry → ILE ← IJL  (copia pura de campos DUoM)
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (ratio + DUoM Second Qty con signo normalizado)
 ///     Este subscriber siempre se dispara, con o sin tracking activo.
 ///
 ///   CON Item Tracking (por lote, BC llama CopyTrackingFromItemJnlLine solo cuando hay Lot/Serial):
 ///     ReservEntry → TrackingSpec (OnAfterCopyTrackingFromReservEntry, codeunit 50110)
 ///     OnAfterCopyTrackingFromSpec → TrackingSpec → IJL  (refinamiento por lote)
-///     OnAfterInitItemLedgEntry → ILE ← IJL  (copia pura de campos DUoM)
-///     OnAfterCopyTrackingFromItemJnlLine → IJL → ILE  (codeunit 50110, copia pura)
+///     OnAfterInitItemLedgEntry → ILE ← IJL  (ratio + DUoM Second Qty con signo normalizado)
+///     OnAfterCopyTrackingFromItemJnlLine → IJL → ILE  (codeunit 50110, ratio + signo normalizado)
 ///     Orden garantizado BC 27: OnAfterInitItemLedgEntry se ejecuta ANTES de
 ///     ILECopyTrackingFromItemJnlLine.
 ///
-///   NORMA FINAL: Item Journal Line es la fuente final para Item Ledger Entry y Value Entry.
-///   OnAfterInitItemLedgEntry y OnAfterInitValueEntry son copias puras desde Item Journal Line.
-///   Si Item Journal Line llega con DUoM incorrecto, el bug está upstream.
-///   Los subscribers de esta capa no calculan ratio, no aplican signo ni consultan tablas.
+///   NORMA FINAL: Item Journal Line es la fuente de ratio y magnitud DUoM para Item Ledger Entry
+///   y Value Entry, pero el signo final de DUoM Second Qty se normaliza contra ILE.Quantity.
+///   Los subscribers de esta capa no recalculan ratio ni consultan tablas.
 ///
 /// Estrategia de propagación para Value Entry:
 ///   OnAfterInitValueEntry en Codeunit "Item Jnl.-Post Line" (BC 27 / runtime 15)
-///   copia DUoM Second Qty directamente desde Item Journal Line al nuevo Value Entry
-///   antes de Insert() — no se copia desde Item Ledger Entry.
+///   copia la magnitud DUoM Second Qty desde Item Journal Line al nuevo Value Entry
+///   antes de Insert() y normaliza el signo contra ItemLedgEntry.Quantity.
 ///   Firma verificada: (var ValueEntry; var ItemJournalLine; var ValueEntryNo; var ItemLedgEntry).
 /// </summary>
 codeunit 50104 "DUoM Inventory Subscribers"
@@ -141,9 +140,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// OnAfterCopyTrackingFromItemLedgEntry (codeunit 50110) ya popula los valores per-lote
     /// desde el ILE original; el guard en este subscriber evita sobrescribir esos valores.
     ///
-    /// El IJL debe llegar con el signo correcto porque OnAfterInitItemLedgEntry (50104)
-    /// es una copia pura: no aplica signo ni normaliza. El signo negativo indica que
-    /// la corrección invierte la recepción original (ILE corrección con Qty < 0).
+    /// Para artículos sin tracking se preasigna el signo esperado en el IJL; la capa ILE
+    /// lo vuelve a normalizar contra NewItemLedgEntry.Quantity como garantía final.
     ///
     /// Publisher: Codeunit "Undo Purchase Receipt Line".
     /// Evento: OnAfterCopyItemJnlLineFromPurchRcpt.
@@ -176,7 +174,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
             exit;
         ItemJournalLine."DUoM Ratio" := PurchRcptLine."DUoM Ratio";
         // La corrección invierte la recepción original (Qty > 0) → ILE corrección con Qty < 0.
-        // OnAfterInitItemLedgEntry (50104) es copia pura; el IJL debe llegar con el signo correcto.
+        // OnAfterInitItemLedgEntry (50104) normaliza de nuevo contra el signo real del ILE.
         ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");
     end;
 
@@ -189,9 +187,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// OnAfterCopyTrackingFromItemLedgEntry (codeunit 50110) ya popula los valores per-lote
     /// desde el ILE original; el guard en este subscriber evita sobrescribir esos valores.
     ///
-    /// El IJL debe llegar con el signo correcto porque OnAfterInitItemLedgEntry (50104)
-    /// es una copia pura: no aplica signo ni normaliza. El signo positivo indica que
-    /// la corrección invierte el envío original (ILE corrección con Qty > 0).
+    /// Para artículos sin tracking se preasigna el signo esperado en el IJL; la capa ILE
+    /// lo vuelve a normalizar contra NewItemLedgEntry.Quantity como garantía final.
     ///
     /// Publisher: Codeunit "Undo Sales Shipment Line".
     /// Evento: OnAfterCopyItemJnlLineFromSalesShpt.
@@ -224,7 +221,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
             exit;
         ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
         // La corrección invierte el envío original (Qty < 0) → ILE corrección con Qty > 0.
-        // OnAfterInitItemLedgEntry (50104) es copia pura; el IJL debe llegar con el signo correcto.
+        // OnAfterInitItemLedgEntry (50104) normaliza de nuevo contra el signo real del ILE.
         ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");
     end;
 
@@ -334,7 +331,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
 
     /// <summary>
     /// Propaga los campos DUoM desde Item Journal Line hacia Item Ledger Entry.
-    /// Este subscriber no calcula ratio, no aplica signo y no recupera datos de otras tablas.
+    /// Copia el ratio desde la Item Journal Line y normaliza el signo de DUoM Second Qty
+    /// contra NewItemLedgEntry.Quantity, que es la verdad final del movimiento.
     /// La Item Journal Line debe llegar ya preparada por los flujos upstream:
     /// Purchase/Sales posting, tracking split, undo o diarios.
     ///
@@ -353,13 +351,14 @@ codeunit 50104 "DUoM Inventory Subscribers"
     local procedure OnAfterInitItemLedgEntry(var NewItemLedgEntry: Record "Item Ledger Entry"; var ItemJournalLine: Record "Item Journal Line"; var ItemLedgEntryNo: Integer)
     begin
         NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
-        NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+        NewItemLedgEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+            NewItemLedgEntry, ItemJournalLine."DUoM Second Qty");
     end;
 
     /// <summary>
     /// Propaga DUoM Second Qty desde Item Journal Line hacia Value Entry.
-    /// La fuente final de DUoM para Value Entry es Item Journal Line.
-    /// No copiar desde Item Ledger Entry ni recalcular signo en este evento.
+    /// La fuente de magnitud para Value Entry es Item Journal Line, pero el signo se
+    /// normaliza contra ItemLedgEntry.Quantity para mantener coherencia con el ILE.
     ///
     /// Publisher: Codeunit "Item Jnl.-Post Line", evento OnAfterInitValueEntry.
     /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al):
@@ -368,6 +367,18 @@ codeunit 50104 "DUoM Inventory Subscribers"
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
     local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
     begin
-        ValueEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+        ValueEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+            ItemLedgEntry, ItemJournalLine."DUoM Second Qty");
+    end;
+
+    local procedure NormalizeSecondQtySignForILE(ItemLedgerEntry: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
+    begin
+        if SecondQty = 0 then
+            exit(0);
+        if ItemLedgerEntry.Quantity < 0 then
+            exit(-Abs(SecondQty));
+        if ItemLedgerEntry.Quantity > 0 then
+            exit(Abs(SecondQty));
+        exit(SecondQty);
     end;
 }
