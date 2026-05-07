@@ -14,10 +14,49 @@
 ///   - Purchase Line → Purch. Cr. Memo Line (InitFromPurchLine)
 ///   - Sales Line → Sales Invoice Line    (InitFromSalesLine)
 ///   - Sales Line → Sales Cr.Memo Line    (InitFromSalesLine)
+///   - Purchase Line / Sales Line → Item Journal Line (posting documental sin tracking)
 /// </summary>
 codeunit 50105 "DUoM Doc Transfer Helper"
 {
     Access = Internal;
+
+    /// <summary>
+    /// Proyecta los valores DUoM ya validados de una Purchase Line hacia el
+    /// Item Journal Line que BC va a registrar.
+    /// Si la línea tiene tracking persistido, la fuente de verdad pasa a ser
+    /// Reservation Entry / Tracking Specification y este helper no interviene.
+    /// </summary>
+    procedure ProjectPurchLineToItemJnlLine(PurchaseLine: Record "Purchase Line"; var ItemJournalLine: Record "Item Journal Line")
+    begin
+        if PurchaseLineHasItemTracking(PurchaseLine) then
+            exit;
+
+        ProjectDocumentLineToItemJnlLine(
+            ItemJournalLine,
+            PurchaseLine."DUoM Second Qty",
+            PurchaseLine."DUoM Ratio",
+            PurchaseLine."Quantity (Base)",
+            PurchaseLine.Quantity);
+    end;
+
+    /// <summary>
+    /// Proyecta los valores DUoM ya validados de una Sales Line hacia el
+    /// Item Journal Line que BC va a registrar.
+    /// Si la línea tiene tracking persistido, la fuente de verdad pasa a ser
+    /// Reservation Entry / Tracking Specification y este helper no interviene.
+    /// </summary>
+    procedure ProjectSalesLineToItemJnlLine(SalesLine: Record "Sales Line"; var ItemJournalLine: Record "Item Journal Line")
+    begin
+        if SalesLineHasItemTracking(SalesLine) then
+            exit;
+
+        ProjectDocumentLineToItemJnlLine(
+            ItemJournalLine,
+            SalesLine."DUoM Second Qty",
+            SalesLine."DUoM Ratio",
+            SalesLine."Quantity (Base)",
+            SalesLine.Quantity);
+    end;
 
     /// <summary>
     /// Copia los campos DUoM desde una Sales Line hacia una Sales Shipment Line.
@@ -103,5 +142,79 @@ codeunit 50105 "DUoM Doc Transfer Helper"
         SalesCrMemoLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         SalesCrMemoLine."DUoM Ratio" := SalesLine."DUoM Ratio";
         SalesCrMemoLine."DUoM Unit Price" := SalesLine."DUoM Unit Price";
+    end;
+
+    local procedure ProjectDocumentLineToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; SourceSecondQty: Decimal; SourceRatio: Decimal; SourceQtyBase: Decimal; SourceQty: Decimal)
+    begin
+        ItemJournalLine."DUoM Ratio" := SourceRatio;
+        ItemJournalLine."DUoM Second Qty" := ApplyItemJnlSign(
+            ItemJournalLine,
+            CalcProjectedSecondQty(
+                SourceSecondQty,
+                SourceQtyBase,
+                SourceQty,
+                ItemJournalLine."Quantity (Base)",
+                ItemJournalLine.Quantity));
+    end;
+
+    local procedure CalcProjectedSecondQty(SourceSecondQty: Decimal; SourceQtyBase: Decimal; SourceQty: Decimal; PostingQtyBase: Decimal; PostingQty: Decimal): Decimal
+    begin
+        if SourceSecondQty = 0 then
+            exit(0);
+        if SourceQtyBase <> 0 then
+            exit(Abs(SourceSecondQty) * Abs(PostingQtyBase) / Abs(SourceQtyBase));
+        if SourceQty <> 0 then
+            exit(Abs(SourceSecondQty) * Abs(PostingQty) / Abs(SourceQty));
+        exit(0);
+    end;
+
+    local procedure ApplyItemJnlSign(ItemJournalLine: Record "Item Journal Line"; ProjectedSecondQty: Decimal): Decimal
+    begin
+        if ProjectedSecondQty = 0 then
+            exit(0);
+        if ItemJournalLine."Quantity (Base)" < 0 then
+            exit(-Abs(ProjectedSecondQty));
+        if ItemJournalLine.Quantity < 0 then
+            exit(-Abs(ProjectedSecondQty));
+        exit(Abs(ProjectedSecondQty));
+    end;
+
+    local procedure PurchaseLineHasItemTracking(PurchaseLine: Record "Purchase Line"): Boolean
+    var
+        ReservEntry: Record "Reservation Entry";
+    begin
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchaseLine."Document Type".AsInteger(),
+            PurchaseLine."Document No.",
+            PurchaseLine."Line No.",
+            true);
+        exit(HasTrackingAssignment(ReservEntry));
+    end;
+
+    local procedure SalesLineHasItemTracking(SalesLine: Record "Sales Line"): Boolean
+    var
+        ReservEntry: Record "Reservation Entry";
+    begin
+        ReservEntry.SetSourceFilter(
+            Database::"Sales Line",
+            SalesLine."Document Type".AsInteger(),
+            SalesLine."Document No.",
+            SalesLine."Line No.",
+            true);
+        exit(HasTrackingAssignment(ReservEntry));
+    end;
+
+    local procedure HasTrackingAssignment(var ReservEntry: Record "Reservation Entry"): Boolean
+    begin
+        if not ReservEntry.FindSet() then
+            exit(false);
+
+        repeat
+            if (ReservEntry."Lot No." <> '') or (ReservEntry."Serial No." <> '') then
+                exit(true);
+        until ReservEntry.Next() = 0;
+
+        exit(false);
     end;
 }
