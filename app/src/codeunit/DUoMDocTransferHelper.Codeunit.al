@@ -57,7 +57,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             RatioToUse,
             ConversionMode,
             RoundingPrecision);
-        ItemJnlLine."DUoM Second Qty" := Abs(SecondQtyAbs);
+        ItemJnlLine."DUoM Second Qty" := SecondQtyAbs;
     end;
 
     /// <summary>
@@ -98,7 +98,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             RatioToUse,
             ConversionMode,
             RoundingPrecision);
-        ItemJnlLine."DUoM Second Qty" := -Abs(SecondQtyAbs);
+        ItemJnlLine."DUoM Second Qty" := -SecondQtyAbs;
     end;
 
     /// <summary>
