@@ -46,21 +46,18 @@ codeunit 50105 "DUoM Doc Transfer Helper"
     /// Reservation Entry / Tracking Specification y este helper no interviene.
     /// </summary>
     procedure ProjectSalesLineToItemJnlLine(SalesLine: Record "Sales Line"; var ItemJournalLine: Record "Item Journal Line")
-    var
-        ProjectedSecondQty: Decimal;
     begin
         if SalesLineHasItemTracking(SalesLine) then
             exit;
 
-        ProjectedSecondQty := CalcProjectedSecondQty(
+        ProjectDocumentLineToItemJnlLine(
+            ItemJournalLine,
             SalesLine."DUoM Second Qty",
+            SalesLine."DUoM Ratio",
             SalesLine."Quantity (Base)",
-            SalesLine.Quantity,
-            ItemJournalLine."Quantity (Base)",
-            ItemJournalLine.Quantity);
-
-        ItemJournalLine."DUoM Ratio" := SalesLine."DUoM Ratio";
-        ItemJournalLine."DUoM Second Qty" := -Abs(ProjectedSecondQty);
+            SalesLine.Quantity);
+        // Venta documental: el IJL representa salida de inventario y DUoM debe quedar negativo.
+        ItemJournalLine."DUoM Second Qty" := -Abs(ItemJournalLine."DUoM Second Qty");
     end;
 
     /// <summary>
