@@ -135,10 +135,17 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     // ── Tracking Specification → Item Journal Line ────────────────────────────
     // Publisher: Table "Item Journal Line" (83), evento OnAfterCopyTrackingFromSpec.
     // Patrón: Codeunit 6516 "Package Management" línea 774. Firma BC 27 confirmada.
-    // Motivo: BC llama esto al dividir el IJL por lote. TrackingSpecification es el del
-    // lote específico. DUoM Ratio del lote llega al IJL sin ningún FindFirst().
-    // Guard/fallback: si TrackingSpec no trae ratio, se intenta resolver DUoM Lot Ratio
-    // (50102) por Item/Lot antes de mantener el ratio de la línea.
+    // Motivo: BC llama esto al dividir el IJL por lote (TempSplitItemJournalLine).
+    //
+    // Fuente de verdad DUoM con tracking (prioridad de resolución):
+    //   1. TrackingSpec tiene DUoM Ratio ≠ 0 → usar valores del tracking del usuario.
+    //   2. DUoM Lot Ratio (50102) tiene ratio para este lote → aplicar ratio de lote.
+    //   3. IJL padre tiene DUoM Ratio ≠ 0 → proyectar proporcionalmente con la cantidad del split.
+    //   4. Sin ratio disponible (AlwaysVariable sin ratio real) → DUoM Second Qty = 0.
+    //
+    // Signo técnico: DUoM Second Qty sigue el signo del movimiento (negativo para salidas).
+    // El signo se determina desde ItemJournalLine."Quantity (Base)" del split.
+    // Las tres fuentes aportan valores positivos (datos de usuario); el signo se aplica aquí.
     [EventSubscriber(ObjectType::Table, Database::"Item Journal Line",
         'OnAfterCopyTrackingFromSpec', '', false, false)]
     local procedure IJLCopyTrackingFromSpec(
@@ -148,20 +155,51 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         DUoMLotSubscribers: Codeunit "DUoM Lot Subscribers";
     begin
         if TrackingSpecification."DUoM Ratio" <> 0 then begin
+            // Fuente 1: TrackingSpec tiene ratio validado por el usuario en Item Tracking Lines.
+            // Copiar ratio directamente; aplicar signo técnico del movimiento al Second Qty
+            // (el dato de usuario se almacena siempre positivo; salidas deben ser negativas).
             ItemJournalLine."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
-            ItemJournalLine."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
+            ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+                ItemJournalLine, Abs(TrackingSpecification."DUoM Second Qty"));
             exit;
         end;
 
         ItemJournalLine."Lot No." := TrackingSpecification."Lot No.";
-        if DUoMLotSubscribers.ApplyLotRatioToItemJournalLine(ItemJournalLine) then
+        if DUoMLotSubscribers.ApplyLotRatioToItemJournalLine(ItemJournalLine) then begin
+            // Fuente 2: DUoM Lot Ratio (50102) tiene ratio para este lote.
+            // ApplyLotRatioToItemJournalLine establece DUoM Second Qty = Abs(Qty) × Ratio (positivo);
+            // aplicar signo técnico del movimiento.
+            ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+                ItemJournalLine, Abs(ItemJournalLine."DUoM Second Qty"));
             exit;
+        end;
 
-        // Si no existe ratio específico de lote, conserva el ratio del IJL origen
-        // pero reparte DUoM Second Qty con la cantidad real del split de tracking.
-        // Evita que cada ILE herede el total de la línea origen en escenarios 1:N.
+        // Fuente 3/4: sin ratio en tracking ni en DUoM Lot Ratio.
         if ItemJournalLine."DUoM Ratio" <> 0 then
-            ItemJournalLine."DUoM Second Qty" := Abs(TrackingSpecification."Quantity (Base)") * ItemJournalLine."DUoM Ratio";
+            // Fuente 3: IJL padre tiene ratio (Variable/Fixed sin tracking específico).
+            // Proyectar proporcionalmente con la cantidad real del split y aplicar signo.
+            ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+                ItemJournalLine,
+                Abs(TrackingSpecification."Quantity (Base)") * ItemJournalLine."DUoM Ratio")
+        else
+            // Fuente 4: AlwaysVariable sin ratio real de tracking/lote.
+            // No se puede distribuir el total de la línea entre los splits sin ratio.
+            // Regla: DUoM Ratio = 0 → DUoM Second Qty = 0.
+            ItemJournalLine."DUoM Second Qty" := 0;
+    end;
+
+    // Aplica el signo técnico del movimiento a una cantidad DUoM positiva.
+    // Las entradas (compras) producen valores positivos; las salidas (ventas) negativos.
+    // Lógica idéntica a ApplyItemJnlSign en DUoM Doc Transfer Helper (50105).
+    local procedure ApplyMovementSign(ItemJournalLine: Record "Item Journal Line"; SecondQty: Decimal): Decimal
+    begin
+        if SecondQty = 0 then
+            exit(0);
+        if ItemJournalLine."Quantity (Base)" < 0 then
+            exit(-Abs(SecondQty));
+        if ItemJournalLine.Quantity < 0 then
+            exit(-Abs(SecondQty));
+        exit(Abs(SecondQty));
     end;
 
     // ── Item Journal Line → Item Ledger Entry ─────────────────────────────────
