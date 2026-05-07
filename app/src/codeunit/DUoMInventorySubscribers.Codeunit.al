@@ -382,14 +382,14 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnBeforeInsertCorrItemLedgEntry', '', false, false)]
     local procedure OnBeforeInsertCorrItemLedgEntry(
-        var NewItemLedgEntry: Record "Item Ledger Entry";
-        var OldItemLedgEntry: Record "Item Ledger Entry";
+        var NewItemLedgerEntry: Record "Item Ledger Entry";
+        var OldItemLedgerEntry: Record "Item Ledger Entry";
         var ItemJournalLine: Record "Item Journal Line")
     begin
-        if OldItemLedgEntry."DUoM Ratio" = 0 then
+        if OldItemLedgerEntry."DUoM Ratio" = 0 then
             exit;
-        NewItemLedgEntry."DUoM Ratio" := OldItemLedgEntry."DUoM Ratio";
-        NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty";
+        NewItemLedgerEntry."DUoM Ratio" := OldItemLedgerEntry."DUoM Ratio";
+        NewItemLedgerEntry."DUoM Second Qty" := -OldItemLedgerEntry."DUoM Second Qty";
     end;
 
     /// <summary>
