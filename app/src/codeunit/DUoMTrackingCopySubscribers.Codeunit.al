@@ -62,10 +62,9 @@
 ///   de lote específico cuando el Tracking Specification aporta un ratio distinto.
 ///
 /// Prioridad de ratio en ILECopyTrackingFromItemJnlLine:
-///   Item Journal Line es la fuente final. Este subscriber es una copia pura: copia
-///   DUoM Ratio y DUoM Second Qty directamente del IJL al ILE, sin recalcular ratio,
-///   sin aplicar signo y sin consultar DUoM Lot Ratio (50102).
-///   Si el IJL llega con valores DUoM incorrectos, el bug está upstream.
+///   Item Journal Line es la fuente final de ratio y magnitud DUoM. Este subscriber
+///   copia el ratio, no lo recalcula y no consulta DUoM Lot Ratio (50102); solo
+///   normaliza el signo de DUoM Second Qty contra ItemLedgerEntry.Quantity.
 /// </summary>
 codeunit 50110 "DUoM Tracking Copy Subscribers"
 {
@@ -205,10 +204,10 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     // ── Item Journal Line → Item Ledger Entry ─────────────────────────────────
     // Publisher: Table "Item Ledger Entry" (32), evento OnAfterCopyTrackingFromItemJnlLine.
     // Patrón: Codeunit 6516 "Package Management" línea 551. Firma BC 27 confirmada.
-    // Motivo: BC llama esto antes de Insert() del ILE. Copia los campos DUoM del IJL
-    // split por lote al ILE. Es una copia pura: no recalcula ratio, no aplica signo
-    // y no consulta DUoM Lot Ratio (50102). Si el IJL llega con valores incorrectos,
-    // el bug está upstream (flujo de compra/venta, tracking split o undo).
+    // Motivo: BC llama esto antes de Insert() del ILE. Copia el ratio DUoM del IJL
+    // split por lote al ILE y normaliza DUoM Second Qty contra ItemLedgerEntry.Quantity.
+    // No recalcula ratio ni consulta DUoM Lot Ratio (50102); solo garantiza que el signo
+    // final sea el del movimiento de inventario que BC va a insertar.
     //
     // Orden de ejecución (BC 27): este evento se dispara DESPUÉS de OnAfterInitItemLedgEntry.
     // Para artículos CON Item Tracking, este subscriber sobreescribe la copia inicial de
@@ -220,7 +219,8 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         ItemJnlLine: Record "Item Journal Line")
     begin
         ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-        ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty";
+        ItemLedgerEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+            ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
     end;
 
     // ── Item Ledger Entry → Item Journal Line (flujo inverso) ─────────────────
@@ -351,6 +351,18 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         ItemJnlLine: Record "Item Journal Line")
     begin
         ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-        ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty";
+        ItemLedgerEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+            ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
+    end;
+
+    local procedure NormalizeSecondQtySignForILE(ItemLedgerEntry: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
+    begin
+        if SecondQty = 0 then
+            exit(0);
+        if ItemLedgerEntry.Quantity < 0 then
+            exit(-Abs(SecondQty));
+        if ItemLedgerEntry.Quantity > 0 then
+            exit(Abs(SecondQty));
+        exit(SecondQty);
     end;
 }
