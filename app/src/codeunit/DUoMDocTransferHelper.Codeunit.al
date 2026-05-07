@@ -20,6 +20,88 @@ codeunit 50105 "DUoM Doc Transfer Helper"
     Access = Internal;
 
     /// <summary>
+    /// Prepara los campos DUoM del Item Journal Line para el posting de compra.
+    /// La cantidad DUoM final usa la cantidad real a registrar del IJL y mantiene signo positivo.
+    /// </summary>
+    procedure PrepareFromPurchaseLine(var ItemJnlLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        DUoMUoMHelper: Codeunit "DUoM UoM Helper";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        RatioToUse: Decimal;
+        PostingAbsQty: Decimal;
+        SourceAbsQty: Decimal;
+        RoundingPrecision: Decimal;
+        SecondQtyAbs: Decimal;
+    begin
+        if PurchaseLine.Type <> PurchaseLine.Type::Item then
+            exit;
+        if PurchaseLine."No." = '' then
+            exit;
+        if not DUoMSetupResolver.GetEffectiveSetup(PurchaseLine."No.", PurchaseLine."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        PostingAbsQty := Abs(ItemJnlLine.Quantity);
+        SourceAbsQty := Abs(PurchaseLine.Quantity);
+        RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(PurchaseLine."No.", SecondUoMCode);
+        RatioToUse := ResolveRatioFromPurchaseLine(PurchaseLine, ConversionMode, FixedRatio);
+        if RatioToUse <> 0 then
+            ItemJnlLine."DUoM Ratio" := RatioToUse;
+
+        SecondQtyAbs := CalcSecondQtyForPosting(
+            PostingAbsQty,
+            SourceAbsQty,
+            Abs(PurchaseLine."DUoM Second Qty"),
+            RatioToUse,
+            ConversionMode,
+            RoundingPrecision);
+        ItemJnlLine."DUoM Second Qty" := Abs(SecondQtyAbs);
+    end;
+
+    /// <summary>
+    /// Prepara los campos DUoM del Item Journal Line para el posting de venta.
+    /// La cantidad DUoM final usa la cantidad real a registrar del IJL y mantiene signo negativo.
+    /// </summary>
+    procedure PrepareFromSalesLine(var ItemJnlLine: Record "Item Journal Line"; SalesLine: Record "Sales Line")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        DUoMUoMHelper: Codeunit "DUoM UoM Helper";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        RatioToUse: Decimal;
+        PostingAbsQty: Decimal;
+        SourceAbsQty: Decimal;
+        RoundingPrecision: Decimal;
+        SecondQtyAbs: Decimal;
+    begin
+        if SalesLine.Type <> SalesLine.Type::Item then
+            exit;
+        if SalesLine."No." = '' then
+            exit;
+        if not DUoMSetupResolver.GetEffectiveSetup(SalesLine."No.", SalesLine."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        PostingAbsQty := Abs(ItemJnlLine.Quantity);
+        SourceAbsQty := Abs(SalesLine.Quantity);
+        RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(SalesLine."No.", SecondUoMCode);
+        RatioToUse := ResolveRatioFromSalesLine(SalesLine, ConversionMode, FixedRatio);
+        if RatioToUse <> 0 then
+            ItemJnlLine."DUoM Ratio" := RatioToUse;
+
+        SecondQtyAbs := CalcSecondQtyForPosting(
+            PostingAbsQty,
+            SourceAbsQty,
+            Abs(SalesLine."DUoM Second Qty"),
+            RatioToUse,
+            ConversionMode,
+            RoundingPrecision);
+        ItemJnlLine."DUoM Second Qty" := -Abs(SecondQtyAbs);
+    end;
+
+    /// <summary>
     /// Copia los campos DUoM desde una Sales Line hacia una Sales Shipment Line.
     /// Se invoca desde el suscriptor de OnAfterInitFromSalesLine en la tabla
     /// "Sales Shipment Line". Prefiere la copia directa de los valores ya
@@ -103,5 +185,53 @@ codeunit 50105 "DUoM Doc Transfer Helper"
         SalesCrMemoLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
         SalesCrMemoLine."DUoM Ratio" := SalesLine."DUoM Ratio";
         SalesCrMemoLine."DUoM Unit Price" := SalesLine."DUoM Unit Price";
+    end;
+
+    local procedure ResolveRatioFromPurchaseLine(PurchaseLine: Record "Purchase Line"; ConversionMode: Enum "DUoM Conversion Mode"; FixedRatio: Decimal): Decimal
+    begin
+        if ConversionMode = ConversionMode::Fixed then
+            exit(FixedRatio);
+        if PurchaseLine."DUoM Ratio" <> 0 then
+            exit(PurchaseLine."DUoM Ratio");
+        exit(FixedRatio);
+    end;
+
+    local procedure ResolveRatioFromSalesLine(SalesLine: Record "Sales Line"; ConversionMode: Enum "DUoM Conversion Mode"; FixedRatio: Decimal): Decimal
+    begin
+        if ConversionMode = ConversionMode::Fixed then
+            exit(FixedRatio);
+        if SalesLine."DUoM Ratio" <> 0 then
+            exit(SalesLine."DUoM Ratio");
+        exit(FixedRatio);
+    end;
+
+    local procedure CalcSecondQtyForPosting(
+        PostingQty: Decimal;
+        SourceQty: Decimal;
+        SourceSecondQty: Decimal;
+        RatioToUse: Decimal;
+        ConversionMode: Enum "DUoM Conversion Mode";
+        RoundingPrecision: Decimal): Decimal
+    var
+        DUoMCalcEngine: Codeunit "DUoM Calc Engine";
+    begin
+        if PostingQty = 0 then
+            exit(0);
+        if SourceSecondQty <> 0 then
+            exit(CalcProportionalSecondQty(SourceQty, SourceSecondQty, PostingQty));
+        if ConversionMode = ConversionMode::AlwaysVariable then
+            exit(0);
+        if RatioToUse = 0 then
+            exit(0);
+        exit(DUoMCalcEngine.ComputeSecondQtyRounded(PostingQty, RatioToUse, ConversionMode, RoundingPrecision));
+    end;
+
+    local procedure CalcProportionalSecondQty(SourceQty: Decimal; SourceSecondQty: Decimal; PostingQty: Decimal): Decimal
+    begin
+        if SourceSecondQty = 0 then
+            exit(0);
+        if SourceQty = 0 then
+            exit(0);
+        exit(Abs(SourceSecondQty) * Abs(PostingQty) / Abs(SourceQty));
     end;
 }

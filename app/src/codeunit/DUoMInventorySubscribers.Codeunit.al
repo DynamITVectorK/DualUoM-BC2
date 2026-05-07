@@ -96,9 +96,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Purch.-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
     local procedure OnPurchPostCopyDocFieldsToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; PurchaseLine: Record "Purchase Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
     begin
-        ItemJournalLine."DUoM Second Qty" := PurchaseLine."DUoM Second Qty";
-        ItemJournalLine."DUoM Ratio" := PurchaseLine."DUoM Ratio";
+        DUoMDocTransferHelper.PrepareFromPurchaseLine(ItemJournalLine, PurchaseLine);
     end;
 
     /// <summary>
@@ -108,9 +109,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
     local procedure OnSalesPostCopyDocFieldsToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; SalesLine: Record "Sales Line")
+    var
+        DUoMDocTransferHelper: Codeunit "DUoM Doc Transfer Helper";
     begin
-        ItemJournalLine."DUoM Second Qty" := SalesLine."DUoM Second Qty";
-        ItemJournalLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        DUoMDocTransferHelper.PrepareFromSalesLine(ItemJournalLine, SalesLine);
     end;
 
     /// <summary>
