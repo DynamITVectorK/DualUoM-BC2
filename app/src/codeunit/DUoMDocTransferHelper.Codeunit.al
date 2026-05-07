@@ -56,6 +56,8 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             SalesLine."DUoM Ratio",
             SalesLine."Quantity (Base)",
             SalesLine.Quantity);
+        // Venta documental: el IJL representa salida de inventario y DUoM debe quedar negativo.
+        ItemJournalLine."DUoM Second Qty" := -Abs(ItemJournalLine."DUoM Second Qty");
     end;
 
     /// <summary>
