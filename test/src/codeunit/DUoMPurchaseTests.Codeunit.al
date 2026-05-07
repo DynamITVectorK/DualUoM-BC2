@@ -333,4 +333,80 @@ codeunit 50205 "DUoM Purchase Tests"
         DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
         Item.Delete(false);
     end;
+
+    [Test]
+    procedure PurchaseLine_AlwaysVariable_ManualSecondQtyPreservedOnQtyChange()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Item en AlwaysVariable y línea con DUoM manual informado por usuario
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::AlwaysVariable, 0);
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 5);
+        PurchLine.Validate("DUoM Ratio", 1.2);
+        PurchLine.Validate("DUoM Second Qty", 6);
+
+        // [WHEN] cambia Quantity
+        PurchLine.Validate(Quantity, 10);
+
+        // [THEN] el valor manual no se pisa automáticamente
+        LibraryAssert.AreEqual(1.2, PurchLine."DUoM Ratio", 'AlwaysVariable: el ratio manual no debe resetearse al cambiar Quantity');
+        LibraryAssert.AreEqual(6, PurchLine."DUoM Second Qty", 'AlwaysVariable: DUoM Second Qty manual no debe recalcularse al cambiar Quantity');
+
+        // Cleanup
+        PurchLine.Delete(false);
+        PurchHeader.Delete(false);
+        Vendor.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(Item."No.");
+        Item.Delete(false);
+    end;
+
+    [Test]
+    procedure PurchaseLine_ValidateNo_RecomputesDUoMFromNewItem()
+    var
+        ItemA: Record Item;
+        ItemB: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Dos artículos Fixed con ratios distintos
+        LibraryInventory.CreateItem(ItemA);
+        LibraryInventory.CreateItem(ItemB);
+        DUoMTestHelpers.CreateItemSetup(ItemA."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
+        DUoMTestHelpers.CreateItemSetup(ItemB."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, ItemA."No.", 10);
+        PurchLine.Validate(Quantity, 10);
+
+        // [WHEN] se valida "No." con el segundo artículo
+        PurchLine.Validate("No.", ItemB."No.");
+
+        // [THEN] la línea recalcula DUoM con la configuración efectiva del nuevo artículo
+        LibraryAssert.AreEqual(1.5, PurchLine."DUoM Ratio", 'Al cambiar No. debe aplicarse el ratio del nuevo artículo');
+        LibraryAssert.AreEqual(15, PurchLine."DUoM Second Qty", 'Al cambiar No. debe recalcularse DUoM Second Qty con la cantidad actual');
+
+        // Cleanup
+        PurchLine.Delete(false);
+        PurchHeader.Delete(false);
+        Vendor.Delete(false);
+        DUoMTestHelpers.DeleteItemSetupIfExists(ItemA."No.");
+        DUoMTestHelpers.DeleteItemSetupIfExists(ItemB."No.");
+        ItemA.Delete(false);
+        ItemB.Delete(false);
+    end;
 }
