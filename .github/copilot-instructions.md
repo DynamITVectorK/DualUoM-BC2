@@ -195,6 +195,9 @@ a los subscribers **upstream** de cada flujo:
 - **Undo sin trazabilidad:** `OnAfterCopyItemJnlLineFromPurchRcpt` / `OnAfterCopyItemJnlLineFromSalesShpt`
   — deben establecer el signo correcto en el IJL (undo recepción → negativo; undo envío → positivo)
 - **Undo con trazabilidad:** `IJLCopyTrackingFromItemLedgEntry` (50110, copia del ILE original)
+- **Corrección ILE (undo final):** `OnBeforeInsertCorrItemLedgEntry` (50104) — sobreescribe
+  `NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty"` porque en ese
+  momento `OldItemLedgEntry` es la única fuente fiable del signo de corrección.
 
 ```al
 // ❌ PROHIBIDO — lógica de signo en subscribers finales ILE/VE
@@ -216,8 +219,8 @@ ValueEntry."DUoM Second Qty" := ItemLedgEntry."DUoM Second Qty";
 ```
 
 Ver norma completa en `docs/development/coding-standards.md` (sección "Norma: ILE ← IJL siempre").
-Implementación de referencia: codeunit 50104 `OnAfterInitItemLedgEntry` y codeunit 50110
-`ILECopyTrackingFromItemJnlLine`.
+Implementación de referencia: codeunit 50104 `OnAfterInitItemLedgEntry`, `OnBeforeInsertCorrItemLedgEntry`
+y codeunit 50110 `ILECopyTrackingFromItemJnlLine`.
 
 ### Prefer InitFrom* table events over codeunit insert events
 
