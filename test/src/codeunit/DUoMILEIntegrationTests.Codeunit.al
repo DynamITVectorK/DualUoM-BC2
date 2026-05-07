@@ -434,6 +434,93 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'T3: ILE Sale DUoM Second Qty = ILE.Quantity × 1.5 = -10 × 1.5 = -15');
     end;
 
+    [Test]
+    procedure PurchasePosting_PartialReceive_ProjectsProportionalDUoMToILE()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo modo Fixed con DUoM documental ya validado en la Purchase Line
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
+
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Validate("Qty. to Receive", 5);
+        PurchLine.Modify(true);
+
+        // [WHEN] Se contabiliza una recepción parcial
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [THEN] El IJL/ILE proyecta proporcionalmente 4 y la línea documental no se corrige
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un ILE para la recepción parcial de compra');
+        LibraryAssert.AreEqual(4, ILE."DUoM Second Qty", 'Recepción parcial: DUoM Second Qty debe prorratearse de 8 a 4');
+        LibraryAssert.AreEqual(0.8, ILE."DUoM Ratio", 'Recepción parcial: DUoM Ratio debe conservar el valor documental');
+
+        PurchLine.Get(PurchLine."Document Type", PurchLine."Document No.", PurchLine."Line No.");
+        LibraryAssert.AreEqual(8, PurchLine."DUoM Second Qty", 'La Purchase Line no debe modificarse durante el posting parcial');
+        LibraryAssert.AreEqual(0.8, PurchLine."DUoM Ratio", 'La Purchase Line debe conservar su ratio documental');
+    end;
+
+    [Test]
+    procedure SalesPosting_PartialShip_ProjectsSignedProportionalDUoMToILE()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        Customer: Record Customer;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Stock disponible y una Sales Line con DUoM documental positivo ya validado
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 0.8);
+
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 100);
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 10);
+        SalesLine.Validate("Qty. to Ship", 5);
+        SalesLine.Modify(true);
+
+        // [WHEN] Se contabiliza un envío parcial
+        LibrarySales.PostSalesDocument(SalesHeader, true, false);
+
+        // [THEN] El IJL/ILE aplica signo técnico de salida y prorratea a -4
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Sale);
+        LibraryAssert.IsTrue(ILE.FindFirst(), 'Se esperaba un ILE para el envío parcial de venta');
+        LibraryAssert.AreEqual(-4, ILE."DUoM Second Qty", 'Envío parcial: DUoM Second Qty debe prorratearse y salir con signo negativo');
+        LibraryAssert.AreEqual(0.8, ILE."DUoM Ratio", 'Envío parcial: DUoM Ratio debe conservar el valor documental');
+
+        SalesLine.Get(SalesLine."Document Type", SalesLine."Document No.", SalesLine."Line No.");
+        LibraryAssert.AreEqual(8, SalesLine."DUoM Second Qty", 'La Sales Line no debe modificarse durante el posting parcial');
+        LibraryAssert.AreEqual(0.8, SalesLine."DUoM Ratio", 'La Sales Line debe conservar su ratio documental');
+    end;
+
     // -------------------------------------------------------------------------
     // TEST 4 — Fixed, un lote desde Purchase Order → ILE
     // Verifica que el ratio fijo se propaga correctamente al ILE cuando hay
