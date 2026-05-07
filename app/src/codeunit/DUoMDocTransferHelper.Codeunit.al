@@ -206,32 +206,32 @@ codeunit 50105 "DUoM Doc Transfer Helper"
     end;
 
     local procedure CalcSecondQtyForPosting(
-        PostingQty: Decimal;
-        SourceQty: Decimal;
-        SourceSecondQty: Decimal;
+        PostingAbsQty: Decimal;
+        SourceAbsQty: Decimal;
+        SourceSecondAbsQty: Decimal;
         RatioToUse: Decimal;
         ConversionMode: Enum "DUoM Conversion Mode";
         RoundingPrecision: Decimal): Decimal
     var
         DUoMCalcEngine: Codeunit "DUoM Calc Engine";
     begin
-        if PostingQty = 0 then
+        if PostingAbsQty = 0 then
             exit(0);
-        if SourceSecondQty <> 0 then
-            exit(CalcProportionalSecondQty(SourceQty, SourceSecondQty, PostingQty));
+        if SourceSecondAbsQty <> 0 then
+            exit(CalcProportionalSecondQty(SourceAbsQty, SourceSecondAbsQty, PostingAbsQty));
         if ConversionMode = ConversionMode::AlwaysVariable then
             exit(0);
         if RatioToUse = 0 then
             exit(0);
-        exit(DUoMCalcEngine.ComputeSecondQtyRounded(PostingQty, RatioToUse, ConversionMode, RoundingPrecision));
+        exit(DUoMCalcEngine.ComputeSecondQtyRounded(PostingAbsQty, RatioToUse, ConversionMode, RoundingPrecision));
     end;
 
-    local procedure CalcProportionalSecondQty(SourceQty: Decimal; SourceSecondQty: Decimal; PostingQty: Decimal): Decimal
+    local procedure CalcProportionalSecondQty(SourceAbsQty: Decimal; SourceSecondAbsQty: Decimal; PostingAbsQty: Decimal): Decimal
     begin
-        if SourceSecondQty = 0 then
+        if SourceSecondAbsQty = 0 then
             exit(0);
-        if SourceQty = 0 then
+        if SourceAbsQty = 0 then
             exit(0);
-        exit(Abs(SourceSecondQty) * Abs(PostingQty) / Abs(SourceQty));
+        exit(Abs(SourceSecondAbsQty) * Abs(PostingAbsQty) / Abs(SourceAbsQty));
     end;
 }
