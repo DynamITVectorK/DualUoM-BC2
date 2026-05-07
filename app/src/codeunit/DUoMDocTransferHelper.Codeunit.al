@@ -46,7 +46,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
         PostingAbsQty := Abs(ItemJnlLine.Quantity);
         SourceAbsQty := Abs(PurchaseLine.Quantity);
         RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(PurchaseLine."No.", SecondUoMCode);
-        RatioToUse := ResolveRatioFromPurchaseLine(PurchaseLine, ConversionMode, FixedRatio);
+        RatioToUse := ResolveRatioFromLine(PurchaseLine."DUoM Ratio", ConversionMode, FixedRatio);
         if RatioToUse <> 0 then
             ItemJnlLine."DUoM Ratio" := RatioToUse;
 
@@ -87,7 +87,7 @@ codeunit 50105 "DUoM Doc Transfer Helper"
         PostingAbsQty := Abs(ItemJnlLine.Quantity);
         SourceAbsQty := Abs(SalesLine.Quantity);
         RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(SalesLine."No.", SecondUoMCode);
-        RatioToUse := ResolveRatioFromSalesLine(SalesLine, ConversionMode, FixedRatio);
+        RatioToUse := ResolveRatioFromLine(SalesLine."DUoM Ratio", ConversionMode, FixedRatio);
         if RatioToUse <> 0 then
             ItemJnlLine."DUoM Ratio" := RatioToUse;
 
@@ -187,21 +187,12 @@ codeunit 50105 "DUoM Doc Transfer Helper"
         SalesCrMemoLine."DUoM Unit Price" := SalesLine."DUoM Unit Price";
     end;
 
-    local procedure ResolveRatioFromPurchaseLine(PurchaseLine: Record "Purchase Line"; ConversionMode: Enum "DUoM Conversion Mode"; FixedRatio: Decimal): Decimal
+    local procedure ResolveRatioFromLine(LineRatio: Decimal; ConversionMode: Enum "DUoM Conversion Mode"; FixedRatio: Decimal): Decimal
     begin
         if ConversionMode = ConversionMode::Fixed then
             exit(FixedRatio);
-        if PurchaseLine."DUoM Ratio" <> 0 then
-            exit(PurchaseLine."DUoM Ratio");
-        exit(FixedRatio);
-    end;
-
-    local procedure ResolveRatioFromSalesLine(SalesLine: Record "Sales Line"; ConversionMode: Enum "DUoM Conversion Mode"; FixedRatio: Decimal): Decimal
-    begin
-        if ConversionMode = ConversionMode::Fixed then
-            exit(FixedRatio);
-        if SalesLine."DUoM Ratio" <> 0 then
-            exit(SalesLine."DUoM Ratio");
+        if LineRatio <> 0 then
+            exit(LineRatio);
         exit(FixedRatio);
     end;
 
@@ -231,9 +222,9 @@ codeunit 50105 "DUoM Doc Transfer Helper"
 
     local procedure CalcProportionalSecondQty(SourceAbsQty: Decimal; SourceSecondAbsQty: Decimal; PostingAbsQty: Decimal): Decimal
     begin
-        if SourceSecondAbsQty = 0 then
-            exit(0);
         if SourceAbsQty = 0 then
+            exit(0);
+        if SourceSecondAbsQty = 0 then
             exit(0);
         exit(SourceSecondAbsQty * PostingAbsQty / SourceAbsQty);
     end;
