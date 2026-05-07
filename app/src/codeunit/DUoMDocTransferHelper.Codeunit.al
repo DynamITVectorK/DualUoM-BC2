@@ -46,16 +46,21 @@ codeunit 50105 "DUoM Doc Transfer Helper"
     /// Reservation Entry / Tracking Specification y este helper no interviene.
     /// </summary>
     procedure ProjectSalesLineToItemJnlLine(SalesLine: Record "Sales Line"; var ItemJournalLine: Record "Item Journal Line")
+    var
+        ProjectedSecondQty: Decimal;
     begin
         if SalesLineHasItemTracking(SalesLine) then
             exit;
 
-        ProjectDocumentLineToItemJnlLine(
-            ItemJournalLine,
+        ProjectedSecondQty := CalcProjectedSecondQty(
             SalesLine."DUoM Second Qty",
-            SalesLine."DUoM Ratio",
             SalesLine."Quantity (Base)",
-            SalesLine.Quantity);
+            SalesLine.Quantity,
+            ItemJournalLine."Quantity (Base)",
+            ItemJournalLine.Quantity);
+
+        ItemJournalLine."DUoM Ratio" := SalesLine."DUoM Ratio";
+        ItemJournalLine."DUoM Second Qty" := -Abs(ProjectedSecondQty);
     end;
 
     /// <summary>
