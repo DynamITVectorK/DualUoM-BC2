@@ -161,6 +161,9 @@ codeunit 50105 "DUoM Doc Transfer Helper"
     begin
         if SourceSecondQty = 0 then
             exit(0);
+        // Prioridad de prorrateo:
+        // 1) Quantity (Base) cuando ambas cantidades base están disponibles.
+        // 2) Quantity documental / Quantity de posting como fallback si Base = 0.
         if SourceQtyBase <> 0 then
             exit(Abs(SourceSecondQty) * Abs(PostingQtyBase) / Abs(SourceQtyBase));
         if SourceQty <> 0 then
@@ -207,14 +210,12 @@ codeunit 50105 "DUoM Doc Transfer Helper"
 
     local procedure HasTrackingAssignment(var ReservEntry: Record "Reservation Entry"): Boolean
     begin
-        if not ReservEntry.FindSet() then
-            exit(false);
+        ReservEntry.SetFilter("Lot No.", '<>%1', '');
+        if not ReservEntry.IsEmpty() then
+            exit(true);
 
-        repeat
-            if (ReservEntry."Lot No." <> '') or (ReservEntry."Serial No." <> '') then
-                exit(true);
-        until ReservEntry.Next() = 0;
-
-        exit(false);
+        ReservEntry.SetRange("Lot No.");
+        ReservEntry.SetFilter("Serial No.", '<>%1', '');
+        exit(not ReservEntry.IsEmpty());
     end;
 }
