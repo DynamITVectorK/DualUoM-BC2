@@ -531,10 +531,11 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     ///
     /// This method explicitly syncs DUoM Ratio and DUoM Second Qty from each functional
     /// Tracking Specification buffer line to all matching positive Reservation Entries
-    /// (filtered by Source Type, Source Subtype, Source ID, Source Ref. No. and Lot No.).
+    /// (Purchase Line or Sales Line source, filtered by Source Type, Source Subtype,
+    /// Source ID, Source Ref. No. and Lot No.).
     ///
     /// No-op if:
-    ///   - Source Type is not Purchase Line
+    ///   - Source Type is neither Purchase Line nor Sales Line
     ///   - DUoM is not active for the item
     ///   - No functional tracking lines exist in the buffer
     ///
@@ -559,8 +560,10 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         SourceSubtype: Integer;
         SourceID: Code[20];
         SourceRefNo: Integer;
+        SourceType: Integer;
     begin
-        if TrackingSpec."Source Type" <> Database::"Purchase Line" then
+        SourceType := TrackingSpec."Source Type";
+        if not (SourceType in [Database::"Purchase Line", Database::"Sales Line"]) then
             exit;
 
         ItemNo := TrackingSpec."Item No.";
@@ -582,7 +585,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         LocalTrackingSpec.Copy(TrackingSpec, true);
         LocalTrackingSpec.Reset();
         LocalTrackingSpec.SetSourceFilter(
-            Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
+            SourceType, SourceSubtype, SourceID, SourceRefNo, true);
 
         if not LocalTrackingSpec.FindSet() then
             exit;
@@ -594,7 +597,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 // See docs/development/coding-standards.md.
                 ReservEntry.Reset();
                 ReservEntry.SetSourceFilter(
-                    Database::"Purchase Line", SourceSubtype, SourceID, SourceRefNo, true);
+                    SourceType, SourceSubtype, SourceID, SourceRefNo, true);
                 ReservEntry.SetRange("Lot No.", LocalTrackingSpec."Lot No.");
                 ReservEntry.SetRange(Positive, true);
                 if ReservEntry.FindSet() then

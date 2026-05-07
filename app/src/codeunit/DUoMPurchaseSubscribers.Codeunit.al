@@ -32,43 +32,8 @@ codeunit 50102 "DUoM Purchase Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Purchase Line", 'OnAfterValidateEvent', 'Quantity', false, false)]
     local procedure OnAfterValidatePurchLineQty(var Rec: Record "Purchase Line"; var xRec: Record "Purchase Line")
-    var
-        DUoMCalcEngine: Codeunit "DUoM Calc Engine";
-        DUoMUoMHelper: Codeunit "DUoM UoM Helper";
-        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
-        SecondUoMCode: Code[10];
-        ConversionMode: Enum "DUoM Conversion Mode";
-        FixedRatio: Decimal;
-        EffectiveRatio: Decimal;
     begin
-        if Rec.Type <> Rec.Type::Item then
-            exit;
-        if Rec."No." = '' then
-            exit;
-        if not DUoMSetupResolver.GetEffectiveSetup(Rec."No.", Rec."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
-            exit;
-        if ConversionMode = ConversionMode::AlwaysVariable then begin
-            // AlwaysVariable: clear any stale auto-computed values; user must enter manually.
-            Rec."DUoM Ratio" := 0;
-            Rec."DUoM Second Qty" := 0;
-            exit;
-        end;
-
-        // For Fixed mode, always use the setup ratio (variant-aware via GetEffectiveSetup).
-        // For Variable mode, use the line's pre-set ratio if available; otherwise the setup default.
-        if ConversionMode = ConversionMode::Fixed then
-            EffectiveRatio := FixedRatio
-        else begin
-            EffectiveRatio := Rec."DUoM Ratio";
-            if EffectiveRatio = 0 then
-                EffectiveRatio := FixedRatio;
-        end;
-        if EffectiveRatio <> 0 then
-            Rec."DUoM Ratio" := EffectiveRatio;
-
-        Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
-            Rec.Quantity, EffectiveRatio, ConversionMode,
-            DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode));
+        RecalculatePurchaseLineDUoM(Rec, false);
     end;
 
     /// <summary>
@@ -103,6 +68,31 @@ codeunit 50102 "DUoM Purchase Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Table, Database::"Purchase Line", 'OnAfterValidateEvent', 'Variant Code', false, false)]
     local procedure OnAfterValidatePurchLineVariantCode(var Rec: Record "Purchase Line"; var xRec: Record "Purchase Line")
+    begin
+        RecalculatePurchaseLineDUoM(Rec, true);
+    end;
+
+    // Publisher: Table "Purchase Line" (39), event OnAfterValidateEvent, field "No.".
+    // Motivo: al cambiar el artículo, DUoM Ratio y DUoM Second Qty deben recalcularse
+    // en entrada de datos para que la línea quede coherente antes del posting.
+    // Firma BC 27 validada: (var Rec: Record "Purchase Line"; var xRec: Record "Purchase Line").
+    [EventSubscriber(ObjectType::Table, Database::"Purchase Line", 'OnAfterValidateEvent', 'No.', false, false)]
+    local procedure OnAfterValidatePurchLineNo(var Rec: Record "Purchase Line"; var xRec: Record "Purchase Line")
+    begin
+        RecalculatePurchaseLineDUoM(Rec, true);
+    end;
+
+    // Publisher: Table "Purchase Line" (39), event OnAfterValidateEvent, field "Unit of Measure Code".
+    // Motivo: cambios de UoM pueden alterar la cantidad efectiva de línea; se recalcula DUoM
+    // para mantener fuente de verdad coherente en la propia línea documental.
+    // Firma BC 27 validada: (var Rec: Record "Purchase Line"; var xRec: Record "Purchase Line").
+    [EventSubscriber(ObjectType::Table, Database::"Purchase Line", 'OnAfterValidateEvent', 'Unit of Measure Code', false, false)]
+    local procedure OnAfterValidatePurchLineUoMCode(var Rec: Record "Purchase Line"; var xRec: Record "Purchase Line")
+    begin
+        RecalculatePurchaseLineDUoM(Rec, true);
+    end;
+
+    local procedure RecalculatePurchaseLineDUoM(var PurchLine: Record "Purchase Line"; ResetCurrentDUoM: Boolean)
     var
         DUoMCalcEngine: Codeunit "DUoM Calc Engine";
         DUoMUoMHelper: Codeunit "DUoM UoM Helper";
@@ -110,26 +100,34 @@ codeunit 50102 "DUoM Purchase Subscribers"
         SecondUoMCode: Code[10];
         ConversionMode: Enum "DUoM Conversion Mode";
         FixedRatio: Decimal;
+        EffectiveRatio: Decimal;
     begin
-        if Rec.Type <> Rec.Type::Item then
+        if PurchLine.Type <> PurchLine.Type::Item then
             exit;
-        if Rec."No." = '' then
+        if PurchLine."No." = '' then
             exit;
+        if ResetCurrentDUoM then begin
+            PurchLine."DUoM Ratio" := 0;
+            PurchLine."DUoM Second Qty" := 0;
+        end;
 
-        // Reset DUoM fields before recomputing for the new variant.
-        Rec."DUoM Ratio" := 0;
-        Rec."DUoM Second Qty" := 0;
-
-        if not DUoMSetupResolver.GetEffectiveSetup(Rec."No.", Rec."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
+        if not DUoMSetupResolver.GetEffectiveSetup(PurchLine."No.", PurchLine."Variant Code", SecondUoMCode, ConversionMode, FixedRatio) then
             exit;
         if ConversionMode = ConversionMode::AlwaysVariable then
             exit;
 
-        if FixedRatio <> 0 then
-            Rec."DUoM Ratio" := FixedRatio;
+        if ConversionMode = ConversionMode::Fixed then
+            EffectiveRatio := FixedRatio
+        else begin
+            EffectiveRatio := PurchLine."DUoM Ratio";
+            if EffectiveRatio = 0 then
+                EffectiveRatio := FixedRatio;
+        end;
 
-        Rec."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
-            Rec.Quantity, FixedRatio, ConversionMode,
-            DUoMUoMHelper.GetRoundingPrecisionByUoMCode(Rec."No.", SecondUoMCode));
+        if EffectiveRatio <> 0 then
+            PurchLine."DUoM Ratio" := EffectiveRatio;
+        PurchLine."DUoM Second Qty" := DUoMCalcEngine.ComputeSecondQtyRounded(
+            PurchLine.Quantity, EffectiveRatio, ConversionMode,
+            DUoMUoMHelper.GetRoundingPrecisionByUoMCode(PurchLine."No.", SecondUoMCode));
     end;
 }
