@@ -242,6 +242,63 @@ y `OnAfterInitValueEntry`) y codeunit 50110 `DUoM Tracking Copy Subscribers`
 
 ---
 
+## Norma: signo técnico en proyección Tracking Specification → IJL split
+
+### Regla obligatoria
+
+`IJLCopyTrackingFromSpec` en `DUoM Tracking Copy Subscribers` (50110) es el único punto
+donde se aplica el signo técnico del movimiento al `DUoM Second Qty` del split IJL.
+
+Los datos de usuario (TrackingSpec, ReservEntry) se almacenan **siempre positivos**.
+El signo correcto (negativo para salidas/ventas, positivo para entradas/compras)
+se determina a partir de `ItemJournalLine."Quantity (Base)"` del split.
+
+```al
+// ✅ CORRECTO — aplicar signo del movimiento al resolver DUoM en el split
+ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+    ItemJournalLine, Abs(TrackingSpecification."DUoM Second Qty"));
+
+// ✅ CORRECTO — helper de signo (equivalente a ApplyItemJnlSign en DocTransferHelper)
+local procedure ApplyMovementSign(IJL: Record "Item Journal Line"; SecondQty: Decimal): Decimal
+begin
+    if SecondQty = 0 then exit(0);
+    if IJL."Quantity (Base)" < 0 then exit(-Abs(SecondQty));
+    if IJL.Quantity < 0 then exit(-Abs(SecondQty));
+    exit(Abs(SecondQty));
+end;
+```
+
+### AlwaysVariable sin ratio real de tracking/lote
+
+Cuando no existe ningún ratio real disponible para el split de lote
+(TrackingSpec.DUoM Ratio = 0, no hay registro en DUoM Lot Ratio, y IJL.DUoM Ratio = 0),
+el `DUoM Second Qty` del split IJL debe quedar a **cero**.
+
+No copiar el total de la línea origen a cada split individual sin poder distribuirlo.
+
+```al
+// ✅ CORRECTO — resetear a 0 cuando no hay ratio disponible para el split
+ItemJournalLine."DUoM Second Qty" := 0;
+
+// ❌ PROHIBIDO — copiar el total de la línea a cada split sin ratio
+// (el IJL heredado tiene DUoM Second Qty = total de la línea, no la parte del lote)
+// No hacer nada ≠ correcto cuando el split IJL hereda el total del padre.
+```
+
+### Patrones prohibidos en IJLCopyTrackingFromSpec
+
+```al
+// ❌ PROHIBIDO — copiar DUoM Second Qty del tracking sin aplicar signo del movimiento
+ItemJournalLine."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
+
+// ❌ PROHIBIDO — ignorar la rama AlwaysVariable sin ratio (no hace nada = hereda el total)
+if ItemJournalLine."DUoM Ratio" <> 0 then
+    ItemJournalLine."DUoM Second Qty" := ...;
+// sin else → el split hereda incorrecto el total de la línea origen
+```
+
+---
+
 ## Anti-patrones prohibidos
 
 Los siguientes patrones **no están permitidos** salvo que estén explícitamente justificados

@@ -8,7 +8,7 @@ GitHub Copilot Coding Agent.
 
 ## Estado vigente (fuente de verdad)
 
-> **Última actualización:** 2026-05-03 (chore: norma global de filtrado estándar de Item Tracking / Reservation — `docs/development/coding-standards.md` creado; `.github/copilot-instructions.md` actualizado con sección BC tracking/reservation rules; `.github/pull_request_template.md` creado; refactor de producción y tests para usar `SetSourceFilter`; comentarios técnicos en casos donde no puede aplicarse.)
+> **Última actualización:** 2026-05-07 (BUG/roll-forward/tracking-sign: proyección DUoM tracking → IJL split corregida — signo técnico del movimiento en `IJLCopyTrackingFromSpec` + reset a 0 para AlwaysVariable sin ratio. Docs actualizados.)
 
 ### Issues completados ✅
 
@@ -50,6 +50,7 @@ GitHub Copilot Coding Agent.
 | posted-item-trk-lines | feat: pageextension 50124 `DUoM Posted Item Trk. Lines` extiende Page 6511 con los campos `DUoM Second Qty` y `DUoM Ratio` persistidos en el ILE. Solo lectura; no recalcula. 2 tests en codeunit 50224 `DUoM Pstd Item Trk. Tests`. |
 | chore/tracking-filter-standard | chore: norma global de filtrado estándar de Item Tracking / Reservation — `docs/development/coding-standards.md`, `.github/copilot-instructions.md`, `.github/pull_request_template.md`; refactor `SetSourceFilter` en producción y tests. |
 | BUG-UX-TDD/validación-temprana-ratio | **fix/feat/TDD**: validación temprana de ratio DUoM por lote en `Item Tracking Lines`. Nueva primera barrera de cierre: `ValidateTrackingSpecBufferEachLine` (50111) — llamada desde `OnQueryClosePage` (50112) ANTES de sync, itera el buffer completo con `IsFunctionalTrackingLine` para omitir líneas vacías/de inserción y llama a `ValidateTrackingSpecLine` en cada línea funcional. 6 tests TDD en nuevo codeunit 50226 `DUoM Purch Lot Ratio Tests` (T-RATIO-01..06). La barrera de posting (50102) se mantiene intacta. Docs 03-technical-architecture.md y object-id-registry.md actualizados. |
+| BUG/roll-forward/tracking-sign | **bug fix**: proyección DUoM desde Tracking/ReservEntry hacia IJL split corregida — `IJLCopyTrackingFromSpec` (50110) aplica signo técnico del movimiento (`ApplyMovementSign`) en los tres caminos de resolución (tracking ratio, lot ratio, IJL ratio) y resetea DUoM Second Qty a 0 cuando no existe ningún ratio disponible (AlwaysVariable sin ratio real). Fallos corregidos: T06 salida-lote signo negativo, T03 sales-tracking signo negativo, T10 AlwaysVariable Second Qty = 0. Docs `coding-standards.md` y `03-technical-architecture.md` actualizados. |
 
 ### Próximo issue pendiente
 

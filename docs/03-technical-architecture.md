@@ -196,10 +196,15 @@ aplican este fallback actualizando el IJL primero y leyendo del IJL al asignar e
 - La **línea origen** mantiene información DUoM como **total agregado**.
 - El **ILE por lote** contiene la segunda cantidad y el ratio propios de ese lote.
 - El IJL (ya dividido por lote por BC) es la fuente inmediata del ILE: `ILE.DUoM Second Qty`
-  **nunca** se calcula desde `ILE.Quantity`. Siempre viene del IJL via `Signed()`.
-- Si el `Tracking Specification` del lote aporta un ratio (via `IJLCopyTrackingFromSpec`),
-  sobrescribe el ratio genérico de la línea. Si no (TrackingSpec.DUoM Ratio = 0), el split
-  IJL hereda el ratio genérico de la línea origen.
+  **nunca** se calcula desde `ILE.Quantity`. Siempre viene del IJL mediante copia pura.
+- `IJLCopyTrackingFromSpec` resuelve los valores DUoM para cada split de lote con la
+  siguiente prioridad: (1) TrackingSpec aporta ratio → usar valores de tracking con signo
+  del movimiento; (2) DUoM Lot Ratio (50102) tiene ratio para el lote → aplicar con signo;
+  (3) IJL padre tiene ratio → proyección proporcional con la cantidad del split y signo;
+  (4) sin ratio disponible (AlwaysVariable sin ratio real) → DUoM Second Qty = 0.
+- El **signo técnico** de `DUoM Second Qty` en el split IJL se aplica en `IJLCopyTrackingFromSpec`
+  según `ItemJournalLine."Quantity (Base)"`: negativo para salidas (ventas), positivo para entradas.
+  Los datos de usuario en tracking/ReservEntry se almacenan siempre positivos.
 - La suma de `DUoM Second Qty` de todos los ILEs de una línea refleja el total DUoM real.
 
 ### Restricción de diseño
