@@ -214,11 +214,14 @@ codeunit 50105 "DUoM Doc Transfer Helper"
         RoundingPrecision: Decimal): Decimal
     var
         DUoMCalcEngine: Codeunit "DUoM Calc Engine";
+        ProportionalSecondQty: Decimal;
     begin
         if PostingAbsQty = 0 then
             exit(0);
-        if SourceSecondAbsQty <> 0 then
-            exit(CalcProportionalSecondQty(SourceAbsQty, SourceSecondAbsQty, PostingAbsQty));
+        if SourceSecondAbsQty <> 0 then begin
+            ProportionalSecondQty := CalcProportionalSecondQty(SourceAbsQty, SourceSecondAbsQty, PostingAbsQty);
+            exit(RoundSecondQty(ProportionalSecondQty, RoundingPrecision));
+        end;
         if ConversionMode = ConversionMode::AlwaysVariable then
             exit(0);
         if RatioToUse = 0 then
@@ -232,6 +235,13 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             exit(0);
         if SourceAbsQty = 0 then
             exit(0);
-        exit(Abs(SourceSecondAbsQty) * Abs(PostingAbsQty) / Abs(SourceAbsQty));
+        exit(SourceSecondAbsQty * PostingAbsQty / SourceAbsQty);
+    end;
+
+    local procedure RoundSecondQty(SecondQty: Decimal; RoundingPrecision: Decimal): Decimal
+    begin
+        if RoundingPrecision <= 0 then
+            exit(Round(SecondQty, 0.00001));
+        exit(Round(SecondQty, RoundingPrecision));
     end;
 }
