@@ -355,8 +355,8 @@ Esta prioridad se aplica en:
 
 ### 5.1 Reservation Entry — propagación DUoM implementada
 
-**Estado:** ✅ Implementado — codeunit 50110 `DUoM Tracking Copy Subscribers` (path Insert)
-                              + codeunit 50111 `DUoM Tracking Coherence Mgt` (path Modify).
+**Estado:** ✅ Implementado — codeunit 50110 `DUoM Tracking Copy Subscribers` (persistencia/rehidratación estándar)
+                              + validaciones/sync documental en codeunit 50111 `DUoM Tracking Coherence Mgt`.
 
 **Descripción:** Los campos `DUoM Second Qty` y `DUoM Ratio` en `Reservation Entry` (337)
 se propagan automáticamente mediante cuatro mecanismos:
@@ -369,11 +369,10 @@ se propagan automáticamente mediante cuatro mecanismos:
    BC usa un segundo nivel de copia interna al insertar (`CreateReservEntry`). Este suscriptor
    propaga los valores DUoM al registro final que se escribe en la base de datos.
 
-3. **ReservEntry existente actualizada desde buffer** (`PersistDUoMToReservEntries` en 50111):
-   En segunda edición o ediciones sucesivas, BC modifica la RE directamente sin llamar
-   `CopyTrackingFromSpec`. `PersistDUoMToReservEntries`, llamado desde `OnQueryClosePage`
-   (50112), itera el buffer y actualiza las RE existentes con `Modify(false)`.
-   Este es el **Modify path** — el bug descrito en el issue queda corregido aquí.
+3. **Cierre estándar sin persistencia manual en OnQueryClosePage**:
+   En segunda edición o ediciones sucesivas, la extensión no ejecuta `Modify(false)` manual
+   sobre `Reservation Entry` desde `OnQueryClosePage` para evitar conflictos de concurrencia.
+   La persistencia DUoM se mantiene por eventos estándar de tracking.
 
 4. **ReservEntry → TrackingSpec (recarga)** (`OnAfterCopyTrackingFromReservEntry` en Table 6500) [50110]:
    Al reabrir Item Tracking Lines, BC reconstruye el buffer `Tracking Specification` desde
@@ -396,8 +395,7 @@ T-REOPEN-01 a T-REOPEN-08 (T-REOPEN-07/08 cubren específicamente el Modify path
 **Referencias:**
 - `app/src/codeunit/DUoMTrackingCopySubscribers.Codeunit.al` — suscriptores completos con
   firmas verificadas BC 27 / runtime 15
-- `app/src/codeunit/DUoMTrackingCoherenceMgt.Codeunit.al` — `PersistDUoMToReservEntries`
-  (Modify path)
+- `app/src/codeunit/DUoMTrackingCoherenceMgt.Codeunit.al` — validaciones/sync de cierre
 - `docs/issues/issue-190-fix-duom-ratio-reserventry-copy-tracking.md` — decisión inicial
 - `docs/issues/issue-P3-purch-tracking-persist-regression.md` — implementación T-PERSIST-01
 
@@ -424,8 +422,9 @@ Cerrar con OK (primera edición — Insert path):
   Tracking Specification → Reservation Entry (persiste DUoM por lote)
     vía OnAfterCopyTrackingFromTrackingSpec + OnAfterCopyTrackingFromReservEntry (50110)
 
-Cerrar con OK (segunda edición o sucesivas — Modify path):
-  PersistDUoMToReservEntries (50111) actualiza RE existentes desde buffer
+Cerrar con OK (segunda edición o sucesivas):
+  Validación/sync agregado en OnQueryClosePage (50112/50125)
+  Persistencia DUoM por eventos estándar de tracking
   Reservation Entry → Purchase Line (agrega: SUM de lotes → ratio ponderado)
 ```
 
