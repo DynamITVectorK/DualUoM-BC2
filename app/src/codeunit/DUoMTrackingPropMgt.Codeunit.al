@@ -121,7 +121,7 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         TrackingSpecification: Record "Tracking Specification";
         var ReservationEntry: Record "Reservation Entry")
     begin
-        ReservationEntry."DUoM Ratio" := Abs(TrackingSpecification."DUoM Ratio");
+        ReservationEntry."DUoM Ratio" := NormalizeRatioForReservEntry(TrackingSpecification."DUoM Ratio");
         ReservationEntry."DUoM Second Qty" := NormalizeSecondQtyForReservEntry(
             TrackingSpecification, ReservationEntry);
     end;
@@ -160,11 +160,24 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         exit(Abs(SecondQty));
     end;
 
+    /// <summary>
+    /// Normaliza la cantidad secundaria para persistencia en Reservation Entry.
+    ///
+    /// Regla:
+    ///   - La magnitud del dato introducido en Tracking Specification se trata como positiva.
+    ///   - El signo final se obtiene con Create Reserv. Entry.SignFactor(...), que sigue
+    ///     la convención estándar BC según el origen (compra, venta, devolución, etc.).
+    /// </summary>
     procedure NormalizeSecondQtyForReservEntry(
         TrackingSpecification: Record "Tracking Specification";
         ReservationEntry: Record "Reservation Entry"): Decimal
     begin
         exit(GetReservEntrySignFactor(ReservationEntry) * Abs(TrackingSpecification."DUoM Second Qty"));
+    end;
+
+    procedure NormalizeRatioForReservEntry(Ratio: Decimal): Decimal
+    begin
+        exit(Abs(Ratio));
     end;
 
     procedure SumTrackingDUoMSecondQty(var TrackingSpecification: Record "Tracking Specification"): Decimal
@@ -185,6 +198,14 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         exit(TotalSecondQty);
     end;
 
+    /// <summary>
+    /// Obtiene el SignFactor estándar de BC para Reservation Entry.
+    ///
+    /// Delegación:
+    ///   - Usa Create Reserv. Entry.SignFactor(...) cuando el origen documental ya está resuelto.
+    ///   - Si Source Type = 0, el registro aún actúa como buffer sin origen documental y se
+    ///     asume signo positivo por defecto porque BC todavía no puede resolver SignFactor.
+    /// </summary>
     local procedure GetReservEntrySignFactor(ReservationEntry: Record "Reservation Entry"): Integer
     var
         CreateReservEntry: Codeunit "Create Reserv. Entry";

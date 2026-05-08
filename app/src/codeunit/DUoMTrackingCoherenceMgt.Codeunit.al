@@ -606,7 +606,8 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                     repeat
                         NormalizedSecondQty := DUoMTrackingPropMgt.NormalizeSecondQtyForReservEntry(
                             LocalTrackingSpec, ReservEntry);
-                        if (ReservEntry."DUoM Ratio" <> Abs(LocalTrackingSpec."DUoM Ratio")) or
+                        if (ReservEntry."DUoM Ratio" <> DUoMTrackingPropMgt.NormalizeRatioForReservEntry(
+                            LocalTrackingSpec."DUoM Ratio")) or
                            (ReservEntry."DUoM Second Qty" <> NormalizedSecondQty)
                         then begin
                             DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(LocalTrackingSpec, ReservEntry);
