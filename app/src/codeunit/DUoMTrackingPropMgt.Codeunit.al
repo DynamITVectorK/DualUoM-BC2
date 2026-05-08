@@ -130,6 +130,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         ReservationEntry: Record "Reservation Entry";
         var TrackingSpecification: Record "Tracking Specification")
     begin
+        // Normalización defensiva: Reservation Entry debe persistir el ratio en positivo,
+        // pero la recarga del buffer corrige cualquier valor legado o intermedio con signo.
         TrackingSpecification."DUoM Ratio" := Abs(ReservationEntry."DUoM Ratio");
         TrackingSpecification."DUoM Second Qty" := NormalizeSecondQtyForPage(
             ReservationEntry."DUoM Second Qty");
@@ -139,6 +141,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         SourceTrackingSpec: Record "Tracking Specification";
         var DestTrackingSpec: Record "Tracking Specification")
     begin
+        // Normalización defensiva: el buffer visible debe permanecer siempre en positivo,
+        // incluso si algún flujo interno aporta un origen con signo técnico o dato legado.
         DestTrackingSpec."DUoM Ratio" := Abs(SourceTrackingSpec."DUoM Ratio");
         DestTrackingSpec."DUoM Second Qty" := NormalizeSecondQtyForPage(
             SourceTrackingSpec."DUoM Second Qty");
