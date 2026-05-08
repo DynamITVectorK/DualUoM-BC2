@@ -3,8 +3,9 @@
 /// and their associated item tracking (Reservation Entry) data.
 ///
 /// Responsibilities:
-///   - Normalize DUoM Ratio from DUoM Second Qty in Variable/AlwaysVariable modes
-///     (NormalizeTrackingDUoMSecondQty) — called on DUoM Second Qty.OnValidate.
+///   - Normalize DUoM Ratio from DUoM Second Qty/Quantity (Base) in Variable/AlwaysVariable modes
+///     (NormalizeTrackingDUoMSecondQty / NormalizeTrackingQuantityBase) — called on
+///     DUoM Second Qty.OnValidate and Quantity (Base).OnAfterValidate.
 ///   - Validate each functional line in the Tracking Specification buffer for per-lot
 ///     ratio coherence (ValidateTrackingSpecBufferEachLine) — called from OnQueryClosePage
 ///     BEFORE SyncPurchLineFromTrackingBuffer so that inconsistent per-lot ratios are
@@ -240,7 +241,48 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         if TrackingSpec."DUoM Second Qty" = 0 then
             exit;
         // Variable / AlwaysVariable: derive ratio from the real secondary quantity.
-        TrackingSpec."DUoM Ratio" := TrackingSpec."DUoM Second Qty" / Abs(TrackingSpec."Quantity (Base)");
+        TrackingSpec."DUoM Ratio" := GetExpectedRatio(
+            Abs(TrackingSpec."Quantity (Base)"),
+            TrackingSpec."DUoM Second Qty");
+    end;
+
+    /// <summary>
+    /// Normalizes DUoM Ratio on a Tracking Specification line when Quantity (Base) changes.
+    ///
+    /// In Variable and AlwaysVariable modes: recalculates DUoM Ratio from current
+    /// secondary quantity using the formula:
+    ///   DUoM Ratio := DUoM Second Qty / Abs(Quantity (Base))
+    ///
+    /// Does nothing in Fixed mode (ratio is fixed and cannot be recalculated from qty).
+    /// Does nothing if Quantity (Base) = 0 or DUoM Second Qty = 0 (nothing to derive from).
+    /// Does nothing if DUoM is not active for the item.
+    ///
+    /// Called from: DUoM Item Tracking Lines pageextension (50112) on
+    ///              Quantity (Base).OnAfterValidate, before ValidateTrackingSpecLine.
+    /// </summary>
+    procedure NormalizeTrackingQuantityBase(var TrackingSpec: Record "Tracking Specification")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+    begin
+        if TrackingSpec."Item No." = '' then
+            exit;
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 TrackingSpec."Item No.", TrackingSpec."Variant Code",
+                 SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+        if ConversionMode = ConversionMode::Fixed then
+            exit;
+        if TrackingSpec."Quantity (Base)" = 0 then
+            exit;
+        if TrackingSpec."DUoM Second Qty" = 0 then
+            exit;
+
+        TrackingSpec."DUoM Ratio" := GetExpectedRatio(
+            Abs(TrackingSpec."Quantity (Base)"),
+            TrackingSpec."DUoM Second Qty");
     end;
 
     /// <summary>

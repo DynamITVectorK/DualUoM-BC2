@@ -26,6 +26,15 @@
 ///               el total de la Purchase Line es bloqueado por
 ///               ValidateTrackingSpecBufferForPurchLine con error de totales DUoM.
 ///
+///   T-RATIO-07: NormalizeTrackingQuantityBase recalcula DUoM Ratio en modo Variable
+///               al cambiar Quantity (Base) con DUoM Second Qty informado.
+///
+///   T-RATIO-08: NormalizeTrackingQuantityBase recalcula DUoM Ratio en modo
+///               AlwaysVariable al cambiar Quantity (Base).
+///
+///   T-RATIO-09: En modo Fixed, NormalizeTrackingQuantityBase no deriva el ratio
+///               y ValidateTrackingSpecLine mantiene la validación estricta.
+///
 /// Arquitectura de validación de cierre (nueva barrera T-RATIO-02):
 ///   OnQueryClosePage (DUoM Item Tracking Lines, 50112)
 ///     → ValidateTrackingSpecBufferEachLine (DUoM Tracking Coherence Mgt, 50111)  ← NUEVO
@@ -96,6 +105,110 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
         LibraryAssert.AreNearlyEqual(
             ExpectedRatio, TrackingSpec."DUoM Ratio", 0.00001,
             'T-RATIO-01: DUoM Ratio debe ser 7/3 ≈ 2,3333 tras NormalizeTrackingDUoMSecondQty.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T-RATIO-07 — NormalizeTrackingQuantityBase recalcula DUoM Ratio (Variable)
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure PurchLotTracking_QuantityBaseValidate_Variable_RecalculatesDUoMRatio()
+    var
+        Item: Record Item;
+        TrackingSpec: Record "Tracking Specification" temporary;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+    begin
+        // [GIVEN] Artículo DUoM Variable con ratio previo obsoleto
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Lot No." := 'VB-BASE';
+        TrackingSpec."Quantity (Base)" := 5;
+        TrackingSpec."DUoM Second Qty" := 4;
+        TrackingSpec."DUoM Ratio" := 0.75;
+        TrackingSpec.Insert();
+
+        // [WHEN] Se normaliza tras cambiar Quantity (Base)
+        DUoMCoherenceMgt.NormalizeTrackingQuantityBase(TrackingSpec);
+
+        // [THEN] Ratio = 4 / 5 = 0.8
+        LibraryAssert.AreNearlyEqual(
+            0.8, TrackingSpec."DUoM Ratio", 0.00001,
+            'T-RATIO-07: DUoM Ratio debe recalcularse a 0.8 en modo Variable.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T-RATIO-08 — NormalizeTrackingQuantityBase recalcula DUoM Ratio (AlwaysVariable)
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure PurchLotTracking_QuantityBaseValidate_AlwaysVariable_RecalculatesDUoMRatio()
+    var
+        Item: Record Item;
+        TrackingSpec: Record "Tracking Specification" temporary;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+    begin
+        // [GIVEN] Artículo DUoM AlwaysVariable con ratio previo obsoleto
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::AlwaysVariable, 0);
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Lot No." := 'AV-BASE';
+        TrackingSpec."Quantity (Base)" := 5;
+        TrackingSpec."DUoM Second Qty" := 4;
+        TrackingSpec."DUoM Ratio" := 0.75;
+        TrackingSpec.Insert();
+
+        // [WHEN] Se normaliza tras cambiar Quantity (Base)
+        DUoMCoherenceMgt.NormalizeTrackingQuantityBase(TrackingSpec);
+
+        // [THEN] Ratio = 4 / 5 = 0.8
+        LibraryAssert.AreNearlyEqual(
+            0.8, TrackingSpec."DUoM Ratio", 0.00001,
+            'T-RATIO-08: DUoM Ratio debe recalcularse a 0.8 en modo AlwaysVariable.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T-RATIO-09 — Fixed no deriva ratio desde DUoM Second Qty
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure PurchLotTracking_QuantityBaseValidate_Fixed_KeepsFixedRatioAndStrictValidation()
+    var
+        Item: Record Item;
+        TrackingSpec: Record "Tracking Specification" temporary;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+    begin
+        // [GIVEN] Artículo DUoM Fixed (ratio fijo = 1.5)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1.5);
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Lot No." := 'FX-BASE';
+        TrackingSpec."Quantity (Base)" := 5;
+        TrackingSpec."DUoM Second Qty" := 4;
+        TrackingSpec."DUoM Ratio" := 1.5;
+        TrackingSpec.Insert();
+
+        // [WHEN] Se normaliza tras cambiar Quantity (Base)
+        DUoMCoherenceMgt.NormalizeTrackingQuantityBase(TrackingSpec);
+
+        // [THEN] El ratio se mantiene fijo y la validación detecta incoherencia matemática
+        LibraryAssert.AreNearlyEqual(
+            1.5, TrackingSpec."DUoM Ratio", 0.00001,
+            'T-RATIO-09: En Fixed, NormalizeTrackingQuantityBase no debe cambiar DUoM Ratio.');
+        asserterror DUoMCoherenceMgt.ValidateTrackingSpecLine(TrackingSpec);
+        LibraryAssert.ExpectedError('inconsistent DUoM ratio');
     end;
 
     // -------------------------------------------------------------------------

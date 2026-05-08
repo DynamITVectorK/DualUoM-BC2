@@ -33,6 +33,17 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 {
     layout
     {
+        modify("Quantity (Base)")
+        {
+            trigger OnAfterValidate()
+            var
+                DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+            begin
+                DUoMCoherenceMgt.NormalizeTrackingQuantityBase(Rec);
+                DUoMCoherenceMgt.ValidateTrackingSpecLine(Rec);
+                CurrPage.Update(false);
+            end;
+        }
         addafter("Quantity (Base)")
         {
             field("DUoM Ratio"; Rec."DUoM Ratio")
