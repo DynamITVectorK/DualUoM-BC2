@@ -14,6 +14,13 @@
 ///   actual measurement rather than blocking with a coherence error. Fixed mode keeps
 ///   strict validation (ratio unchanged, coherence error if secondary qty is inconsistent).
 ///
+/// Quantity (Base).OnAfterValidate:
+///   Calls NormalizeTrackingQuantityBase (recalculates DUoM Ratio when both Qty Base and
+///   DUoM Second Qty are non-zero), then calls ValidateTrackingSpecLineForFieldEdit.
+///   The light-weight field-edit validation does NOT raise an error when DUoM Second Qty
+///   is still zero — that is a valid intermediate state during editing. Strict validation
+///   (including AlwaysVariable missing-ratio rule) runs only at close and posting.
+///
 /// OnValidate handlers on both DUoM fields delegate to DUoM Tracking Coherence Mgt (50111)
 /// for immediate UI feedback on ratio coherence and mode-specific rules. The server-side
 /// validation guard (pre-posting) is in DUoM Purchase Subscribers (50102).
@@ -40,7 +47,7 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
                 DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
             begin
                 DUoMCoherenceMgt.NormalizeTrackingQuantityBase(Rec);
-                DUoMCoherenceMgt.ValidateTrackingSpecLine(Rec);
+                DUoMCoherenceMgt.ValidateTrackingSpecLineForFieldEdit(Rec);
                 CurrPage.Update(false);
             end;
         }
