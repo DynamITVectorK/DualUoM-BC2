@@ -834,7 +834,8 @@ codeunit 50218 "DUoM Item Tracking Tests"
         DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
         LibraryAssert: Codeunit "Library Assert";
     begin
-        // [GIVEN] Tracking Specification con valores DUoM visibles/positivos
+        // [GIVEN] Tracking Specification con valores DUoM negativos para probar
+        //         que la persistencia normaliza magnitud y aplica el signo estándar.
         TrackingSpec.Init();
         TrackingSpec."DUoM Ratio" := -2.5;
         TrackingSpec."DUoM Second Qty" := -10;

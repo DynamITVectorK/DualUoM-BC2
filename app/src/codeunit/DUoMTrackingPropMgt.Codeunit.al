@@ -22,6 +22,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         ReservEntry2: Record "Reservation Entry";
         var IdenticalArray: array[2] of Boolean)
     begin
+        // BC reserva el índice 2 para que extensiones comparen sus campos adicionales
+        // sin alterar la semántica estándar del índice 1.
         IdenticalArray[2] := AreReservEntriesDUoMIdentical(ReservEntry1, ReservEntry2);
     end;
 
@@ -162,9 +164,6 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         TrackingSpecification: Record "Tracking Specification";
         ReservationEntry: Record "Reservation Entry"): Decimal
     begin
-        if TrackingSpecification."DUoM Second Qty" = 0 then
-            exit(0);
-
         exit(GetReservEntrySignFactor(ReservationEntry) * Abs(TrackingSpecification."DUoM Second Qty"));
     end;
 
@@ -190,6 +189,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
     var
         CreateReservEntry: Codeunit "Create Reserv. Entry";
     begin
+        // Source Type = 0 implica un buffer/intercambio sin origen documental resuelto.
+        // En ese caso no existe SignFactor estándar disponible y se asume signo positivo.
         if ReservationEntry."Source Type" = 0 then
             exit(1);
 
