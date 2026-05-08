@@ -95,7 +95,7 @@ already covers the need:
 | `DUoM Pstd Sales Inv Subform` | 50108 | `Posted Sales Invoice Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de factura de venta registrada (solo lectura) |
 | `DUoM Pstd Sales CrM Subform` | 50109 | `Posted Sales Cr. Memo Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de abono de venta registrado (solo lectura) |
 | `DUoM Item UoM Subform` | 50110 | `Item Units of Measure` | Añade `Qty. Rounding Precision` al repeater; editable solo si no existen ILE ni Warehouse Entry para esa UdM |
-| `DUoM Item Tracking Lines` | 50112 | `Item Tracking Lines` | Muestra DUoM Ratio y DUoM Second Qty en el repeater de seguimiento de lotes. `DUoM Second Qty.OnValidate`: llama a `NormalizeTrackingDUoMSecondQty` (recalcula DUoM Ratio en modos Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLine` para feedback inmediato. `DUoM Ratio.OnValidate`: llama directamente a `ValidateTrackingSpecLine`. `OnQueryClosePage` (OK/LookupOK): delega en `DUoM Tracking Prop. Mgt` (50125), que ejecuta validación temprana y sincronización del agregado documental sin modificar manualmente `Reservation Entry` durante el cierre. La cancelación no queda bloqueada. |
+| `DUoM Item Tracking Lines` | 50112 | `Item Tracking Lines` | Muestra DUoM Ratio y DUoM Second Qty en el repeater de seguimiento de lotes. `DUoM Second Qty.OnValidate`: llama a `NormalizeTrackingDUoMSecondQty` (recalcula DUoM Ratio en modos Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLine` para feedback inmediato. `DUoM Ratio.OnValidate`: llama directamente a `ValidateTrackingSpecLine`. `OnQueryClosePage` (OK/LookupOK): delega en `DUoM Tracking Prop. Mgt` (50125), que ejecuta validación temprana y sincronización del agregado documental sin modificar manualmente `Reservation Entry` durante el cierre; la persistencia DUoM viaja por eventos estándar (`OnAfterMoveFields`, `OnCreateReservEntryExtraFields`, `OnAfterCopyTrackingFromTrackingSpec` y `OnAfterCopyTrackingFromReservEntry`). La cancelación no queda bloqueada. |
 
 ### Codeunits
 
@@ -316,7 +316,12 @@ Usuario modifica DUoM Ratio / DUoM Second Qty en buffer TrackingSpec
    2. SyncPurchLineFromTrackingBuffer     ← PurchLine = SUM del buffer
    3. ValidateTrackingSpecBufferForPurchLine ← sanity check agregado
    4. Cierre estándar BC de Item Tracking Lines
-      + subscribers DUoM de tracking para persistencia/rehidratación
+      + persistencia DUoM por subscribers estándar:
+        - Page "Item Tracking Lines"::OnAfterMoveFields (50125)
+        - Codeunit "Create Reserv. Entry"::OnCreateReservEntryExtraFields (50125)
+        - Table "Reservation Entry"::OnAfterCopyTrackingFromTrackingSpec / OnAfterCopyTrackingFromReservEntry (50110)
+      + rehidratación por:
+        - Codeunit "Item Tracking Doc. Management"::OnAfterFillTrackingSpecBufferFromReservEntry (50125)
 ```
 
 ### Flujo de recarga al reabrir la página

@@ -372,7 +372,9 @@ se propagan automáticamente mediante cuatro mecanismos:
 3. **Cierre estándar sin persistencia manual en OnQueryClosePage**:
    En segunda edición o ediciones sucesivas, la extensión no ejecuta `Modify(false)` manual
    sobre `Reservation Entry` desde `OnQueryClosePage` para evitar conflictos de concurrencia.
-   La persistencia DUoM se mantiene por eventos estándar de tracking.
+   La persistencia DUoM se mantiene por eventos estándar de tracking:
+   `OnAfterMoveFields`, `OnCreateReservEntryExtraFields`,
+   `OnAfterCopyTrackingFromTrackingSpec` y `OnAfterCopyTrackingFromReservEntry`.
 
 4. **ReservEntry → TrackingSpec (recarga)** (`OnAfterCopyTrackingFromReservEntry` en Table 6500) [50110]:
    Al reabrir Item Tracking Lines, BC reconstruye el buffer `Tracking Specification` desde

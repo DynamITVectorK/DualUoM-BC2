@@ -529,6 +529,9 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     ///
     /// DUoM persistence in normal Item Tracking Lines flow must rely on standard tracking
     /// events (OnAfterMoveFields / CopyTrackingFrom* subscribers).
+    ///
+    /// Allowed use: controlled maintenance/recovery routines outside page close, where a
+    /// process must realign existing Reservation Entry DUoM values from a tracking buffer.
     /// </summary>
     procedure PersistDUoMToReservEntries(var TrackingSpec: Record "Tracking Specification")
     var
