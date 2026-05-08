@@ -18,6 +18,11 @@
 ///   T13 — Variable + ratio de lote existe → ratio de lote gana sobre Purchase Line
 ///   T14 — Variable + sin ratio de lote + ratio manual en tracking → no sobrescribir
 ///   T15 — Múltiples lotes sin ratio → cada lote recibe fallback de la misma Purchase Line
+///   T16 — Comparación DUoM entre Reservation Entries detecta cambios funcionales
+///   T17 — TrackingSpec → Reservation Entry aplica signo estándar para ventas
+///   T18 — Reservation Entry → TrackingSpec rehidrata valores positivos para la página
+///   T19 — TrackingSpec → TrackingSpec preserva los campos DUoM
+///   T20 — La suma funcional de tracking ignora líneas vacías/de inserción
 ///
 /// Arquitectura de tests:
 ///   T01–T04, T07–T09: tests unitarios sobre buffers in-memory (sin Insert).
@@ -29,6 +34,8 @@
 ///   T12–T15:          tests unitarios del fallback Purchase Line (bugfix). Requieren
 ///                     Purchase Line real en BD para que PurchLine.Get() tenga éxito.
 ///                     Sin Insert de Tracking Specification (buffer in-memory + fuente real).
+///   T16–T20:          tests unitarios de la capa `DUoM Tracking Prop. Mgt` (50125)
+///                     para comparación DUoM, normalización de signo y suma funcional.
 /// </summary>
 codeunit 50218 "DUoM Item Tracking Tests"
 {
@@ -783,5 +790,163 @@ codeunit 50218 "DUoM Item Tracking Tests"
             'T15: LOTE-B — DUoM Ratio debe ser el fallback de Purchase Line (0.8).');
         LibraryAssert.AreNearlyEqual(3.2, TrackingSpecB."DUoM Second Qty", 0.001,
             'T15: LOTE-B — DUoM Second Qty debe ser 4 × 0.8 = 3.2.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T16 — Comparación DUoM entre Reservation Entries
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingPropMgt_ReservEntriesDUoMIdentical_DetectsChanges()
+    var
+        ReservEntry1: Record "Reservation Entry";
+        ReservEntry2: Record "Reservation Entry";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Dos Reservation Entries con DUoM idéntico
+        ReservEntry1.Init();
+        ReservEntry1."DUoM Ratio" := 2.5;
+        ReservEntry1."DUoM Second Qty" := 10;
+        ReservEntry2 := ReservEntry1;
+
+        // [THEN] La comparación DUoM devuelve true
+        LibraryAssert.IsTrue(
+            DUoMTrackingPropMgt.AreReservEntriesDUoMIdentical(ReservEntry1, ReservEntry2),
+            'T16: Dos Reservation Entries con el mismo bloque DUoM deben ser idénticas.');
+
+        // [WHEN] Cambia solo DUoM Second Qty
+        ReservEntry2."DUoM Second Qty" := 11;
+
+        // [THEN] BC debe considerar la línea cambiada
+        LibraryAssert.IsFalse(
+            DUoMTrackingPropMgt.AreReservEntriesDUoMIdentical(ReservEntry1, ReservEntry2),
+            'T16: Un cambio solo en DUoM Second Qty debe romper la igualdad.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T17 — TrackingSpec → Reservation Entry aplica signo estándar para ventas
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingPropMgt_CopyTrackingSpecToReservEntry_SalesGetsNegativeSign()
+    var
+        TrackingSpec: Record "Tracking Specification";
+        ReservEntry: Record "Reservation Entry";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Tracking Specification con valores DUoM negativos de forma deliberada
+        //         (no representan datos reales de página). Se usan para probar que la
+        //         persistencia normaliza magnitud y aplica el signo estándar.
+        TrackingSpec.Init();
+        TrackingSpec."DUoM Ratio" := -2.5;
+        TrackingSpec."DUoM Second Qty" := -10;
+
+        // [GIVEN] Reservation Entry de un Sales Order (demanda = signo negativo)
+        ReservEntry.Init();
+        ReservEntry.SetSource(Database::"Sales Line", 1, 'SO-T17', 10000, '', 0);
+
+        // [WHEN] La capa de propagación persiste DUoM en Reservation Entry
+        DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(TrackingSpec, ReservEntry);
+
+        // [THEN] DUoM Ratio se persiste positivo
+        LibraryAssert.AreNearlyEqual(
+            2.5, ReservEntry."DUoM Ratio", 0.001,
+            'T17: DUoM Ratio debe persistirse siempre en positivo.');
+
+        // [THEN] DUoM Second Qty se persiste con signo de venta
+        LibraryAssert.AreNearlyEqual(
+            -10, ReservEntry."DUoM Second Qty", 0.001,
+            'T17: Sales Line debe persistir DUoM Second Qty con signo negativo.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T18 — Reservation Entry → TrackingSpec rehidrata valores positivos para la página
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingPropMgt_CopyReservEntryToTrackingSpec_PageShowsPositiveValues()
+    var
+        ReservEntry: Record "Reservation Entry";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Reservation Entry persistida con signo técnico negativo
+        ReservEntry.Init();
+        ReservEntry."DUoM Ratio" := -0.6;
+        ReservEntry."DUoM Second Qty" := -6;
+
+        // [WHEN] Se rehidrata el buffer Tracking Specification
+        DUoMTrackingPropMgt.CopyReservEntryToTrackingSpec(ReservEntry, TrackingSpec);
+
+        // [THEN] La página debe mostrar valores positivos
+        LibraryAssert.AreNearlyEqual(
+            0.6, TrackingSpec."DUoM Ratio", 0.001,
+            'T18: DUoM Ratio debe mostrarse en positivo al reabrir la página.');
+        LibraryAssert.AreNearlyEqual(
+            6, TrackingSpec."DUoM Second Qty", 0.001,
+            'T18: DUoM Second Qty debe mostrarse en positivo al reabrir la página.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T19 — TrackingSpec → TrackingSpec preserva los campos DUoM
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingPropMgt_CopyTrackingSpecToTrackingSpec_PreservesDUoM()
+    var
+        SourceTrackingSpec: Record "Tracking Specification";
+        DestTrackingSpec: Record "Tracking Specification";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Un buffer origen con DUoM informado
+        SourceTrackingSpec.Init();
+        SourceTrackingSpec."DUoM Ratio" := 3;
+        SourceTrackingSpec."DUoM Second Qty" := 9;
+
+        // [WHEN] BC copia Tracking Specification internamente
+        DUoMTrackingPropMgt.CopyTrackingSpecToTrackingSpec(SourceTrackingSpec, DestTrackingSpec);
+
+        // [THEN] El bloque DUoM no se pierde
+        LibraryAssert.AreNearlyEqual(
+            3, DestTrackingSpec."DUoM Ratio", 0.001,
+            'T19: DUoM Ratio debe copiarse entre buffers de tracking.');
+        LibraryAssert.AreNearlyEqual(
+            9, DestTrackingSpec."DUoM Second Qty", 0.001,
+            'T19: DUoM Second Qty debe copiarse entre buffers de tracking.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T20 — La suma funcional ignora líneas vacías/de inserción
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure TrackingPropMgt_SumTrackingDUoMSecondQty_IgnoresBlankLines()
+    var
+        TrackingSpec: Record "Tracking Specification" temporary;
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+        TotalSecondQty: Decimal;
+    begin
+        // [GIVEN] Una línea vacía/de inserción
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec.Insert();
+
+        // [GIVEN] Una línea funcional con DUoM real
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 2;
+        TrackingSpec."Lot No." := 'LOT-T20';
+        TrackingSpec."Quantity (Base)" := 4;
+        TrackingSpec."DUoM Ratio" := 2;
+        TrackingSpec."DUoM Second Qty" := 8;
+        TrackingSpec.Insert();
+
+        // [WHEN] Se suma el DUoM funcional del buffer
+        TrackingSpec.Reset();
+        TotalSecondQty := DUoMTrackingPropMgt.SumTrackingDUoMSecondQty(TrackingSpec);
+
+        // [THEN] La línea vacía no debe contar
+        LibraryAssert.AreNearlyEqual(
+            8, TotalSecondQty, 0.001,
+            'T20: La suma funcional debe ignorar la línea vacía de inserción.');
     end;
 }

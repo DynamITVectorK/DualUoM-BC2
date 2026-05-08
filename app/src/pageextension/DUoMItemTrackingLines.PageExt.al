@@ -100,28 +100,13 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 
     trigger OnQueryClosePage(CloseAction: Action): Boolean
     var
-        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
     begin
         // Only validate on acceptance (OK / LookupOK). Cancel and other close
         // actions must never be blocked by DUoM aggregate validation.
         if not (CloseAction in [Action::OK, Action::LookupOK]) then
             exit(true);
-        // Validate per-lot ratio coherence BEFORE syncing. This is the early barrier
-        // that prevents inconsistent DUoM ratios from being persisted to Reservation
-        // Entry. Empty/insertion lines are skipped automatically.
-        DUoMCoherenceMgt.ValidateTrackingSpecBufferEachLine(Rec);
-        // Sync the source Purchase Line with the aggregate DUoM totals from tracking.
-        // This makes the Purchase Line the aggregate summary of what was actually received.
-        // Must run before ValidateTrackingSpecBufferForPurchLine so the comparison is
-        // against the freshly-synced value (which always matches the tracking sum).
-        DUoMCoherenceMgt.SyncPurchLineFromTrackingBuffer(Rec);
-        DUoMCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(Rec);
-        // Persist DUoM fields to existing Reservation Entries (Modify path).
-        // When a Reservation Entry already exists for a lot (second or subsequent edit),
-        // BC modifies it directly without calling CopyTrackingFromSpec, so
-        // OnAfterCopyTrackingFromTrackingSpec does not fire. This explicit sync ensures
-        // that DUoM Ratio and DUoM Second Qty from the buffer reach the existing RE.
-        DUoMCoherenceMgt.PersistDUoMToReservEntries(Rec);
+        DUoMTrackingPropMgt.ValidateTrackingBeforeClose(Rec);
         exit(true);
     end;
 
