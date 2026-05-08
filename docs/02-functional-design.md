@@ -120,6 +120,14 @@ de la infraestructura estándar de trazabilidad:
 - **Flujo de contabilización:** BC crea un ILE por lote; en `OnAfterInitItemLedgEntry`
   el `ItemJournalLine` tiene `Lot No.` y `Quantity` específicos del lote.
 
+**Regla operativa de reapertura (issue tracking-hardening):**
+
+- En la página, `Tracking Specification` actúa como buffer temporal y los valores DUoM
+  se muestran en positivo.
+- Mientras el documento siga vivo, `Reservation Entry` es la fuente de verdad per-lote.
+- Al reabrir `Item Tracking Lines`, los valores DUoM del lote se reconstruyen desde
+  `Reservation Entry`; no se recalculan desde la línea agregada de compra/venta.
+
 El único caso donde `Lot No.` **sí** es campo directo es `Item Journal Line` (tabla 83).
 
 ### Regla de diseño: línea origen como agregado — modelo 1:N (Issue 20, refactorizado Issue 21)

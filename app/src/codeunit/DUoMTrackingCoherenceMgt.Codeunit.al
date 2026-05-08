@@ -550,6 +550,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     procedure PersistDUoMToReservEntries(var TrackingSpec: Record "Tracking Specification")
     var
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
         LocalTrackingSpec: Record "Tracking Specification" temporary;
         ReservEntry: Record "Reservation Entry";
         SecondUoMCode: Code[10];
@@ -602,11 +603,11 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 ReservEntry.SetRange(Positive, true);
                 if ReservEntry.FindSet() then
                     repeat
-                        if (ReservEntry."DUoM Ratio" <> LocalTrackingSpec."DUoM Ratio") or
-                           (ReservEntry."DUoM Second Qty" <> LocalTrackingSpec."DUoM Second Qty")
+                        if (ReservEntry."DUoM Ratio" <> Abs(LocalTrackingSpec."DUoM Ratio")) or
+                           (ReservEntry."DUoM Second Qty" <> DUoMTrackingPropMgt.NormalizeSecondQtyForReservEntry(
+                               LocalTrackingSpec, ReservEntry))
                         then begin
-                            ReservEntry."DUoM Ratio" := LocalTrackingSpec."DUoM Ratio";
-                            ReservEntry."DUoM Second Qty" := LocalTrackingSpec."DUoM Second Qty";
+                            DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(LocalTrackingSpec, ReservEntry);
                             ReservEntry.Modify(false);
                         end;
                     until ReservEntry.Next() = 0;
@@ -677,14 +678,10 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// aggregate validation to avoid false-positive DUoM coherence errors.
     /// </summary>
     local procedure IsFunctionalTrackingLine(TrackingSpec: Record "Tracking Specification"): Boolean
+    var
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
     begin
-        exit(
-            (TrackingSpec."Lot No." <> '') or
-            (TrackingSpec."Serial No." <> '') or
-            (TrackingSpec."Package No." <> '') or
-            (TrackingSpec."Quantity (Base)" <> 0) or
-            (TrackingSpec."DUoM Second Qty" <> 0) or
-            (TrackingSpec."DUoM Ratio" <> 0));
+        exit(DUoMTrackingPropMgt.IsFunctionalTrackingLine(TrackingSpec));
     end;
 
     var

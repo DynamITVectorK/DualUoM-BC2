@@ -84,6 +84,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50109 | DUoM Tracking Subscribers           | app/src/codeunit/DUoMTrackingSubscribers.Codeunit.al     |
 | 50110 | DUoM Tracking Copy Subscribers      | app/src/codeunit/DUoMTrackingCopySubscribers.Codeunit.al |
 | 50111 | DUoM Tracking Coherence Mgt         | app/src/codeunit/DUoMTrackingCoherenceMgt.Codeunit.al    |
+| 50125 | DUoM Tracking Prop. Mgt            | app/src/codeunit/DUoMTrackingPropMgt.Codeunit.al         |
 
 ### Enums
 
@@ -145,5 +146,5 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 
 | App      | Tipo                           | Próximo ID libre |
 |----------|--------------------------------|-----------------|
-| app/     | Cualquier tipo de objeto       | 50125           |
+| app/     | Cualquier tipo de objeto       | 50126           |
 | test/    | Codeunit / permissionset       | 50228           |

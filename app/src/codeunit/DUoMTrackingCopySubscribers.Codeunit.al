@@ -83,9 +83,10 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     local procedure ReservEntryOnAfterCopyTrackingFromTrackingSpec(
         var ReservationEntry: Record "Reservation Entry";
         TrackingSpecification: Record "Tracking Specification")
+    var
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
     begin
-        ReservationEntry."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
-        ReservationEntry."DUoM Second Qty" := TrackingSpecification."DUoM Second Qty";
+        DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(TrackingSpecification, ReservationEntry);
     end;
 
     // ── Reservation Entry → Reservation Entry ─────────────────────────────────
@@ -109,7 +110,7 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         var ReservationEntry: Record "Reservation Entry";
         FromReservationEntry: Record "Reservation Entry")
     begin
-        ReservationEntry."DUoM Ratio" := FromReservationEntry."DUoM Ratio";
+        ReservationEntry."DUoM Ratio" := Abs(FromReservationEntry."DUoM Ratio");
         ReservationEntry."DUoM Second Qty" := FromReservationEntry."DUoM Second Qty";
     end;
 
@@ -126,9 +127,10 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     local procedure TrackingSpecCopyTrackingFromReservEntry(
         var TrackingSpecification: Record "Tracking Specification";
         ReservEntry: Record "Reservation Entry")
+    var
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
     begin
-        TrackingSpecification."DUoM Ratio" := ReservEntry."DUoM Ratio";
-        TrackingSpecification."DUoM Second Qty" := ReservEntry."DUoM Second Qty";
+        DUoMTrackingPropMgt.CopyReservEntryToTrackingSpec(ReservEntry, TrackingSpecification);
     end;
 
     // ── Tracking Specification → Item Journal Line ────────────────────────────
