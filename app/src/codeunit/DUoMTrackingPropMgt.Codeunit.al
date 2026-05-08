@@ -100,6 +100,9 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
     begin
         DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferEachLine(TrackingSpecification);
 
+        // El cierre agregado implementado hoy en el repo solo existe para Purchase Line.
+        // Sales permanece cubierto por la persistencia DUoM por lote y por la validación
+        // inmediata de Tracking Specification, pero no tiene aún helper equivalente de sync.
         if TrackingSpecification."Source Type" = Database::"Purchase Line" then begin
             DUoMTrackingCoherenceMgt.SyncPurchLineFromTrackingBuffer(TrackingSpecification);
             DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(TrackingSpecification);
@@ -208,7 +211,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
     /// Delegación:
     ///   - Usa Create Reserv. Entry.SignFactor(...) cuando el origen documental ya está resuelto.
     ///   - Si Source Type = 0, el registro aún actúa como buffer sin origen documental y se
-    ///     asume signo positivo por defecto porque BC todavía no puede resolver SignFactor.
+    ///     asume signo positivo por defecto. Este caso es puramente defensivo para buffers
+    ///     temporales o estados intermedios donde BC todavía no ha resuelto el origen.
     /// </summary>
     local procedure GetReservEntrySignFactor(ReservationEntry: Record "Reservation Entry"): Integer
     var
