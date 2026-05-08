@@ -423,6 +423,67 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     end;
 
     /// <summary>
+    /// Light-weight validation for field-level editing in Item Tracking Lines.
+    /// Called from Quantity (Base).OnAfterValidate to provide immediate feedback
+    /// without blocking states that are valid during intermediate editing.
+    ///
+    /// Key difference from ValidateTrackingSpecLine (strict):
+    ///   Does NOT raise AlwaysVariableMissingRatioErr when DUoM Second Qty = 0.
+    ///   An incomplete line (Qty Base filled but DUoM Second Qty not yet entered)
+    ///   is a valid intermediate state during UI editing. The strict validation
+    ///   (ValidateTrackingSpecLine) runs at close (ValidateTrackingSpecBufferEachLine)
+    ///   and at posting, where incomplete lines are blocked.
+    ///
+    /// Validates:
+    ///   - Fixed ratio mismatch, only when a ratio is already present.
+    ///   - Mathematical coherence (Qty × Ratio = Second Qty), only when all three values
+    ///     are non-zero.
+    ///
+    /// Called from: DUoM Item Tracking Lines page extension (50112) on
+    ///              Quantity (Base).OnAfterValidate.
+    /// </summary>
+    procedure ValidateTrackingSpecLineForFieldEdit(TrackingSpec: Record "Tracking Specification")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        RoundingPrecision: Decimal;
+    begin
+        if TrackingSpec."Item No." = '' then
+            exit;
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 TrackingSpec."Item No.", TrackingSpec."Variant Code",
+                 SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        // If DUoM Ratio is not yet set, allow as intermediate state during editing.
+        // Do not enforce AlwaysVariable missing-ratio rule at this point — the user
+        // may not have entered DUoM Second Qty yet.
+        if TrackingSpec."DUoM Ratio" = 0 then
+            exit;
+
+        RoundingPrecision := GetDUoMRoundingPrecision(TrackingSpec."Item No.", SecondUoMCode);
+
+        // Fixed mode: ratio must equal the configured fixed ratio.
+        if ConversionMode = ConversionMode::Fixed then
+            if Abs(TrackingSpec."DUoM Ratio" - FixedRatio) > 0.00001 then
+                Error(FixedRatioMismatchErr,
+                    TrackingSpec."Lot No.", TrackingSpec."DUoM Ratio",
+                    TrackingSpec."Item No.", FixedRatio);
+
+        // Mathematical coherence: DUoM Second Qty ≈ Qty (Base) × DUoM Ratio.
+        // Only validate when all three values are present to allow intermediate editing states.
+        if (TrackingSpec."Quantity (Base)" <> 0) and (TrackingSpec."DUoM Second Qty" <> 0) then
+            AssertRatioCoherence(
+                Abs(TrackingSpec."Quantity (Base)"),
+                TrackingSpec."DUoM Second Qty",
+                TrackingSpec."DUoM Ratio",
+                RoundingPrecision,
+                TrackingSpec."Lot No.");
+    end;
+
+    /// <summary>
     /// Validates a single Tracking Specification record for DUoM coherence.
     /// Checks ratio against the mode-specific rules (Fixed, Variable, AlwaysVariable)
     /// and verifies the mathematical relationship: DUoM Second Qty ≈ Qty (Base) × DUoM Ratio.
