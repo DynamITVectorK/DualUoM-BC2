@@ -521,31 +521,17 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     end;
 
     /// <summary>
-    /// Persists DUoM fields from the Tracking Specification buffer to existing Reservation Entries.
+    /// Legacy fallback. Do not call from Page "Item Tracking Lines".OnQueryClosePage.
     ///
-    /// This covers the MODIFY path in Item Tracking Lines: when a Reservation Entry already
-    /// exists for a lot (second or subsequent edit), BC calls a direct Modify on the record
-    /// without going through CopyTrackingFromSpec. As a result, the existing event
-    /// OnAfterCopyTrackingFromTrackingSpec is NOT fired and DUoM fields are left with their
-    /// previous values from the first edit.
+    /// Modifying Reservation Entry during page close can trigger the standard BC concurrency
+    /// error: "Another user has modified the item tracking data since it was retrieved
+    /// from the database. Start again."
     ///
-    /// This method explicitly syncs DUoM Ratio and DUoM Second Qty from each functional
-    /// Tracking Specification buffer line to all matching positive Reservation Entries
-    /// (Purchase Line or Sales Line source, filtered by Source Type, Source Subtype,
-    /// Source ID, Source Ref. No. and Lot No.).
+    /// DUoM persistence in normal Item Tracking Lines flow must rely on standard tracking
+    /// events (OnAfterMoveFields / CopyTrackingFrom* subscribers).
     ///
-    /// No-op if:
-    ///   - Source Type is neither Purchase Line nor Sales Line
-    ///   - DUoM is not active for the item
-    ///   - No functional tracking lines exist in the buffer
-    ///
-    /// Uses Modify(false) to persist DUoM fields without triggering standard RE triggers
-    /// that could interfere with the Item Tracking Lines close flow.
-    ///
-    /// Cursor safety: uses LocalTrackingSpec.Copy(Rec, true) per BC 27 cursor safety rules.
-    ///
-    /// Called from: DUoM Item Tracking Lines pageextension (50112) — OnQueryClosePage,
-    /// after all validation and sync have already succeeded.
+    /// Allowed use: controlled maintenance/recovery routines outside page close, where a
+    /// process must realign existing Reservation Entry DUoM values from a tracking buffer.
     /// </summary>
     procedure PersistDUoMToReservEntries(var TrackingSpec: Record "Tracking Specification")
     var

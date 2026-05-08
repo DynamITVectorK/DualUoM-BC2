@@ -107,8 +107,6 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
             DUoMTrackingCoherenceMgt.SyncPurchLineFromTrackingBuffer(TrackingSpecification);
             DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(TrackingSpecification);
         end;
-
-        DUoMTrackingCoherenceMgt.PersistDUoMToReservEntries(TrackingSpecification);
     end;
 
     procedure AreReservEntriesDUoMIdentical(
