@@ -553,6 +553,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
         LocalTrackingSpec: Record "Tracking Specification" temporary;
         ReservEntry: Record "Reservation Entry";
+        NormalizedSecondQty: Decimal;
         SecondUoMCode: Code[10];
         ConversionMode: Enum "DUoM Conversion Mode";
         FixedRatio: Decimal;
@@ -603,9 +604,10 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 ReservEntry.SetRange(Positive, true);
                 if ReservEntry.FindSet() then
                     repeat
+                        NormalizedSecondQty := DUoMTrackingPropMgt.NormalizeSecondQtyForReservEntry(
+                            LocalTrackingSpec, ReservEntry);
                         if (ReservEntry."DUoM Ratio" <> Abs(LocalTrackingSpec."DUoM Ratio")) or
-                           (ReservEntry."DUoM Second Qty" <> DUoMTrackingPropMgt.NormalizeSecondQtyForReservEntry(
-                               LocalTrackingSpec, ReservEntry))
+                           (ReservEntry."DUoM Second Qty" <> NormalizedSecondQty)
                         then begin
                             DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(LocalTrackingSpec, ReservEntry);
                             ReservEntry.Modify(false);

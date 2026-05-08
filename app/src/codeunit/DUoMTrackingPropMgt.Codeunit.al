@@ -47,7 +47,7 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         CopyTrackingSpecToTrackingSpec(SourceTrackingSpec, DestTrkgSpec);
     end;
 
-    // Publisher: Codeunit "Create Reserv. Entry" (99000830), Event: OnCreateReservEntryExtraFields.
+    // Publisher: Codeunit "Create Reservation Entry" (99000830), Event: OnCreateReservEntryExtraFields.
     // Motivo: asegurar que el INSERT final de Reservation Entry conserve DUoM con el patrón
     // estándar de signo. Firma validada contra BC 27 BaseApp.
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Create Reserv. Entry", 'OnCreateReservEntryExtraFields', '', false, false)]
@@ -189,12 +189,10 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
     local procedure GetReservEntrySignFactor(ReservationEntry: Record "Reservation Entry"): Integer
     var
         CreateReservEntry: Codeunit "Create Reserv. Entry";
-        LocalReservationEntry: Record "Reservation Entry";
     begin
         if ReservationEntry."Source Type" = 0 then
             exit(1);
 
-        LocalReservationEntry := ReservationEntry;
-        exit(CreateReservEntry.SignFactor(LocalReservationEntry));
+        exit(CreateReservEntry.SignFactor(ReservationEntry));
     end;
 }
