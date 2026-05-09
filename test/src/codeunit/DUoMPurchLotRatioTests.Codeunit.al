@@ -458,8 +458,7 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
     //   → error de totales DUoM
     //
     // Nota: se llama a ValidateTrackingSpecBufferForPurchLine directamente
-    // (sin SyncPurchLineFromTrackingBuffer previo) para probar la validación de
-    // totales de forma independiente del flujo de sincronización.
+    // para probar la validación de totales de forma independiente.
     // -------------------------------------------------------------------------
     [Test]
     procedure PurchLotTracking_TrackingTotalsMismatch_RaisesError()

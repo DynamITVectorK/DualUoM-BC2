@@ -1554,7 +1554,6 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                 begin
                     // T-REOPEN-07: Segunda edición — modificar Qty Base a 5 y DUoM Second Qty a 4
                     // NormalizeTrackingQuantityBase/NormalizeTrackingDUoMSecondQty recalculan DUoM Ratio = 4 / 5 = 0.8
-                    // PersistDUoMToReservEntries actualiza la RE existente (Modify path)
                     ItemTrackingLines.First();
                     ItemTrackingLines."Quantity (Base)".SetValue(5);
                     ItemTrackingLines."DUoM Second Qty".SetValue(4);
@@ -1601,7 +1600,6 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                 begin
                     // T-REOPEN-08: Segunda edición — modificar Qty Base a 5 y DUoM Second Qty a 4
                     // NormalizeTrackingQuantityBase/NormalizeTrackingDUoMSecondQty recalculan DUoM Ratio = 4 / 5 = 0.8
-                    // PersistDUoMToReservEntries actualiza la RE existente (Modify path)
                     ItemTrackingLines.First();
                     ItemTrackingLines."Quantity (Base)".SetValue(5);
                     ItemTrackingLines."DUoM Second Qty".SetValue(4);
