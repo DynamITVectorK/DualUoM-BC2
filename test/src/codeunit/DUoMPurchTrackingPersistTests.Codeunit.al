@@ -1292,7 +1292,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     ///   HandlerStep = 20: tercera apertura T-REOPEN-08. Verifica Qty Base = 4,
     ///                     DUoM Ratio = 1 y DUoM Second Qty = 4 recargados.
     ///   HandlerStep = 21: primera edición T-REOPEN-09 (Variable). Asigna
-    ///                     LOT-MODIFY-T9V, qty = 5, DUoM Second Qty = 3.75 → DUoM Ratio auto = 0.75.
+    ///                     LOT-MODIFY-T9V, Quantity (Base) = 5, DUoM Second Qty = 3.75 → DUoM Ratio auto = 0.75.
     ///   HandlerStep = 22: segunda edición T-REOPEN-09 (Variable). Mantiene Quantity (Base)
     ///                     en 5 y modifica solo DUoM Second Qty a 4 → DUoM Ratio auto = 0.8.
     ///
