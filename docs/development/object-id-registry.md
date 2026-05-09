@@ -68,6 +68,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50111 | DUoM Item Ledger Entry         | Item Ledger Entries               |
 | 50112 | DUoM Item Tracking Lines       | Item Tracking Lines               |
 | 50124 | DUoM Posted Item Trk. Lines    | Posted Item Tracking Lines        |
+| 50127 | DUoM Item List Ext             | Item List                         |
 
 ### Codeunits
 
@@ -148,5 +149,5 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 
 | App      | Tipo                           | Próximo ID libre |
 |----------|--------------------------------|-----------------|
-| app/     | Cualquier tipo de objeto       | 50127           |
+| app/     | Cualquier tipo de objeto       | 50128           |
 | test/    | Codeunit / permissionset       | 50229           |

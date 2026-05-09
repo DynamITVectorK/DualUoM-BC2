@@ -396,6 +396,15 @@ accesible desde la acción **DUoM Lot Ratios** en la página `DUoM Item Setup`.
 
 - Item journal lines get a `Second Qty` field
 - Item ledger entries record second qty for all relevant entry types
+- `Item` expone `DUoM Inventory` como stock registrado en segunda unidad de medida
+  calculado desde `Item Ledger Entry."DUoM Second Qty"` (FlowField).
+- `DUoM Inventory` respeta los flowfilters estándar del artículo aplicables al cálculo
+  (`Location Filter`, `Variant Filter`, `Date Filter`, dimensiones globales y filtros
+  de tracking estándar de Item).
+- `DUoM Inventory` **no** incluye documentos abiertos ni tracking pendiente.
+- Diferenciación funcional:
+  - `DUoM Tracking Total` = total operativo en documento vivo (fuente: `Reservation Entry`).
+  - `DUoM Inventory` = stock histórico contabilizado (fuente: `Item Ledger Entry`).
 - Physical inventory counts support second qty entry
 
 ### Warehouse (Phase 2)

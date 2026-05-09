@@ -811,4 +811,208 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'T03: ILE venta DUoM Second Qty = ILE.Quantity × 1.25 = -5 × 1.25 = -6.25.');
     end;
 
+    [Test]
+    procedure DUoMInventory_PurchasePosting_IncreasesStock()
+    var
+        Item: Record Item;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM con ratio fijo 1 y una compra registrada de 8
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1);
+        PostPurchaseOrder(Item."No.", 8, '', '', WorkDate());
+
+        // [WHEN] Se calcula el FlowField DUoM Inventory
+        Item.Get(Item."No.");
+        Item.CalcFields("DUoM Inventory");
+
+        // [THEN] DUoM Inventory refleja la suma en ILE
+        LibraryAssert.AreEqual(8, Item."DUoM Inventory", 'DUoM Inventory debe ser 8 tras la compra registrada');
+    end;
+
+    [Test]
+    procedure DUoMInventory_PurchaseAndSale_NetStock()
+    var
+        Item: Record Item;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM con una compra (+8) y una venta (-3)
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1);
+        PostPurchaseOrder(Item."No.", 8, '', '', WorkDate());
+        PostSalesOrder(Item."No.", 3, '', '', WorkDate());
+
+        // [WHEN] Se calcula el FlowField DUoM Inventory
+        Item.Get(Item."No.");
+        Item.CalcFields("DUoM Inventory");
+
+        // [THEN] DUoM Inventory refleja el neto registrado
+        LibraryAssert.AreEqual(5, Item."DUoM Inventory", 'DUoM Inventory debe reflejar el neto 8 - 3 = 5');
+    end;
+
+    [Test]
+    procedure DUoMInventory_LocationFilter_Applies()
+    var
+        Item: Record Item;
+        LocationBlue: Record Location;
+        LocationRed: Record Location;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryWarehouse: Codeunit "Library - Warehouse";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM con movimientos en dos ubicaciones
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1);
+        LibraryWarehouse.CreateLocation(LocationBlue);
+        LibraryWarehouse.CreateLocation(LocationRed);
+        PostPurchaseOrder(Item."No.", 8, LocationBlue.Code, '', WorkDate());
+        PostPurchaseOrder(Item."No.", 5, LocationRed.Code, '', WorkDate());
+
+        // [WHEN] Se calcula DUoM Inventory filtrando por ubicación
+        Item.Get(Item."No.");
+        Item.SetRange("Location Filter", LocationBlue.Code);
+        Item.CalcFields("DUoM Inventory");
+
+        // [THEN] Solo se incluye la ubicación filtrada
+        LibraryAssert.AreEqual(8, Item."DUoM Inventory", 'DUoM Inventory debe incluir solo la ubicación filtrada');
+    end;
+
+    [Test]
+    procedure DUoMInventory_VariantAndDateFilters_Apply()
+    var
+        Item: Record Item;
+        ItemVariant: Record "Item Variant";
+        FirstPostingDate: Date;
+        SecondPostingDate: Date;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM con dos variantes y fechas distintas
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ICEBERG', ItemVariant);
+        FirstPostingDate := DMY2Date(1, 1, 2026);
+        SecondPostingDate := DMY2Date(15, 1, 2026);
+        PostPurchaseOrder(Item."No.", 8, '', 'ROMANA', FirstPostingDate);
+        PostPurchaseOrder(Item."No.", 5, '', 'ICEBERG', SecondPostingDate);
+
+        // [WHEN] Se calcula DUoM Inventory filtrando por variante y fecha
+        Item.Get(Item."No.");
+        Item.SetRange("Variant Filter", 'ROMANA');
+        Item.SetRange("Date Filter", 0D, FirstPostingDate);
+        Item.CalcFields("DUoM Inventory");
+
+        // [THEN] Solo se incluye el movimiento de la variante/fecha filtradas
+        LibraryAssert.AreEqual(8, Item."DUoM Inventory", 'DUoM Inventory debe respetar Variant Filter y Date Filter');
+    end;
+
+    [Test]
+    procedure DUoMInventory_EqualsManualILESum_WithSameFilters()
+    var
+        Item: Record Item;
+        ItemVariant: Record "Item Variant";
+        LocationBlue: Record Location;
+        FlowFieldInventory: Decimal;
+        ManualInventory: Decimal;
+        CutoffDate: Date;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryWarehouse: Codeunit "Library - Warehouse";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM con múltiples movimientos y filtros combinados
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ICEBERG', ItemVariant);
+        LibraryWarehouse.CreateLocation(LocationBlue);
+        CutoffDate := DMY2Date(1, 2, 2026);
+        PostPurchaseOrder(Item."No.", 8, LocationBlue.Code, 'ROMANA', DMY2Date(1, 1, 2026));
+        PostPurchaseOrder(Item."No.", 5, LocationBlue.Code, 'ICEBERG', DMY2Date(15, 1, 2026));
+        PostPurchaseOrder(Item."No.", 3, '', 'ROMANA', DMY2Date(1, 3, 2026));
+
+        // [WHEN] Se calcula DUoM Inventory y la suma manual de ILE con los mismos filtros
+        Item.Get(Item."No.");
+        Item.SetRange("Location Filter", LocationBlue.Code);
+        Item.SetRange("Variant Filter", 'ROMANA');
+        Item.SetRange("Date Filter", 0D, CutoffDate);
+        Item.CalcFields("DUoM Inventory");
+        FlowFieldInventory := Item."DUoM Inventory";
+        ManualInventory := SumILESecondQty(Item."No.", LocationBlue.Code, 'ROMANA', 0D, CutoffDate);
+
+        // [THEN] Ambos importes coinciden
+        LibraryAssert.AreEqual(ManualInventory, FlowFieldInventory, 'DUoM Inventory debe coincidir con SUM(ILE.DUoM Second Qty) con los mismos filtros');
+    end;
+
+    local procedure PostPurchaseOrder(ItemNo: Code[20]; LineQuantity: Decimal; LocationCode: Code[10]; VariantCode: Code[10]; PostingDate: Date)
+    var
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        LibraryPurchase: Codeunit "Library - Purchase";
+    begin
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        PurchHeader.Validate("Posting Date", PostingDate);
+        PurchHeader.Modify(true);
+
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, ItemNo, 0);
+        if VariantCode <> '' then
+            PurchLine.Validate("Variant Code", VariantCode);
+        if LocationCode <> '' then
+            PurchLine.Validate("Location Code", LocationCode);
+        PurchLine.Validate(Quantity, LineQuantity);
+        PurchLine.Modify(true);
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+    end;
+
+    local procedure PostSalesOrder(ItemNo: Code[20]; LineQuantity: Decimal; LocationCode: Code[10]; VariantCode: Code[10]; PostingDate: Date)
+    var
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        LibrarySales: Codeunit "Library - Sales";
+    begin
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        SalesHeader.Validate("Posting Date", PostingDate);
+        SalesHeader.Modify(true);
+
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, ItemNo, 0);
+        if VariantCode <> '' then
+            SalesLine.Validate("Variant Code", VariantCode);
+        if LocationCode <> '' then
+            SalesLine.Validate("Location Code", LocationCode);
+        SalesLine.Validate(Quantity, LineQuantity);
+        SalesLine.Modify(true);
+        LibrarySales.PostSalesDocument(SalesHeader, true, false);
+    end;
+
+    local procedure SumILESecondQty(ItemNo: Code[20]; LocationCode: Code[10]; VariantCode: Code[10]; DateFrom: Date; DateTo: Date): Decimal
+    var
+        ItemLedgEntry: Record "Item Ledger Entry";
+        TotalSecondQty: Decimal;
+    begin
+        ItemLedgEntry.SetRange("Item No.", ItemNo);
+        if LocationCode <> '' then
+            ItemLedgEntry.SetRange("Location Code", LocationCode);
+        if VariantCode <> '' then
+            ItemLedgEntry.SetRange("Variant Code", VariantCode);
+        ItemLedgEntry.SetRange("Posting Date", DateFrom, DateTo);
+
+        if ItemLedgEntry.FindSet() then
+            repeat
+                TotalSecondQty += ItemLedgEntry."DUoM Second Qty";
+            until ItemLedgEntry.Next() = 0;
+
+        exit(TotalSecondQty);
+    end;
+
 }
