@@ -933,6 +933,19 @@
           <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Posted Item Trk. Lines - NamedType DUoMSecondQtyDefaultLbl</note>
         </trans-unit>
 
+        <trans-unit id="TableExtension 2435179001 - Field 2435179002 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Inventory</source>
+          <target state="translated">Inventario DUoM</target>
+          <note from="Developer" annotates="general" priority="2"></note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Item TableExt - Field DUoM Inventory - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 2435179001 - Field 2435179002 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the registered inventory in the second unit of measure, calculated from Item Ledger Entries.</source>
+          <target state="translated">Especifica el inventario registrado en la segunda unidad de medida, calculado desde movimientos de producto.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Inventory field on Item; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Item TableExt - Field DUoM Inventory - Property ToolTip</note>
+        </trans-unit>
+
       </group>
     </body>
   </file>

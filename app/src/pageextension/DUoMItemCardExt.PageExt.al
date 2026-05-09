@@ -4,6 +4,18 @@
 /// </summary>
 pageextension 50100 "DUoM Item Card Ext" extends "Item Card"
 {
+    layout
+    {
+        addafter(Inventory)
+        {
+            field("DUoM Inventory"; Rec."DUoM Inventory")
+            {
+                ApplicationArea = All;
+                Editable = false;
+            }
+        }
+    }
+
     actions
     {
         addlast(Navigation)
