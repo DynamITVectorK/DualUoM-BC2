@@ -12,6 +12,10 @@ GitHub Copilot Coding Agent.
 
 ### Issues completados ✅
 
+> Nota: esta tabla contiene historial de implementación. Si un item menciona enfoques
+> antiguos (p. ej. lógica en `OnQueryClosePage` o sync manual `Tracking → Purchase Line`),
+> debe leerse como **registro histórico** y no como guía vigente.
+
 | Issue | Título |
 |-------|--------|
 | 1 | Project Governance Baseline |
@@ -46,10 +50,10 @@ GitHub Copilot Coding Agent.
 | 25 | Completar patrón OnAfterCopyTracking* en DUoMTrackingCopySubscribers: Clear/Blank en TrackingSpec, ReservEntry e IJL; Copy buffer→buffer y ILE→buffer en TrackingSpec; CopyFromNewItemJnlLine en ILE |
 | análisis-item-tracking | docs: análisis técnico del ciclo de vida de Item Tracking y puntos de validación/propagación DUoM — `docs/duom-item-tracking-validation-analysis.md` |
 | hardening-item-tracking | test: hardening E2E del flujo Purchase Order con Item Tracking — codeunit 50221 `DUoM Purch Tracking Post Tests`; 4 tests de bloqueo en posting (suma baja, suma alta, AlwaysVariable sin ratio, Fixed ratio incorrecto) |
-| close-validation | fix: bloquear cierre de `Item Tracking Lines` con OK cuando el total DUoM del tracking no coincide con la `Purchase Line`. `OnQueryClosePage` en pageextension 50112 delega en `ValidateTrackingSpecBufferForPurchLine` (50111). 6 tests en codeunit 50222 `DUoM Purch Track Close Tests`. |
+| close-validation | **Histórico (obsoleto en arquitectura vigente):** fix de validación de cierre en `Item Tracking Lines`. El patrón actual evita lógica DUoM en cierre de página y usa persistencia estándar TrackingSpec → Reservation Entry. |
 | posted-item-trk-lines | feat: pageextension 50124 `DUoM Posted Item Trk. Lines` extiende Page 6511 con los campos `DUoM Second Qty` y `DUoM Ratio` persistidos en el ILE. Solo lectura; no recalcula. 2 tests en codeunit 50224 `DUoM Pstd Item Trk. Tests`. |
 | chore/tracking-filter-standard | chore: norma global de filtrado estándar de Item Tracking / Reservation — `docs/development/coding-standards.md`, `.github/copilot-instructions.md`, `.github/pull_request_template.md`; refactor `SetSourceFilter` en producción y tests. |
-| BUG-UX-TDD/validación-temprana-ratio | **fix/feat/TDD**: validación temprana de ratio DUoM por lote en `Item Tracking Lines`. Nueva primera barrera de cierre: `ValidateTrackingSpecBufferEachLine` (50111) — llamada desde `OnQueryClosePage` (50112) ANTES de sync, itera el buffer completo con `IsFunctionalTrackingLine` para omitir líneas vacías/de inserción y llama a `ValidateTrackingSpecLine` en cada línea funcional. 6 tests TDD en nuevo codeunit 50226 `DUoM Purch Lot Ratio Tests` (T-RATIO-01..06). La barrera de posting (50102) se mantiene intacta. Docs 03-technical-architecture.md y object-id-registry.md actualizados. |
+| BUG-UX-TDD/validación-temprana-ratio | **Histórico (obsoleto en arquitectura vigente):** fix/feat/TDD de validación temprana por lote. Mantener solo como referencia histórica; el patrón vigente no introduce barreras DUoM en eventos de cierre de página. |
 | BUG/roll-forward/tracking-sign | **bug fix**: proyección DUoM desde Tracking/ReservEntry hacia IJL split corregida — `IJLCopyTrackingFromSpec` (50110) aplica signo técnico del movimiento (`ApplyMovementSign`) en los tres caminos de resolución (tracking ratio, lot ratio, IJL ratio) y resetea DUoM Second Qty a 0 cuando no existe ningún ratio disponible (AlwaysVariable sin ratio real). Fallos corregidos: T06 salida-lote signo negativo, T03 sales-tracking signo negativo, T10 AlwaysVariable Second Qty = 0. Docs `coding-standards.md` y `03-technical-architecture.md` actualizados. |
 
 ### Próximo issue pendiente

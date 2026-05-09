@@ -1,5 +1,9 @@
 # Issue: Sincronización DUoM desde Item Tracking Lines hacia Purchase Line
 
+> ⚠️ Documento histórico.
+> Este enfoque ha sido sustituido por el patrón Piezas vigente.
+> No usar como guía de implementación actual.
+
 ## Resumen
 
 Implementa el flujo funcional estándar donde:

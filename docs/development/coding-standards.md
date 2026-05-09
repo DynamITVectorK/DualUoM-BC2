@@ -484,10 +484,10 @@ En DualUoM-BC, la línea de documento actúa como **resumen agregado**:
 
 ```
 Item Tracking Lines (TrackingSpec buffer) → realidad por lote durante recepción
-    ↓ sync en OnQueryClosePage
-Purchase Line → resumen agregado
-    ↓ persiste en OK
+    ↓ persistencia estándar BC
 Reservation Entry → persistencia por lote después de confirmar
+    ↓ buffers de tracking/posting
+Item Journal Line → origen DUoM inmediato para contabilización
     ↓ posting
 Item Ledger Entry → histórico definitivo
 ```
