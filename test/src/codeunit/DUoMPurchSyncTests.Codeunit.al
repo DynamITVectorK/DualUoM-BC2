@@ -20,8 +20,8 @@
 ///              7 KG + 11 PCS → ratio 11/7 → ILE contiene valores reales
 ///
 /// Nota: T-SYNC-01, T-SYNC-02, T-SYNC-04, T-SYNC-05 ya no verifican la sincronización
-/// de la Purchase Line. La sincronización de PurchLine desde el tracking pertenecía a
-/// OnQueryClosePage, que ha sido eliminado por no seguir el patrón de Piezas.
+/// de la Purchase Line. La sincronización de PurchLine desde el tracking pertenecía al
+/// diseño anterior y fue eliminada por no seguir el patrón de Piezas.
 /// Los valores DUoM por lote se persisten en Reservation Entry a través del flujo estándar
 /// de tracking (OnAfterMoveFields, OnCreateReservEntryExtraFields, etc.).
 ///
