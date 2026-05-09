@@ -1164,7 +1164,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     end;
 
     // -------------------------------------------------------------------------
-    // T-REOPEN-09 — Variable: posting usa ratio recalculado tras editar Quantity (Base)
+    // T-REOPEN-09 — Variable: posting usa ratio recalculado tras editar DUoM Second Qty
     //
     // Verifica que, tras una segunda edición en Item Tracking Lines donde se modifica
     // DUoM Second Qty de una línea existente, el posting de recepción
