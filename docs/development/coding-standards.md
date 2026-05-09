@@ -134,44 +134,47 @@ ReservationEntry.SetRange("Lot No.", LotNo);
 Siempre debe recibir sus datos del `Item Journal Line` (IJL) mediante asignación directa.
 
 La capa final de propagación (`OnAfterInitItemLedgEntry` y `ILECopyTrackingFromItemJnlLine`)
-son **copias puras**: no calculan ratio, no aplican signo y no consultan tablas externas.
-Si el IJL llega con valores DUoM incorrectos, el bug está **upstream** (flujo de compra/venta,
+toma la magnitud del IJL y normaliza el signo contra `ILE.Quantity` usando `DUoM Sign Mgt` (50126).
+El signo que venga del IJL es un "mejor intento" upstream; la normalización es la garantía final.
+Si el IJL llega con ratio incorrecto, el bug está **upstream** (flujo de compra/venta,
 tracking split o undo), no en la capa final.
 
-### `OnAfterInitItemLedgEntry` — asignación pura (codeunit 50104)
+### `OnAfterInitItemLedgEntry` — copia con normalización de signo (codeunit 50104)
 
-El subscriber `OnAfterInitItemLedgEntry` de `DUoM Inventory Subscribers` (50104) es una
-**asignación pura**: copia los campos DUoM directamente del IJL al ILE, sin cálculos ni
-lógica condicional. La responsabilidad de que el IJL llegue con los valores correctos
-(signo incluido) corresponde a los subscribers upstream de cada flujo.
+El subscriber `OnAfterInitItemLedgEntry` de `DUoM Inventory Subscribers` (50104) copia
+el ratio directamente del IJL y normaliza el signo de `DUoM Second Qty` contra
+`NewItemLedgEntry.Quantity` usando `DUoM Sign Mgt`. No recalcula el ratio ni consulta tablas.
 
 ```al
-// ✅ CORRECTO — asignación pura en OnAfterInitItemLedgEntry (50104)
+// ✅ CORRECTO — OnAfterInitItemLedgEntry (50104)
 NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
-NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+NewItemLedgEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
+    NewItemLedgEntry, ItemJournalLine."DUoM Second Qty");
 ```
 
-### `ILECopyTrackingFromItemJnlLine` — asignación pura (codeunit 50110)
+### `ILECopyTrackingFromItemJnlLine` — copia con normalización de signo (codeunit 50110)
 
 Para artículos con Item Tracking (lotes / series), el subscriber
-`ILECopyTrackingFromItemJnlLine` en `DUoM Tracking Copy Subscribers` (50110) es también
-una **asignación pura**: copia los campos DUoM directamente del IJL split por lote al ILE.
-No recalcula ratio, no aplica signo, no consulta `DUoM Lot Ratio` (50102).
+`ILECopyTrackingFromItemJnlLine` en `DUoM Tracking Copy Subscribers` (50110) copia el
+ratio del IJL split por lote y normaliza el signo de `DUoM Second Qty` contra
+`ItemLedgerEntry.Quantity`. No recalcula ratio, no consulta `DUoM Lot Ratio` (50102).
 
 ```al
-// ✅ CORRECTO — asignación pura en ILECopyTrackingFromItemJnlLine (50110)
+// ✅ CORRECTO — ILECopyTrackingFromItemJnlLine (50110)
 ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty";
+ItemLedgerEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
+    ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
 ```
 
-### `OnAfterInitValueEntry` — asignación pura desde IJL (codeunit 50104)
+### `OnAfterInitValueEntry` — copia con normalización de signo desde IJL (codeunit 50104)
 
-El subscriber `OnAfterInitValueEntry` copia `DUoM Second Qty` directamente desde
-`ItemJournalLine`, **no** desde `ItemLedgEntry`.
+El subscriber `OnAfterInitValueEntry` copia `DUoM Second Qty` desde `ItemJournalLine`
+y normaliza el signo contra `ItemLedgEntry.Quantity`. **No** copia desde `ItemLedgEntry`.
 
 ```al
-// ✅ CORRECTO — copia desde IJL en OnAfterInitValueEntry (50104)
-ValueEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+// ✅ CORRECTO — OnAfterInitValueEntry (50104): fuente IJL, signo normalizado contra ILE
+ValueEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
+    ItemLedgEntry, ItemJournalLine."DUoM Second Qty");
 
 // ❌ PROHIBIDO — copia desde ILE (ILE no es la fuente final para VE)
 ValueEntry."DUoM Second Qty" := ItemLedgEntry."DUoM Second Qty";
@@ -192,7 +195,7 @@ ILE."DUoM Second Qty" := Abs(ILE.Quantity) * ILE."DUoM Ratio";
 // ❌ PROHIBIDO — Signed() falla en undo/correction entries
 ILE."DUoM Second Qty" := ItemJournalLine.Signed(Abs(ItemJournalLine."DUoM Second Qty"));
 
-// ❌ PROHIBIDO — lógica de signo o cálculo en los subscribers finales ILE/VE
+// ❌ PROHIBIDO — lógica de signo ad-hoc fuera de DUoM Sign Mgt
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
@@ -211,10 +214,9 @@ el IJL antes del posting. La responsabilidad de cada subscriber es:
 - **Guard**: si hay `Lot No.` / `Serial No.`, el flujo de trazabilidad ya pobló los valores
   per-lote desde el ILE original — no sobrescribir.
 - Copiar `DUoM Ratio` desde la línea del documento contabilizado.
-- Establecer `DUoM Second Qty` con el **signo correcto** para el tipo de corrección
-  (porque los subscribers finales son copias puras):
-  - Undo recepción compra → ILE corrección con Qty < 0 → `IJL.DUoM Second Qty = -Abs(PurchRcptLine.DUoM Second Qty)`
-  - Undo envío venta → ILE corrección con Qty > 0 → `IJL.DUoM Second Qty = +Abs(SalesShipmentLine.DUoM Second Qty)`
+- Delegar en `DUoM Sign Mgt` para establecer `DUoM Second Qty` con el signo correcto:
+  - Undo recepción compra → `DUoMSignMgt.ApplyUndoPurchReceiptSign(PurchRcptLine."DUoM Second Qty")`
+  - Undo envío venta → `DUoMSignMgt.ApplyUndoSalesShptSign(SalesShipmentLine."DUoM Second Qty")`
 
 ```al
 // ✅ CORRECTO — upstream subscriber para undo receipt (sin trazabilidad)
@@ -223,7 +225,8 @@ if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') the
 if PurchRcptLine."DUoM Ratio" = 0 then
     exit;  // artículo sin DUoM
 ItemJournalLine."DUoM Ratio" := PurchRcptLine."DUoM Ratio";
-ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");  // signo negativo
+ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyUndoPurchReceiptSign(
+    PurchRcptLine."DUoM Second Qty");
 
 // ✅ CORRECTO — upstream subscriber para undo shipment (sin trazabilidad)
 if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') then
@@ -231,7 +234,8 @@ if (ItemJournalLine."Lot No." <> '') or (ItemJournalLine."Serial No." <> '') the
 if SalesShipmentLine."DUoM Ratio" = 0 then
     exit;
 ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
-ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");  // signo positivo
+ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyUndoSalesShptSign(
+    SalesShipmentLine."DUoM Second Qty");
 ```
 
 ### Patrón para flujo de corrección (OnBeforeInsertCorrItemLedgEntry)
@@ -242,7 +246,7 @@ definitivo en el momento en que se disparan. El evento `OnBeforeInsertCorrItemLe
 dispara justo antes de insertar el ILE de corrección, cuando el ILE original (`OldItemLedgEntry`)
 está disponible y el signo está definido.
 
-Regla: `NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty"`.
+El signo se calcula delegando en `DUoM Sign Mgt.ApplyCorrectionILESign`.
 
 Cubre todos los escenarios de undo: sin lote, con lote y con múltiples lotes.
 
@@ -254,11 +258,14 @@ local procedure OnBeforeInsertCorrItemLedgEntry(
     var NewItemLedgEntry: Record "Item Ledger Entry";
     var OldItemLedgEntry: Record "Item Ledger Entry";
     var ItemJournalLine: Record "Item Journal Line")
+var
+    DUoMSignMgt: Codeunit "DUoM Sign Mgt";
 begin
     if OldItemLedgEntry."DUoM Ratio" = 0 then
         exit;
     NewItemLedgEntry."DUoM Ratio" := OldItemLedgEntry."DUoM Ratio";
-    NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty";
+    NewItemLedgEntry."DUoM Second Qty" := DUoMSignMgt.ApplyCorrectionILESign(
+        OldItemLedgEntry."DUoM Second Qty");
 end;
 
 // ❌ PROHIBIDO — usar Correction como parche en OnAfterInitItemLedgEntry
@@ -268,10 +275,8 @@ if ItemJournalLine.Correction then
 
 ### Implementación de referencia
 
-Ver codeunit 50104 `DUoM Inventory Subscribers` (subscribers `OnAfterInitItemLedgEntry`
-y `OnAfterInitValueEntry`) y codeunit 50110 `DUoM Tracking Copy Subscribers`
-(subscriber `ILECopyTrackingFromItemJnlLine`) para los patrones de asignación pura.
-La lógica de signo que usan está centralizada en `DUoM Sign Mgt` (50126).
+Ver codeunit 50104 `DUoM Inventory Subscribers` y codeunit 50110 `DUoM Tracking Copy Subscribers`.
+Toda la lógica de signo está centralizada en `DUoM Sign Mgt` (50126).
 
 ---
 
@@ -279,24 +284,37 @@ La lógica de signo que usan está centralizada en `DUoM Sign Mgt` (50126).
 
 ### Principio rector
 
-`DUoM Second Qty` debe seguir el signo del movimiento. Nadie fuera de la codeunit
-`DUoM Sign Mgt` (50126) debe decidir si `DUoM Second Qty` va positivo o negativo,
-salvo casos explícitamente justificados (correcciones ILE en `OnBeforeInsertCorrItemLedgEntry`
-y undo sin trazabilidad en `OnAfterCopyItemJnlLineFromPurchRcpt`/`OnAfterCopyItemJnlLineFromSalesShpt`).
+`DUoM Second Qty` debe seguir el signo del movimiento. **Nadie fuera de la codeunit
+`DUoM Sign Mgt` (50126) debe decidir si `DUoM Second Qty` va positivo o negativo.**
+
+No existen "excepciones justificadas" permanentes. Cualquier caso especial debe
+expresarse a través de un método explícito en `DUoM Sign Mgt`.
 
 ### API centralizada — DUoM Sign Mgt (50126)
 
 ```al
-// Normaliza el signo de DUoM Second Qty siguiendo ILE.Quantity.
+// 1. Normaliza el signo de DUoM Second Qty siguiendo ILE.Quantity.
 // Usar en: OnAfterInitItemLedgEntry, ILECopyTrackingFromItemJnlLine,
 //          OnAfterInitValueEntry, ILECopyTrackingFromNewItemJnlLine.
 procedure NormalizeILESign(ItemLedgerEntry: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
 
-// Aplica el signo técnico del movimiento (entrada/salida) a una SecondQty positiva.
+// 2. Aplica el signo técnico del movimiento (entrada/salida) a una SecondQty positiva.
 // Los datos de usuario se almacenan siempre positivos.
 // Usar en: IJLCopyTrackingFromSpec (TrackingSpec → IJL split),
 //          ProjectDocumentLineToItemJnlLine (Purchase/Sales Line → IJL).
 procedure ApplyMovementSign(ItemJournalLine: Record "Item Journal Line"; SecondQty: Decimal): Decimal
+
+// 3. Calcula DUoM Second Qty para el IJL de una anulación de albarán de compra (siempre negativo).
+// Usar en: OnAfterCopyItemJnlLineFromPurchRcpt.
+procedure ApplyUndoPurchReceiptSign(OriginalSecondQty: Decimal): Decimal
+
+// 4. Calcula DUoM Second Qty para el IJL de una anulación de albarán de venta (siempre positivo).
+// Usar en: OnAfterCopyItemJnlLineFromSalesShpt.
+procedure ApplyUndoSalesShptSign(OriginalSecondQty: Decimal): Decimal
+
+// 5. Calcula DUoM Second Qty de un ILE de corrección como negación del ILE original.
+// Usar en: OnBeforeInsertCorrItemLedgEntry.
+procedure ApplyCorrectionILESign(OldILESecondQty: Decimal): Decimal
 ```
 
 ### Reglas de uso
@@ -308,11 +326,23 @@ DUoMSignMgt.NormalizeILESign(ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
 // ✅ CORRECTO — usar DUoM Sign Mgt para aplicar signo del movimiento al IJL
 DUoMSignMgt.ApplyMovementSign(ItemJournalLine, Abs(TrackingSpecification."DUoM Second Qty"));
 
+// ✅ CORRECTO — usar DUoM Sign Mgt para undo receipt
+DUoMSignMgt.ApplyUndoPurchReceiptSign(PurchRcptLine."DUoM Second Qty");
+
+// ✅ CORRECTO — usar DUoM Sign Mgt para undo shipment
+DUoMSignMgt.ApplyUndoSalesShptSign(SalesShipmentLine."DUoM Second Qty");
+
+// ✅ CORRECTO — usar DUoM Sign Mgt para ILE de corrección
+DUoMSignMgt.ApplyCorrectionILESign(OldItemLedgEntry."DUoM Second Qty");
+
 // ❌ PROHIBIDO — lógica local de signo en subscribers
 if ItemJournalLine.Quantity < 0 then
     ItemJournalLine."DUoM Second Qty" := -Abs(ItemJournalLine."DUoM Second Qty");
 
-// ❌ PROHIBIDO — duplicar NormalizeSecondQtySignForILE fuera de DUoM Sign Mgt
+// ❌ PROHIBIDO — signo inline fuera de DUoM Sign Mgt
+ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");
+
+// ❌ PROHIBIDO — duplicar lógica de signo fuera de DUoM Sign Mgt
 local procedure NormalizeSecondQtySignForILE(ILE: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
 begin ...
 end;

@@ -172,35 +172,39 @@ follow these rules to avoid fragile and build-breaking subscriber signatures:
 ### ILE DUoM Second Qty — norma ILE←IJL (obligatoria)
 
 `Item Ledger Entry."DUoM Second Qty"` **nunca** se calcula desde campos del ILE.
-Siempre debe recibir sus datos del `Item Journal Line`. Los subscribers finales son
-**copias puras**: no calculan ratio, no aplican signo y no consultan tablas externas.
+Siempre debe recibir sus datos del `Item Journal Line`. Los subscribers finales toman
+la magnitud del IJL y normalizan el signo usando `DUoM Sign Mgt` (50126).
+No recalculan ratio y no consultan tablas externas.
 
 ```al
-// ✅ OBLIGATORIO — copia pura en OnAfterInitItemLedgEntry (50104)
+// ✅ OBLIGATORIO — OnAfterInitItemLedgEntry (50104): signo normalizado via DUoM Sign Mgt
 NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
-NewItemLedgEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+NewItemLedgEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
+    NewItemLedgEntry, ItemJournalLine."DUoM Second Qty");
 
-// ✅ OBLIGATORIO — copia pura en ILECopyTrackingFromItemJnlLine (50110)
+// ✅ OBLIGATORIO — ILECopyTrackingFromItemJnlLine (50110): signo normalizado via DUoM Sign Mgt
 ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-ItemLedgerEntry."DUoM Second Qty" := ItemJnlLine."DUoM Second Qty";
+ItemLedgerEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
+    ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
 
-// ✅ OBLIGATORIO — copia pura en OnAfterInitValueEntry (50104) — desde IJL, no desde ILE
-ValueEntry."DUoM Second Qty" := ItemJournalLine."DUoM Second Qty";
+// ✅ OBLIGATORIO — OnAfterInitValueEntry (50104): desde IJL, signo normalizado contra ILE
+ValueEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
+    ItemLedgEntry, ItemJournalLine."DUoM Second Qty");
 ```
 
-La responsabilidad de que el IJL llegue con el signo y los valores correctos corresponde
-a los subscribers **upstream** de cada flujo:
+La responsabilidad de que el IJL llegue con los valores correctos corresponde
+a los subscribers **upstream** de cada flujo. **Todo signo DUoM se decide en `DUoM Sign Mgt` (50126)**:
 - **Compra/Venta:** `OnPurchPostCopyDocFieldsToItemJnlLine` / `OnSalesPostCopyDocFieldsToItemJnlLine`
-- **Tracking split:** `OnAfterCopyTrackingFromSpec` (codeunit 50110)
-- **Undo sin trazabilidad:** `OnAfterCopyItemJnlLineFromPurchRcpt` / `OnAfterCopyItemJnlLineFromSalesShpt`
-  — deben establecer el signo correcto en el IJL (undo recepción → negativo; undo envío → positivo)
+- **Tracking split:** `OnAfterCopyTrackingFromSpec` (codeunit 50110) → `DUoMSignMgt.ApplyMovementSign`
+- **Undo sin trazabilidad:** `OnAfterCopyItemJnlLineFromPurchRcpt` → `DUoMSignMgt.ApplyUndoPurchReceiptSign`;
+  `OnAfterCopyItemJnlLineFromSalesShpt` → `DUoMSignMgt.ApplyUndoSalesShptSign`
 - **Undo con trazabilidad:** `IJLCopyTrackingFromItemLedgEntry` (50110, copia del ILE original)
-- **Corrección ILE (undo final):** `OnBeforeInsertCorrItemLedgEntry` (50104) — sobreescribe
-  `NewItemLedgEntry."DUoM Second Qty" := -OldItemLedgEntry."DUoM Second Qty"` porque en ese
+- **Corrección ILE (undo final):** `OnBeforeInsertCorrItemLedgEntry` (50104) →
+  `DUoMSignMgt.ApplyCorrectionILESign(OldItemLedgEntry."DUoM Second Qty")` porque en ese
   momento `OldItemLedgEntry` es la única fuente fiable del signo de corrección.
 
 ```al
-// ❌ PROHIBIDO — lógica de signo en subscribers finales ILE/VE
+// ❌ PROHIBIDO — lógica de signo ad-hoc en subscribers (debe ir en DUoM Sign Mgt)
 ILE."DUoM Second Qty" := Abs(ItemJournalLine."DUoM Second Qty");
 if NewItemLedgEntry.Quantity < 0 then
     ILE."DUoM Second Qty" := -ILE."DUoM Second Qty";
