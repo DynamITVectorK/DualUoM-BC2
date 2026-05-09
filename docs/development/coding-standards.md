@@ -271,6 +271,69 @@ if ItemJournalLine.Correction then
 Ver codeunit 50104 `DUoM Inventory Subscribers` (subscribers `OnAfterInitItemLedgEntry`
 y `OnAfterInitValueEntry`) y codeunit 50110 `DUoM Tracking Copy Subscribers`
 (subscriber `ILECopyTrackingFromItemJnlLine`) para los patrones de asignación pura.
+La lógica de signo que usan está centralizada en `DUoM Sign Mgt` (50126).
+
+---
+
+## Norma: gestión centralizada del signo DUoM
+
+### Principio rector
+
+`DUoM Second Qty` debe seguir el signo del movimiento. Nadie fuera de la codeunit
+`DUoM Sign Mgt` (50126) debe decidir si `DUoM Second Qty` va positivo o negativo,
+salvo casos explícitamente justificados (correcciones ILE en `OnBeforeInsertCorrItemLedgEntry`
+y undo sin trazabilidad en `OnAfterCopyItemJnlLineFromPurchRcpt`/`OnAfterCopyItemJnlLineFromSalesShpt`).
+
+### API centralizada — DUoM Sign Mgt (50126)
+
+```al
+// Normaliza el signo de DUoM Second Qty siguiendo ILE.Quantity.
+// Usar en: OnAfterInitItemLedgEntry, ILECopyTrackingFromItemJnlLine,
+//          OnAfterInitValueEntry, ILECopyTrackingFromNewItemJnlLine.
+procedure NormalizeILESign(ItemLedgerEntry: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
+
+// Aplica el signo técnico del movimiento (entrada/salida) a una SecondQty positiva.
+// Los datos de usuario se almacenan siempre positivos.
+// Usar en: IJLCopyTrackingFromSpec (TrackingSpec → IJL split),
+//          ProjectDocumentLineToItemJnlLine (Purchase/Sales Line → IJL).
+procedure ApplyMovementSign(ItemJournalLine: Record "Item Journal Line"; SecondQty: Decimal): Decimal
+```
+
+### Reglas de uso
+
+```al
+// ✅ CORRECTO — usar DUoM Sign Mgt para normalizar signo en ILE
+DUoMSignMgt.NormalizeILESign(ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
+
+// ✅ CORRECTO — usar DUoM Sign Mgt para aplicar signo del movimiento al IJL
+DUoMSignMgt.ApplyMovementSign(ItemJournalLine, Abs(TrackingSpecification."DUoM Second Qty"));
+
+// ❌ PROHIBIDO — lógica local de signo en subscribers
+if ItemJournalLine.Quantity < 0 then
+    ItemJournalLine."DUoM Second Qty" := -Abs(ItemJournalLine."DUoM Second Qty");
+
+// ❌ PROHIBIDO — duplicar NormalizeSecondQtySignForILE fuera de DUoM Sign Mgt
+local procedure NormalizeSecondQtySignForILE(ILE: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
+begin ...
+end;
+
+// ❌ PROHIBIDO — aplicar el signo dos veces (redundante e incoherente)
+ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(IJL, projected);
+ItemJournalLine."DUoM Second Qty" := -Abs(ItemJournalLine."DUoM Second Qty"); // ← segunda vez
+```
+
+### DUoM Ratio siempre positivo
+
+`DUoM Ratio` representa la relación entre unidades y nunca debe ser negativo. No convertirlo
+en negativo en flujos de venta, abono o corrección.
+
+```al
+// ✅ CORRECTO
+ILE."DUoM Ratio" := IJL."DUoM Ratio";  // Ratio positivo; el signo va en DUoM Second Qty
+
+// ❌ PROHIBIDO
+ILE."DUoM Ratio" := -IJL."DUoM Ratio";  // DUoM Ratio nunca negativo
+```
 
 ---
 
@@ -283,21 +346,13 @@ donde se aplica el signo técnico del movimiento al `DUoM Second Qty` del split 
 
 Los datos de usuario (TrackingSpec, ReservEntry) se almacenan **siempre positivos**.
 El signo correcto (negativo para salidas/ventas, positivo para entradas/compras)
-se determina a partir de `ItemJournalLine."Quantity (Base)"` del split.
+se determina a partir de `ItemJournalLine."Quantity (Base)"` del split, usando
+`DUoM Sign Mgt` (50126) como capa centralizada.
 
 ```al
-// ✅ CORRECTO — aplicar signo del movimiento al resolver DUoM en el split
-ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+// ✅ CORRECTO — aplicar signo del movimiento al resolver DUoM en el split (via DUoM Sign Mgt)
+ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(
     ItemJournalLine, Abs(TrackingSpecification."DUoM Second Qty"));
-
-// ✅ CORRECTO — helper de signo (equivalente a ApplyItemJnlSign en DocTransferHelper)
-local procedure ApplyMovementSign(IJL: Record "Item Journal Line"; SecondQty: Decimal): Decimal
-begin
-    if SecondQty = 0 then exit(0);
-    if IJL."Quantity (Base)" < 0 then exit(-Abs(SecondQty));
-    if IJL.Quantity < 0 then exit(-Abs(SecondQty));
-    exit(Abs(SecondQty));
-end;
 ```
 
 ### AlwaysVariable sin ratio real de tracking/lote

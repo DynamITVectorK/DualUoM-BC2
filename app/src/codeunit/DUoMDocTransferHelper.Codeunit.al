@@ -56,8 +56,10 @@ codeunit 50105 "DUoM Doc Transfer Helper"
             SalesLine."DUoM Ratio",
             SalesLine."Quantity (Base)",
             SalesLine.Quantity);
-        // Venta documental: el IJL representa salida de inventario y DUoM debe quedar negativo.
-        ItemJournalLine."DUoM Second Qty" := -Abs(ItemJournalLine."DUoM Second Qty");
+        // Nota: ApplyMovementSign en ProjectDocumentLineToItemJnlLine ya aplica el signo
+        // correcto de salida (negativo) para ventas, pues IJL."Quantity (Base)" es negativo
+        // en este momento (BC asigna -QtyToBeShippedBase antes de OnPostItemJnlLineOnAfterCopyDocumentFields).
+        // No es necesario volver a forzar el signo aquí.
     end;
 
     /// <summary>
@@ -147,9 +149,11 @@ codeunit 50105 "DUoM Doc Transfer Helper"
     end;
 
     local procedure ProjectDocumentLineToItemJnlLine(var ItemJournalLine: Record "Item Journal Line"; SourceSecondQty: Decimal; SourceRatio: Decimal; SourceQtyBase: Decimal; SourceQty: Decimal)
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         ItemJournalLine."DUoM Ratio" := SourceRatio;
-        ItemJournalLine."DUoM Second Qty" := ApplyItemJnlSign(
+        ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(
             ItemJournalLine,
             CalcProjectedSecondQty(
                 SourceSecondQty,
@@ -171,17 +175,6 @@ codeunit 50105 "DUoM Doc Transfer Helper"
         if SourceQty <> 0 then
             exit(Abs(SourceSecondQty) * Abs(PostingQty) / Abs(SourceQty));
         exit(0);
-    end;
-
-    local procedure ApplyItemJnlSign(ItemJournalLine: Record "Item Journal Line"; ProjectedSecondQty: Decimal): Decimal
-    begin
-        if ProjectedSecondQty = 0 then
-            exit(0);
-        if ItemJournalLine."Quantity (Base)" < 0 then
-            exit(-Abs(ProjectedSecondQty));
-        if ItemJournalLine.Quantity < 0 then
-            exit(-Abs(ProjectedSecondQty));
-        exit(Abs(ProjectedSecondQty));
     end;
 
     local procedure PurchaseLineHasItemTracking(PurchaseLine: Record "Purchase Line"): Boolean

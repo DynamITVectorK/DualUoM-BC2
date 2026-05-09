@@ -125,7 +125,7 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// Motivo: en Sales-Post, este evento se dispara DESPUÉS de que BC asigna
     ///   ItemJnlLine.Quantity := -QtyToBeShipped y ItemJnlLine."Quantity (Base)" := -QtyToBeShippedBase.
     ///   Por tanto, la cantidad de posting ya tiene el signo técnico de salida negativo,
-    ///   y ApplyItemJnlSign produce correctamente DUoM Second Qty negativo en el IJL.
+    ///   y DUoM Sign Mgt.ApplyMovementSign produce correctamente DUoM Second Qty negativo en el IJL.
     /// Firma BC 27 confirmada: (var ItemJournalLine; SalesLine; WarehouseReceiptHeader; WarehouseShipmentHeader)
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post", 'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
@@ -354,9 +354,11 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitItemLedgEntry', '', false, false)]
     local procedure OnAfterInitItemLedgEntry(var NewItemLedgEntry: Record "Item Ledger Entry"; var ItemJournalLine: Record "Item Journal Line"; var ItemLedgEntryNo: Integer)
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         NewItemLedgEntry."DUoM Ratio" := ItemJournalLine."DUoM Ratio";
-        NewItemLedgEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+        NewItemLedgEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
             NewItemLedgEntry, ItemJournalLine."DUoM Second Qty");
     end;
 
@@ -403,19 +405,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
     /// </summary>
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"Item Jnl.-Post Line", 'OnAfterInitValueEntry', '', false, false)]
     local procedure OnAfterInitValueEntry(var ValueEntry: Record "Value Entry"; var ItemJournalLine: Record "Item Journal Line"; var ValueEntryNo: Integer; var ItemLedgEntry: Record "Item Ledger Entry")
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
-        ValueEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+        ValueEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
             ItemLedgEntry, ItemJournalLine."DUoM Second Qty");
-    end;
-
-    local procedure NormalizeSecondQtySignForILE(ItemLedgerEntry: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
-    begin
-        if SecondQty = 0 then
-            exit(0);
-        if ItemLedgerEntry.Quantity < 0 then
-            exit(-Abs(SecondQty));
-        if ItemLedgerEntry.Quantity > 0 then
-            exit(Abs(SecondQty));
-        exit(SecondQty);
     end;
 }
