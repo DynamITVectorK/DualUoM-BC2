@@ -1,5 +1,5 @@
 /// <summary>
-/// Tests TDD para la validación de cierre de Item Tracking Lines con DUoM.
+/// Tests TDD para la validación del buffer de tracking de Item Tracking Lines con DUoM.
 ///
 /// Escenarios cubiertos:
 ///   T-CLOSE-02: Total DUoM igual a la línea → DUoM por lote persiste en ReservEntry
@@ -8,7 +8,7 @@
 ///
 /// Nota: T-CLOSE-01 (sync PurchLine alta) y T-CLOSE-04 (sync PurchLine baja) han sido
 /// eliminados. La sincronización de la Purchase Line desde Item Tracking Lines pertenecía
-/// a OnQueryClosePage, que ha sido eliminado por no seguir el patrón de Piezas. La fuente
+/// al diseño anterior y fue eliminada por no seguir el patrón de Piezas. La fuente
 /// de verdad DUoM por lote es Reservation Entry; la Purchase Line no se sincroniza
 /// automáticamente desde el tracking.
 ///
@@ -236,7 +236,7 @@ codeunit 50222 "DUoM Purch Track Close Tests"
 
         // [WHEN] Se intenta registrar la compra
         // [THEN] El posting sigue siendo bloqueado por la validación pre-posting
-        //        (segunda barrera — independiente de la validación de cierre de página)
+        //        (segunda barrera — independiente de la validación del buffer de tracking)
         asserterror LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
         LibraryAssert.ExpectedError('does not match the DUoM quantity on the purchase line');
     end;

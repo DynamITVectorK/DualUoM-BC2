@@ -7,7 +7,7 @@
 ///               cuando el usuario informa DUoM Second Qty con Base Qty ya establecido.
 ///               Verifica que Ratio = SecondQty / BaseQty (sin intervención del usuario).
 ///
-///   T-RATIO-02: ValidateTrackingSpecBufferEachLine (nueva barrera de cierre) detecta
+///   T-RATIO-02: ValidateTrackingSpecBufferEachLine (validación del buffer de tracking) detecta
 ///               ratio incoherente en una línea de tracking y lanza error con detalle
 ///               del lote, cantidades y ratio esperado vs informado.
 ///
@@ -35,7 +35,7 @@
 ///   T-RATIO-09: En modo Fixed, NormalizeTrackingQuantityBase no deriva el ratio
 ///               y ValidateTrackingSpecLine mantiene la validación estricta.
 ///
-/// Arquitectura de validación de cierre (barrera de campo T-RATIO-02):
+/// Arquitectura de validación del buffer de tracking (T-RATIO-02):
 ///   DUoM Second Qty.OnValidate / DUoM Ratio.OnValidate (DUoM Item Tracking Lines, 50112)
 ///     → ValidateTrackingSpecBufferEachLine (DUoM Tracking Coherence Mgt, 50111)
 ///       → IsFunctionalTrackingLine: skip líneas vacías
@@ -222,10 +222,10 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
     //   Expected Ratio = 7 / 3 = 2,3333…  ≠ 1,75 → error
     //
     // Test unitario directo sobre ValidateTrackingSpecBufferEachLine (50111)
-    // con un buffer temporal que simula el estado de la página al cerrar.
+    // con un buffer temporal que simula el estado de Item Tracking Lines tras aceptar.
     // -------------------------------------------------------------------------
     [Test]
-    procedure PurchLotTracking_CloseWithInconsistentRatio_RaisesError()
+    procedure PurchLotTracking_ValidateTrackingBuffer_InconsistentRatio_RaisesError()
     var
         Item: Record Item;
         TrackingSpec: Record "Tracking Specification" temporary;
@@ -250,7 +250,7 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
         TrackingSpec."DUoM Ratio" := 1.75;
         TrackingSpec.Insert();
 
-        // [WHEN] Se ejecuta la validación de cierre equivalente a aceptar Item Tracking Lines
+        // [WHEN] Se ejecuta la validación explícita del buffer de Tracking Specification
         // [THEN] Se lanza error de incoherencia DUoM indicando el lote BBB
         asserterror DUoMCoherenceMgt.ValidateTrackingSpecBufferEachLine(TrackingSpec);
         LibraryAssert.ExpectedError('BBB');
@@ -269,7 +269,7 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
     //   (incoherente: 3 × 1,75 = 5,25 ≠ 7)
     //   → el posting se bloquea con RatioIncoherenceErr
     //
-    // Este test garantiza que la nueva barrera de cierre no debilita ni elimina
+    // Este test garantiza que la validación del buffer de tracking no debilita ni elimina
     // la validación final existente.
     // -------------------------------------------------------------------------
     [Test]
