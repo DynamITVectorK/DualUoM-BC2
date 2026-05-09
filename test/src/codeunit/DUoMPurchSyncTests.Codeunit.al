@@ -1,37 +1,39 @@
 /// <summary>
-/// Tests TDD para la sincronización DUoM desde Item Tracking Lines hacia la línea
-/// de pedido de compra (Purchase Line).
+/// Tests TDD para la validación de campos DUoM durante la entrada en Item Tracking Lines.
 ///
 /// Escenarios cubiertos:
-///   T-SYNC-01: Variable — piezas reales en tracking recalculan ratio y sincronizan línea
-///              7 KG con 11 PCS → DUoM Ratio = 11/7 ≈ 1.571 → Purchase Line actualizada.
+///   T-SYNC-01: Variable — piezas reales en tracking recalculan ratio en ReservEntry
+///              7 KG con 11 PCS → DUoM Ratio = 11/7 ≈ 1.571 → ReservEntry actualizada.
 ///
-///   T-SYNC-02: AlwaysVariable — piezas reales calculan ratio y sincronizan línea
+///   T-SYNC-02: AlwaysVariable — piezas reales calculan ratio en ReservEntry
 ///              Igual que Variable pero con modo AlwaysVariable.
 ///
 ///   T-SYNC-03: Fixed — piezas distintas al ratio fijo bloquean con error
 ///              DUoM Ratio fijo = 1.25, usuario informa 11 PCS para 7 KG →
 ///              error de incoherencia (|7×1.25 − 11| > tolerancia).
 ///
-///   T-SYNC-04: Variable, varios lotes — Purchase Line recibe el total agregado
+///   T-SYNC-04: Variable, varios lotes — cada ReservEntry retiene su ratio real
 ///              LOTE-A: 4 KG / 6 PCS (ratio 1.5)
 ///              LOTE-B: 6 KG / 8 PCS (ratio 1.333...)
-///              Purchase Line: 14 PCS, ratio agregado = 1.4
 ///
 ///   T-SYNC-05: Variable E2E — flujo completo desde tracking hasta ILE
 ///              7 KG + 11 PCS → ratio 11/7 → ILE contiene valores reales
 ///
-/// Diseño de la sincronización:
+/// Nota: T-SYNC-01, T-SYNC-02, T-SYNC-04, T-SYNC-05 ya no verifican la sincronización
+/// de la Purchase Line. La sincronización de PurchLine desde el tracking pertenecía a
+/// OnQueryClosePage, que ha sido eliminado por no seguir el patrón de Piezas.
+/// Los valores DUoM por lote se persisten en Reservation Entry a través del flujo estándar
+/// de tracking (OnAfterMoveFields, OnCreateReservEntryExtraFields, etc.).
+///
+/// Diseño de la validación (flujo estándar de tracking):
 ///   DUoM Second Qty.OnValidate (pageextension 50112)
 ///     → NormalizeTrackingDUoMSecondQty (DUoM Tracking Coherence Mgt, 50111)
 ///       → Variable/AlwaysVariable: DUoM Ratio := DUoM Second Qty / Qty (Base)
 ///     → ValidateTrackingSpecLine (50111) — coherencia post-normalización
 ///
-///   OnQueryClosePage (OK/LookupOK):
-///     → SyncPurchLineFromTrackingBuffer (50111)
-///       → PurchLine.DUoM Second Qty := SUM(tracking.DUoM Second Qty)
-///       → PurchLine.DUoM Ratio := Total / TotalBase
-///     → ValidateTrackingSpecBufferForPurchLine (50111) — sanity check
+///   Al cerrar con OK:
+///     → OnAfterMoveFields → TrackingSpec → ReservEntry (con DUoM)
+///     → OnCreateReservEntryExtraFields → INSERT final de ReservEntry (con DUoM)
 /// </summary>
 codeunit 50225 "DUoM Purch Sync Tests"
 {
@@ -39,17 +41,16 @@ codeunit 50225 "DUoM Purch Sync Tests"
     TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
-    // T-SYNC-01 — Variable: piezas reales recalculan ratio y sincronizan Purchase Line
+    // T-SYNC-01 — Variable: piezas reales recalculan ratio y persisten en ReservEntry
     //
     // Caso del issue: pedido 7 KG, sin piezas previas. Usuario informa 11 piezas
     // en Item Tracking Lines durante la recepción. El sistema recalcula el ratio
-    // real del lote y actualiza la Purchase Line como resumen agregado.
+    // real del lote y lo persiste en Reservation Entry.
     //
     // Purchase Line: Qty = 7 KG / DUoM Second Qty = 0 / DUoM Ratio = 0
     // Tracking: Lot BV / Qty (Base) = 7 / DUoM Second Qty = 11
     // Resultado esperado:
-    //   Tracking: DUoM Ratio = 11/7 ≈ 1.571
-    //   Purchase Line: DUoM Second Qty = 11, DUoM Ratio ≈ 1.571
+    //   ReservEntry: DUoM Ratio = 11/7 ≈ 1.571, DUoM Second Qty = 11
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_Sync_MPH')]
@@ -119,27 +120,18 @@ codeunit 50225 "DUoM Purch Sync Tests"
         LibraryAssert.AreNearlyEqual(
             11, ReservEntry."DUoM Second Qty", 0.001,
             'T-SYNC-01: DUoM Second Qty de tracking debe ser 11 (piezas reales informadas).');
-
-        // [THEN] La Purchase Line queda sincronizada como resumen agregado del tracking
-        PurchLine.Get(PurchHeader."Document Type", PurchHeader."No.", PurchLine."Line No.");
-        LibraryAssert.AreNearlyEqual(
-            11, PurchLine."DUoM Second Qty", 0.001,
-            'T-SYNC-01: PurchLine.DUoM Second Qty debe ser 11 (piezas reales sincronizadas).');
-        LibraryAssert.AreNearlyEqual(
-            ExpectedRatio, PurchLine."DUoM Ratio", 0.00001,
-            'T-SYNC-01: PurchLine.DUoM Ratio debe ser 11/7 (ratio real sincronizado).');
     end;
 
     // -------------------------------------------------------------------------
-    // T-SYNC-02 — AlwaysVariable: piezas reales calculan ratio y sincronizan línea
+    // T-SYNC-02 — AlwaysVariable: piezas reales calculan ratio y persisten en ReservEntry
     //
     // AlwaysVariable exige que los datos sean completos (ratio ≠ 0) al cerrar/postear.
     // Cuando el usuario informa piezas reales en tracking, el ratio se calcula
-    // automáticamente y la Purchase Line queda sincronizada.
+    // automáticamente y se persiste en Reservation Entry.
     //
     // Purchase Line: Qty = 7 / DUoM Second Qty = 0 / DUoM Ratio = 0
     // Tracking: Lot BV / Qty (Base) = 7 / DUoM Second Qty = 11
-    // Resultado esperado: DUoM Ratio = 11/7, Purchase Line sincronizada.
+    // Resultado esperado: ReservEntry.DUoM Ratio = 11/7.
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_Sync_MPH')]
@@ -200,15 +192,6 @@ codeunit 50225 "DUoM Purch Sync Tests"
         LibraryAssert.AreNearlyEqual(
             ExpectedRatio, ReservEntry."DUoM Ratio", 0.00001,
             'T-SYNC-02: DUoM Ratio de tracking debe ser 11/7 (calculado desde piezas reales).');
-
-        // [THEN] Purchase Line sincronizada como resumen agregado
-        PurchLine.Get(PurchHeader."Document Type", PurchHeader."No.", PurchLine."Line No.");
-        LibraryAssert.AreNearlyEqual(
-            11, PurchLine."DUoM Second Qty", 0.001,
-            'T-SYNC-02: PurchLine.DUoM Second Qty debe ser 11 (piezas reales sincronizadas).');
-        LibraryAssert.AreNearlyEqual(
-            ExpectedRatio, PurchLine."DUoM Ratio", 0.00001,
-            'T-SYNC-02: PurchLine.DUoM Ratio debe ser 11/7 (ratio real sincronizado).');
     end;
 
     // -------------------------------------------------------------------------
@@ -265,19 +248,18 @@ codeunit 50225 "DUoM Purch Sync Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T-SYNC-04 — Variable, varios lotes: Purchase Line recibe el total agregado
+    // T-SYNC-04 — Variable, varios lotes: cada ReservEntry retiene su ratio real
     //
     // Con múltiples lotes, cada lote retiene su ratio real propio.
-    // La Purchase Line se actualiza con el total agregado de piezas y el ratio medio.
+    // La fuente de verdad DUoM por lote es Reservation Entry.
     //
     // Purchase Line: Qty = 10 KG / DUoM Second Qty = 0 / DUoM Ratio = 0
     // Tracking:
     //   LOTE-A: Qty (Base) = 4 / DUoM Second Qty = 6 → ratio = 1.5
     //   LOTE-B: Qty (Base) = 6 / DUoM Second Qty = 8 → ratio = 8/6 ≈ 1.333
     // Resultado esperado:
-    //   LOTE-A ratio = 1.5
-    //   LOTE-B ratio = 8/6 ≈ 1.333
-    //   Purchase Line: DUoM Second Qty = 14, DUoM Ratio = 14/10 = 1.4
+    //   LOTE-A ReservEntry.DUoM Ratio = 1.5 / DUoM Second Qty = 6
+    //   LOTE-B ReservEntry.DUoM Ratio = 8/6 / DUoM Second Qty = 8
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_Sync_MPH')]
@@ -361,15 +343,6 @@ codeunit 50225 "DUoM Purch Sync Tests"
         LibraryAssert.AreNearlyEqual(
             8, ReservEntryB."DUoM Second Qty", 0.001,
             'T-SYNC-04: LOTE-B DUoM Second Qty debe ser 8 (piezas reales).');
-
-        // [THEN] Purchase Line tiene el total agregado: 14 PCS, ratio = 14/10 = 1.4
-        PurchLine.Get(PurchHeader."Document Type", PurchHeader."No.", PurchLine."Line No.");
-        LibraryAssert.AreNearlyEqual(
-            14, PurchLine."DUoM Second Qty", 0.001,
-            'T-SYNC-04: PurchLine.DUoM Second Qty debe ser 14 (6 + 8, suma de los dos lotes).');
-        LibraryAssert.AreNearlyEqual(
-            1.4, PurchLine."DUoM Ratio", 0.001,
-            'T-SYNC-04: PurchLine.DUoM Ratio debe ser 14/10 = 1.4 (ratio agregado).');
     end;
 
     // -------------------------------------------------------------------------
@@ -377,8 +350,7 @@ codeunit 50225 "DUoM Purch Sync Tests"
     //
     // Verifica que el flujo real de recepción queda completamente registrado:
     //   1. Usuario informa piezas reales en tracking → ratio real calculado.
-    //   2. Purchase Line sincronizada.
-    //   3. Al registrar, los valores reales se propagan al ILE.
+    //   2. Al registrar, los valores reales se propagan al ILE a través del tracking.
     //
     // Purchase Line: Qty = 7 KG / DUoM Second Qty = 0 / DUoM Ratio = 0
     // Tracking: Lot BV / 7 KG / 11 PCS → ratio = 11/7 ≈ 1.571
@@ -425,12 +397,6 @@ codeunit 50225 "DUoM Purch Sync Tests"
         PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
         PurchaseOrder.Close();
 
-        // Purchase Line sincronizada (verificación intermedia)
-        PurchLine.Get(PurchHeader."Document Type", PurchHeader."No.", PurchLine."Line No.");
-        LibraryAssert.AreNearlyEqual(
-            11, PurchLine."DUoM Second Qty", 0.001,
-            'T-SYNC-05: PurchLine debe quedar sincronizada con 11 piezas antes del posting.');
-
         // [WHEN] Se registra la recepción del pedido de compra
         PurchHeader.Get(PurchHeader."Document Type", PurchHeader."No.");
         LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
@@ -458,7 +424,7 @@ codeunit 50225 "DUoM Purch Sync Tests"
     ///   HandlerStep = 1 (T-SYNC-01, T-SYNC-02, T-SYNC-05):
     ///     Un lote BV con 7 KG y 11 piezas reales.
     ///     NormalizeTrackingDUoMSecondQty recalcula DUoM Ratio = 11/7 ≈ 1.571.
-    ///     OK cierra la página — SyncPurchLineFromTrackingBuffer actualiza Purchase Line.
+    ///     OK cierra la página — ReservEntry persiste DUoM via flujo estándar de tracking.
     ///
     ///   HandlerStep = 2 (T-SYNC-03):
     ///     Artículo Fixed (ratio 1.25). Un lote BV con 7 KG y 11 piezas.
@@ -471,7 +437,7 @@ codeunit 50225 "DUoM Purch Sync Tests"
     ///       LOTE-A: 4 KG / 6 PCS → ratio = 1.5
     ///       LOTE-B: 6 KG / 8 PCS → ratio = 8/6 ≈ 1.333
     ///     NormalizeTrackingDUoMSecondQty recalcula cada ratio individualmente.
-    ///     OK cierra la página — PurchLine se sincroniza con total = 14 PCS, ratio = 1.4.
+    ///     OK cierra la página — cada ReservEntry persiste su ratio real.
     /// </summary>
     [ModalPageHandler]
     procedure ItemTrackingLines_Sync_MPH(

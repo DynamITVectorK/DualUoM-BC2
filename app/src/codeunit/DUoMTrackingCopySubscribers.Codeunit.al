@@ -7,7 +7,7 @@
 ///     → Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec
 ///         ↓
 ///   ReservEntry1 (temporal con DUoM Ratio correcto)
-///     → Table "Reservation Entry" · OnAfterCopyTrackingFromReservEntry  ← NUEVO
+///     → Table "Reservation Entry" · OnAfterCopyTrackingFromReservEntry
 ///         ↓
 ///   InsertReservEntry → BD con DUoM Ratio correcto  ✓
 ///

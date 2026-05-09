@@ -35,13 +35,11 @@
 ///   T-RATIO-09: En modo Fixed, NormalizeTrackingQuantityBase no deriva el ratio
 ///               y ValidateTrackingSpecLine mantiene la validación estricta.
 ///
-/// Arquitectura de validación de cierre (nueva barrera T-RATIO-02):
-///   OnQueryClosePage (DUoM Item Tracking Lines, 50112)
-///     → ValidateTrackingSpecBufferEachLine (DUoM Tracking Coherence Mgt, 50111)  ← NUEVO
+/// Arquitectura de validación de cierre (barrera de campo T-RATIO-02):
+///   DUoM Second Qty.OnValidate / DUoM Ratio.OnValidate (DUoM Item Tracking Lines, 50112)
+///     → ValidateTrackingSpecBufferEachLine (DUoM Tracking Coherence Mgt, 50111)
 ///       → IsFunctionalTrackingLine: skip líneas vacías
 ///       → ValidateTrackingSpecLine: coherencia por lote (ratio = secondQty / baseQty)
-///     → SyncPurchLineFromTrackingBuffer
-///     → ValidateTrackingSpecBufferForPurchLine (sanity check totales)
 ///
 /// Segunda barrera (intacta):
 ///   OnPostItemJnlLineOnAfterCopyDocumentFields → DUoM Purchase Subscribers (50102)
@@ -214,9 +212,10 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
     // -------------------------------------------------------------------------
     // T-RATIO-02 — ValidateTrackingSpecBufferEachLine bloquea ratio incoherente
     //
-    // Verifica que la nueva barrera de cierre ValidateTrackingSpecBufferEachLine
-    // detecta un ratio incoherente en una línea de tracking y lanza error con
-    // detalle del lote, cantidades y ratio esperado vs informado.
+    // Verifica que la validación ValidateTrackingSpecBufferEachLine detecta un ratio
+    // incoherente en una línea de tracking y lanza error con detalle del lote,
+    // cantidades y ratio esperado vs informado. Puede ser invocada directamente
+    // desde código de producción o desde tests, independientemente de la UI.
     //
     // Escenario del issue:
     //   Lote BBB: Base Qty = 3, DUoM Second Qty = 7, DUoM Ratio = 1,75 (inconsistente)
@@ -459,8 +458,7 @@ codeunit 50226 "DUoM Purch Lot Ratio Tests"
     //   → error de totales DUoM
     //
     // Nota: se llama a ValidateTrackingSpecBufferForPurchLine directamente
-    // (sin SyncPurchLineFromTrackingBuffer previo) para probar la validación de
-    // totales de forma independiente del flujo de sincronización.
+    // para probar la validación de totales de forma independiente.
     // -------------------------------------------------------------------------
     [Test]
     procedure PurchLotTracking_TrackingTotalsMismatch_RaisesError()

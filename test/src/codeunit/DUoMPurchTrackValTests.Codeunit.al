@@ -251,18 +251,19 @@ codeunit 50223 "DUoM Purch Track Val Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T-FVAL-04 — PurchLine.DUoM Second Qty = 0: validación agregada omitida en cierre
+    // -------------------------------------------------------------------------
+    // T-FVAL-04 — PurchLine.DUoM Second Qty = 0: ninguna validación de totales aplicada
     //
-    // Verifica la rama `if PurchLine."DUoM Second Qty" <= 0 then exit` en
-    // ValidateTrackingSpecBufferForPurchLine (50111).
-    // Cuando la Purchase Line no tiene DUoM Second Qty objetivo (= 0), el cierre
-    // con OK se permite independientemente de los valores DUoM en las líneas de tracking.
+    // Verifica que el cierre de Item Tracking Lines con un lote DUoM válido
+    // funciona sin error cuando la Purchase Line no tiene DUoM Ratio ni DUoM Second Qty.
+    // Los valores DUoM se persisten en Reservation Entry a través del flujo estándar
+    // de tracking, independientemente del estado de la Purchase Line.
     //
     // Artículo: DUoM Variable, seguimiento por lote.
     // Purchase Line: Qty = 5, sin DUoM Ratio → DUoM Second Qty = 0.
     // Tracking: Lot No. = 'LOT-NOCHK01', Qty (Base) = 5, DUoM Ratio = 1.5 (manual).
     //           DUoM Second Qty = 7.5 (auto-calculado).
-    // Resultado: OK sin error (agregado omitido porque PurchLine.DUoM Second Qty = 0).
+    // Resultado: OK sin error; ReservEntry tiene DUoM Ratio = 1.5, DUoM Second Qty = 7.5.
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_FieldVal_MPH')]
@@ -304,7 +305,7 @@ codeunit 50223 "DUoM Purch Track Val Tests"
         PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
         PurchaseOrder.Close();
 
-        // [THEN] La página se cierra sin error (validación agregada omitida)
+        // [THEN] La página se cierra sin error
         // [THEN] La Reservation Entry tiene DUoM Ratio = 1.5 (valor introducido manualmente)
         // SetSourceFilter applies the complete standard BC source identity.
         // See docs/development/coding-standards.md.
@@ -351,7 +352,7 @@ codeunit 50223 "DUoM Purch Track Val Tests"
     ///     Artículo Variable. PurchLine sin DUoM Ratio (= 0).
     ///     Introduce lote LOT-NOCHK01 y Qty = 5.
     ///     Introduce DUoM Ratio = 1.5 manualmente → DUoM Second Qty = 7.5 (auto-calculado).
-    ///     OK sin error: SyncPurchLineFromTrackingBuffer → PurchLine.DUoM = 7.5 → OK.
+    ///     OK sin error: PurchLine.DUoM Second Qty = 0 → validación de totales omitida.
     ///
     /// Nota: en el step 1, la excepción se propaga desde SetValue antes
     /// de llegar a OK().Invoke(). En los steps 2, 3 y 4, OK() se invoca con éxito.
@@ -398,7 +399,7 @@ codeunit 50223 "DUoM Purch Track Val Tests"
                 end;
             4:
                 begin
-                    // T-FVAL-04: PurchLine.DUoM Second Qty = 0 → SyncPurchLineFromTrackingBuffer → OK
+                    // T-FVAL-04: PurchLine.DUoM Second Qty = 0 → validación de totales omitida → OK
                     ItemTrackingLines.New();
                     ItemTrackingLines."Lot No.".SetValue('LOT-NOCHK01');
                     // Sin ratio de lote y PurchLine.DUoM Ratio = 0 → DUoM Ratio = 0
@@ -406,7 +407,7 @@ codeunit 50223 "DUoM Purch Track Val Tests"
                     // Introducir DUoM Ratio manual = 1.5 → DUoM Second Qty = 5 × 1.5 = 7.5
                     ItemTrackingLines."DUoM Ratio".SetValue(1.5);
                     // ValidateTrackingSpecLine: Ratio=1.5, Qty=5, SecondQty=7.5 → coherente ✓
-                    // OnQueryClosePage: SyncPurchLineFromTrackingBuffer → PurchLine.DUoM = 7.5 → OK
+                    // PurchLine.DUoM = 0 → ValidateTrackingSpecBufferForPurchLine omitida → OK
                     ItemTrackingLines.OK().Invoke();
                 end;
         end;

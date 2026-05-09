@@ -23,14 +23,14 @@
 ///   T-REOPEN-07: Variable — segunda edición de Item Tracking Lines persiste DUoM modificado
 ///                (Modify path: ReservEntry existente actualiza DUoM Ratio e DUoM Second Qty)
 ///   T-REOPEN-08: AlwaysVariable — segunda edición persiste DUoM modificado
-///                (Modify path cubierto por PersistDUoMToReservEntries en 50111)
+///                (Modify path via flujo estándar de tracking: OnAfterMoveFields → RE actualizada)
 ///
 /// Arquitectura cubierta:
 ///   - Persistencia al cerrar (Insert): TrackingSpec buffer → ReservEntry1 (CopyTrackingFromSpec)
 ///     → InsertReservEntry (CopyTrackingFromReservEntry) → BD
 ///     vía OnAfterCopyTrackingFromTrackingSpec y OnAfterCopyTrackingFromReservEntry (50110)
 ///   - Persistencia al cerrar (Modify): ReservEntry existente actualizada desde buffer
-///     vía PersistDUoMToReservEntries (50111) — cubre segunda edición y sucesivas
+///     vía flujo estándar de tracking (OnAfterMoveFields, OnCreateReservEntryExtraFields)
 ///   - Recarga al reabrir: Reservation Entry → TrackingSpec buffer
 ///     vía OnAfterCopyTrackingFromReservEntry en Table "Tracking Specification" (50110)
 ///
@@ -941,8 +941,8 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     // los nuevos valores DUoM (Ratio y Second Qty) se persisten correctamente en
     // Reservation Entry y se recuperan al reabrir por tercera vez.
     //
-    // Esto cubre el MODIFY PATH: PersistDUoMToReservEntries (50111), llamado desde
-    // OnQueryClosePage (50112), actualiza explícitamente la RE existente desde el buffer.
+    // Esto cubre el MODIFY PATH: el flujo estándar de tracking (OnAfterMoveFields,
+    // OnCreateReservEntryExtraFields) actualiza la RE existente desde el buffer.
     //
     // Valores de referencia:
     //   Artículo: DUoM Variable, seguimiento por lote habilitado
@@ -1019,7 +1019,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
 
         // [THEN] Tras segunda edición: Reservation Entry actualizada con DUoM Ratio = 0.8
-        //        (cubre el Modify path vía PersistDUoMToReservEntries en 50111)
+        //        (Modify path via flujo estándar de tracking: OnAfterMoveFields → RE actualizada)
         ReservEntry.SetSourceFilter(
             Database::"Purchase Line",
             PurchLine."Document Type".AsInteger(),
@@ -1129,7 +1129,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
 
         // [THEN] Tras segunda edición: Reservation Entry actualizada con DUoM Ratio = 0.8
-        //        (cubre el Modify path vía PersistDUoMToReservEntries en 50111)
+        //        (Modify path via flujo estándar de tracking: OnAfterMoveFields → RE actualizada)
         ReservEntry.SetSourceFilter(
             Database::"Purchase Line",
             PurchLine."Document Type".AsInteger(),
@@ -1274,14 +1274,14 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     ///                     qty = 4, DUoM Second Qty = 3 → DUoM Ratio auto = 0.75.
     ///   HandlerStep = 16: segunda edición T-REOPEN-07 (Variable). Modifica Quantity (Base)
     ///                     a 5 y DUoM Second Qty a 4 → DUoM Ratio auto = 0.8.
-    ///                     Cubre el Modify path: PersistDUoMToReservEntries actualiza la RE.
+    ///                     Modify path via flujo estándar de tracking.
     ///   HandlerStep = 17: tercera apertura T-REOPEN-07. Verifica Qty Base = 5,
     ///                     DUoM Ratio = 0.8 y DUoM Second Qty = 4 recargados.
     ///   HandlerStep = 18: primera edición T-REOPEN-08 (AlwaysVariable). Asigna
     ///                     LOT-MODIFY-T8AV, qty = 4, DUoM Ratio = 0.75, DUoM Second Qty = 3.
     ///   HandlerStep = 19: segunda edición T-REOPEN-08 (AlwaysVariable). Modifica
     ///                     Quantity (Base) a 5 y DUoM Second Qty a 4 → DUoM Ratio auto = 0.8.
-    ///                     Cubre el Modify path: PersistDUoMToReservEntries actualiza la RE.
+    ///                     Modify path via flujo estándar de tracking.
     ///   HandlerStep = 20: tercera apertura T-REOPEN-08. Verifica Qty Base = 5,
     ///                     DUoM Ratio = 0.8 y DUoM Second Qty = 4 recargados.
     ///
@@ -1554,7 +1554,6 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                 begin
                     // T-REOPEN-07: Segunda edición — modificar Qty Base a 5 y DUoM Second Qty a 4
                     // NormalizeTrackingQuantityBase/NormalizeTrackingDUoMSecondQty recalculan DUoM Ratio = 4 / 5 = 0.8
-                    // PersistDUoMToReservEntries actualiza la RE existente (Modify path)
                     ItemTrackingLines.First();
                     ItemTrackingLines."Quantity (Base)".SetValue(5);
                     ItemTrackingLines."DUoM Second Qty".SetValue(4);
@@ -1601,7 +1600,6 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                 begin
                     // T-REOPEN-08: Segunda edición — modificar Qty Base a 5 y DUoM Second Qty a 4
                     // NormalizeTrackingQuantityBase/NormalizeTrackingDUoMSecondQty recalculan DUoM Ratio = 4 / 5 = 0.8
-                    // PersistDUoMToReservEntries actualiza la RE existente (Modify path)
                     ItemTrackingLines.First();
                     ItemTrackingLines."Quantity (Base)".SetValue(5);
                     ItemTrackingLines."DUoM Second Qty".SetValue(4);

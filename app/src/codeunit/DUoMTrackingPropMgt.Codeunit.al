@@ -94,21 +94,6 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
             TempTrackingSpecification.Modify(false);
     end;
 
-    procedure ValidateTrackingBeforeClose(var TrackingSpecification: Record "Tracking Specification")
-    var
-        DUoMTrackingCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
-    begin
-        DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferEachLine(TrackingSpecification);
-
-        // El cierre agregado implementado hoy en el repo solo existe para Purchase Line.
-        // Sales permanece cubierto por la persistencia DUoM por lote y por la validación
-        // inmediata de Tracking Specification, pero no tiene aún helper equivalente de sync.
-        if TrackingSpecification."Source Type" = Database::"Purchase Line" then begin
-            DUoMTrackingCoherenceMgt.SyncPurchLineFromTrackingBuffer(TrackingSpecification);
-            DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(TrackingSpecification);
-        end;
-    end;
-
     procedure AreReservEntriesDUoMIdentical(
         ReservEntry1: Record "Reservation Entry";
         ReservEntry2: Record "Reservation Entry"): Boolean
@@ -131,8 +116,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         ReservationEntry: Record "Reservation Entry";
         var TrackingSpecification: Record "Tracking Specification")
     begin
-        // Normalización defensiva: Reservation Entry debe persistir el ratio en positivo,
-        // pero la recarga del buffer corrige cualquier valor legado o intermedio con signo.
+        // DUoM sigue el patrón Piezas: los datos de usuario se almacenan siempre en positivo.
+        // Abs() normaliza cualquier valor con signo que pueda llegar de flujos técnicos.
         TrackingSpecification."DUoM Ratio" := Abs(ReservationEntry."DUoM Ratio");
         TrackingSpecification."DUoM Second Qty" := NormalizeSecondQtyForPage(
             ReservationEntry."DUoM Second Qty");
@@ -142,8 +127,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         SourceTrackingSpec: Record "Tracking Specification";
         var DestTrackingSpec: Record "Tracking Specification")
     begin
-        // Normalización defensiva: el buffer visible debe permanecer siempre en positivo,
-        // incluso si algún flujo interno aporta un origen con signo técnico o dato legado.
+        // DUoM sigue el patrón Piezas: el buffer visible siempre muestra valores positivos.
+        // Abs() normaliza cualquier valor con signo que pueda llegar de flujos técnicos (p.ej. ventas).
         DestTrackingSpec."DUoM Ratio" := Abs(SourceTrackingSpec."DUoM Ratio");
         DestTrackingSpec."DUoM Second Qty" := NormalizeSecondQtyForPage(
             SourceTrackingSpec."DUoM Second Qty");
