@@ -26,10 +26,10 @@
 ///                (Modify path via flujo estándar de tracking: OnAfterMoveFields → RE actualizada)
 ///
 /// Arquitectura cubierta:
-///   - Persistencia al cerrar (Insert): TrackingSpec buffer → ReservEntry1 (CopyTrackingFromSpec)
+///   - Persistencia por flujo estándar (Insert): TrackingSpec buffer → ReservEntry1 (CopyTrackingFromSpec)
 ///     → InsertReservEntry (CopyTrackingFromReservEntry) → BD
 ///     vía OnAfterCopyTrackingFromTrackingSpec y OnAfterCopyTrackingFromReservEntry (50110)
-///   - Persistencia al cerrar (Modify): ReservEntry existente actualizada desde buffer
+///   - Persistencia por flujo estándar (Modify): ReservEntry existente actualizada desde buffer
 ///     vía flujo estándar de tracking (OnAfterMoveFields, OnCreateReservEntryExtraFields)
 ///   - Recarga al reabrir: Reservation Entry → TrackingSpec buffer
 ///     vía OnAfterCopyTrackingFromReservEntry en Table "Tracking Specification" (50110)
@@ -46,7 +46,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
-    // T-PERSIST-01 — Persistencia DUoM al cerrar/reabrir Item Tracking Lines
+    // T-PERSIST-01 — Persistencia DUoM al aceptar/reabrir Item Tracking Lines
     //
     // Verifica que los valores DUoM (DUoM Ratio y DUoM Second Qty) introducidos
     // manualmente en Item Tracking Lines desde un pedido de compra con artículo
