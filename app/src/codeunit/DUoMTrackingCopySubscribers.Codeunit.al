@@ -154,13 +154,14 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         TrackingSpecification: Record "Tracking Specification")
     var
         DUoMLotSubscribers: Codeunit "DUoM Lot Subscribers";
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         if TrackingSpecification."DUoM Ratio" <> 0 then begin
             // Fuente 1: TrackingSpec tiene ratio validado por el usuario en Item Tracking Lines.
             // Copiar ratio directamente; aplicar signo técnico del movimiento al Second Qty
             // (el dato de usuario se almacena siempre positivo; salidas deben ser negativas).
             ItemJournalLine."DUoM Ratio" := TrackingSpecification."DUoM Ratio";
-            ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+            ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(
                 ItemJournalLine, Abs(TrackingSpecification."DUoM Second Qty"));
             exit;
         end;
@@ -170,7 +171,7 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
             // Fuente 2: DUoM Lot Ratio (50102) tiene ratio para este lote.
             // ApplyLotRatioToItemJournalLine establece DUoM Second Qty = Abs(Qty) × Ratio (positivo);
             // aplicar signo técnico del movimiento.
-            ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+            ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(
                 ItemJournalLine, Abs(ItemJournalLine."DUoM Second Qty"));
             exit;
         end;
@@ -179,7 +180,7 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
         if ItemJournalLine."DUoM Ratio" <> 0 then
             // Fuente 3: IJL padre tiene ratio (Variable/Fixed sin tracking específico).
             // Proyectar proporcionalmente con la cantidad real del split y aplicar signo.
-            ItemJournalLine."DUoM Second Qty" := ApplyMovementSign(
+            ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(
                 ItemJournalLine,
                 Abs(TrackingSpecification."Quantity (Base)") * ItemJournalLine."DUoM Ratio")
         else
@@ -187,20 +188,6 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
             // No se puede distribuir el total de la línea entre los splits sin ratio.
             // Regla: DUoM Ratio = 0 → DUoM Second Qty = 0.
             ItemJournalLine."DUoM Second Qty" := 0;
-    end;
-
-    // Aplica el signo técnico del movimiento a una cantidad DUoM positiva.
-    // Las entradas (compras) producen valores positivos; las salidas (ventas) negativos.
-    // Lógica idéntica a ApplyItemJnlSign en DUoM Doc Transfer Helper (50105).
-    local procedure ApplyMovementSign(ItemJournalLine: Record "Item Journal Line"; SecondQty: Decimal): Decimal
-    begin
-        if SecondQty = 0 then
-            exit(0);
-        if ItemJournalLine."Quantity (Base)" < 0 then
-            exit(-Abs(SecondQty));
-        if ItemJournalLine.Quantity < 0 then
-            exit(-Abs(SecondQty));
-        exit(Abs(SecondQty));
     end;
 
     // ── Item Journal Line → Item Ledger Entry ─────────────────────────────────
@@ -219,9 +206,11 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     local procedure ILECopyTrackingFromItemJnlLine(
         var ItemLedgerEntry: Record "Item Ledger Entry";
         ItemJnlLine: Record "Item Journal Line")
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-        ItemLedgerEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+        ItemLedgerEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
             ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
     end;
 
@@ -351,20 +340,11 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     local procedure ILECopyTrackingFromNewItemJnlLine(
         var ItemLedgerEntry: Record "Item Ledger Entry";
         ItemJnlLine: Record "Item Journal Line")
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
-        ItemLedgerEntry."DUoM Second Qty" := NormalizeSecondQtySignForILE(
+        ItemLedgerEntry."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(
             ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
-    end;
-
-    local procedure NormalizeSecondQtySignForILE(ItemLedgerEntry: Record "Item Ledger Entry"; SecondQty: Decimal): Decimal
-    begin
-        if SecondQty = 0 then
-            exit(0);
-        if ItemLedgerEntry.Quantity < 0 then
-            exit(-Abs(SecondQty));
-        if ItemLedgerEntry.Quantity > 0 then
-            exit(Abs(SecondQty));
-        exit(SecondQty);
     end;
 }
