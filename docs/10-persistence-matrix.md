@@ -232,17 +232,15 @@ Item Ledger Entry (entrada de origen)
 
     InsertReservEntry se escribe en BD con DUoM Ratio y DUoM Second Qty correctos ✓
 
-[3] SyncPurchLineFromTrackingBuffer (en OnQueryClosePage del pageextension 50112)
+[3] Sin sincronización manual Tracking → Purchase Line
 
-    Tracking Specification buffer → Purchase Line (agregado)
-      Suscriptor/helper: DUoM Tracking Coherence Mgt (50111)
-      Purchase Line.DUoM Second Qty = SUM(TrackingSpec.DUoM Second Qty)
-      Purchase Line.DUoM Ratio = Total Second Qty / Total Qty (Base) [ratio ponderado]
+    En el patrón vigente NO existe `SyncPurchLineFromTrackingBuffer` ni lógica DUoM
+    en cierre de página.
 
     Regla de fuente de verdad:
-      Reservation Entry (por lote) = DETALLE DUoM
-      Purchase Line = AGREGADO DUoM (resumen de todos los lotes)
-      No copiar ratio de Purchase Line a tracking individual si ya existe DUoM en ReservEntry
+      Reservation Entry (por lote) = DETALLE DUoM operativo
+      Purchase Line = resumen documental (si aplica), fuera del patrón de persistencia por lote
+      No reconstruir tracking desde Purchase Line; usar Reservation Entry
 ```
 
 **Tests de cobertura:** `DUoMPurchTrackingPersistTests` (50219) — T-PERSIST-01 a T-PERSIST-05,
@@ -291,7 +289,8 @@ T-REOPEN-01 a T-REOPEN-05.
 | Segunda cantidad en movimiento con lote específico | `Item Ledger Entry."DUoM Second Qty"` filtrado por `Lot No.` | 32 (ext. 50113) |
 | Suma de segunda cantidad en stock | `SUM(ILE."DUoM Second Qty")` donde `ILE."Remaining Quantity" > 0` | 32 (ext. 50113) |
 
-> **Regla de diseño:** `ILE."DUoM Second Qty" = Abs(ILE.Quantity) × ILE."DUoM Ratio"`.
+> **Regla de diseño:** `ILE."DUoM Second Qty"` proviene del `Item Journal Line` y su signo se
+> normaliza mediante `DUoM Sign Mgt.NormalizeILESign(...)`.
 > En multi-lote, **no usar** `Purchase Line."DUoM Second Qty"` como total acumulado del ILE;
 > sumar los ILEs individuales. Ver modelo 1:N en `docs/03-technical-architecture.md`.
 
@@ -369,9 +368,9 @@ se propagan automáticamente mediante cuatro mecanismos:
    BC usa un segundo nivel de copia interna al insertar (`CreateReservEntry`). Este suscriptor
    propaga los valores DUoM al registro final que se escribe en la base de datos.
 
-3. **Cierre estándar sin persistencia manual en OnQueryClosePage**:
-   En segunda edición o ediciones sucesivas, la extensión no ejecuta `Modify(false)` manual
-   sobre `Reservation Entry` desde `OnQueryClosePage` para evitar conflictos de concurrencia.
+3. **Persistencia estándar sin lógica DUoM de cierre de página**:
+   En segunda edición o ediciones sucesivas, la extensión no ejecuta persistencia manual
+   sobre `Reservation Entry` desde eventos de cierre de página.
    La persistencia DUoM se mantiene por eventos estándar de tracking:
    `OnAfterMoveFields`, `OnCreateReservEntryExtraFields`,
    `OnAfterCopyTrackingFromTrackingSpec` y `OnAfterCopyTrackingFromReservEntry`.
@@ -397,7 +396,7 @@ T-REOPEN-01 a T-REOPEN-08 (T-REOPEN-07/08 cubren específicamente el Modify path
 **Referencias:**
 - `app/src/codeunit/DUoMTrackingCopySubscribers.Codeunit.al` — suscriptores completos con
   firmas verificadas BC 27 / runtime 15
-- `app/src/codeunit/DUoMTrackingCoherenceMgt.Codeunit.al` — validaciones/sync de cierre
+- `app/src/codeunit/DUoMTrackingCoherenceMgt.Codeunit.al` — validaciones de coherencia DUoM
 - `docs/issues/issue-190-fix-duom-ratio-reserventry-copy-tracking.md` — decisión inicial
 - `docs/issues/issue-P3-purch-tracking-persist-regression.md` — implementación T-PERSIST-01
 
@@ -425,9 +424,9 @@ Cerrar con OK (primera edición — Insert path):
     vía OnAfterCopyTrackingFromTrackingSpec + OnAfterCopyTrackingFromReservEntry (50110)
 
 Cerrar con OK (segunda edición o sucesivas):
-  Validación/sync agregado en OnQueryClosePage (50112/50125)
   Persistencia DUoM por eventos estándar de tracking
-  Reservation Entry → Purchase Line (agrega: SUM de lotes → ratio ponderado)
+  Reservation Entry sigue siendo la fuente operativa por lote
+  (cualquier agregado documental en Purchase Line queda fuera del patrón de persistencia)
 ```
 
 **Implicación:** `Purchase Line."DUoM Ratio"` es el **ratio ponderado agregado** de todos

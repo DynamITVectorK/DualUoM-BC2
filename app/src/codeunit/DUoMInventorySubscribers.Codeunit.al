@@ -353,7 +353,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
     ///
     /// Para artículos CON Item Tracking (Lot No. / Serial No.):
     ///   ILECopyTrackingFromItemJnlLine (codeunit 50110) se dispara después de este
-    ///   subscriber y sobreescribe con la copia pura desde el IJL split por lote.
+    ///   subscriber y sobrescribe con valores del IJL split por lote, normalizando
+    ///   signo mediante DUoM Sign Mgt.
     ///
     /// Publisher: Codeunit "Item Jnl.-Post Line", evento OnAfterInitItemLedgEntry.
     /// Firma verificada en BC 27 / runtime 15 (ItemJnlPostLine.Codeunit.al).

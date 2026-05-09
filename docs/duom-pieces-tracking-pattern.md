@@ -18,6 +18,12 @@ Item Tracking Lines
 
 No existe ningún paso adicional fuera de este flujo estándar.
 
+Reglas vigentes del patrón:
+- `Item Tracking Lines` no usa lógica DUoM en cierre de página.
+- No existe sincronización manual `Tracking → Purchase Line`.
+- `Reservation Entry` es la persistencia operativa por lote.
+- `Item Ledger Entry` recibe DUoM desde `Item Journal Line` y normaliza signo vía `DUoM Sign Mgt`.
+
 ---
 
 ## 2. Equivalencia Piezas → DUoM

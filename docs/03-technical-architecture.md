@@ -95,7 +95,7 @@ already covers the need:
 | `DUoM Pstd Sales Inv Subform` | 50108 | `Posted Sales Invoice Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de factura de venta registrada (solo lectura) |
 | `DUoM Pstd Sales CrM Subform` | 50109 | `Posted Sales Cr. Memo Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de abono de venta registrado (solo lectura) |
 | `DUoM Item UoM Subform` | 50110 | `Item Units of Measure` | Añade `Qty. Rounding Precision` al repeater; editable solo si no existen ILE ni Warehouse Entry para esa UdM |
-| `DUoM Item Tracking Lines` | 50112 | `Item Tracking Lines` | Muestra DUoM Ratio y DUoM Second Qty en el repeater de seguimiento de lotes. `DUoM Second Qty.OnValidate`: llama a `NormalizeTrackingDUoMSecondQty` (recalcula DUoM Ratio en modos Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLine` para feedback inmediato. `Quantity (Base).OnAfterValidate`: llama a `NormalizeTrackingQuantityBase` (recalcula DUoM Ratio = DUoM Second Qty / Abs(Qty Base) en Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLineForFieldEdit` (validación ligera de edición: no bloquea estados intermedios como DUoM Second Qty todavía vacío). `DUoM Ratio.OnValidate`: llama directamente a `ValidateTrackingSpecLine`. `OnQueryClosePage` (OK/LookupOK): delega en `DUoM Tracking Prop. Mgt` (50125), que ejecuta validación temprana y sincronización del agregado documental sin modificar manualmente `Reservation Entry` durante el cierre; la persistencia DUoM viaja por eventos estándar (`OnAfterMoveFields`, `OnCreateReservEntryExtraFields`, `OnAfterCopyTrackingFromTrackingSpec` y `OnAfterCopyTrackingFromReservEntry`). La cancelación no queda bloqueada. |
+| `DUoM Item Tracking Lines` | 50112 | `Item Tracking Lines` | Muestra DUoM Ratio y DUoM Second Qty en el repeater de seguimiento de lotes. `DUoM Second Qty.OnValidate`: llama a `NormalizeTrackingDUoMSecondQty` (recalcula DUoM Ratio en modos Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLine` para feedback inmediato. `Quantity (Base).OnAfterValidate`: llama a `NormalizeTrackingQuantityBase` (recalcula DUoM Ratio = DUoM Second Qty / Abs(Qty Base) en Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLineForFieldEdit` (validación ligera de edición). `DUoM Ratio.OnValidate`: llama directamente a `ValidateTrackingSpecLine`. **No contiene lógica DUoM de persistencia/validación en cierre de página**; la persistencia sigue el flujo estándar `Tracking Specification → Reservation Entry → posting`. |
 
 ### Codeunits
 
@@ -111,7 +111,7 @@ already covers the need:
 | `DUoM Lot Subscribers` | 50108 | Utilidades para integración DUoM con lotes. Método público `TryApplyLotRatioToILE` conservado para tests unitarios de bajo nivel (ya no se invoca desde el flujo de posting). Helper interno `ApplyLotRatioToItemJournalLine` para escenarios controlados de un único lote (uso en tests unitarios de bajo nivel). El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` fue **eliminado** (Issue 21) por asumir incorrectamente 1 línea = 1 lote. |
 | `DUoM Tracking Subscribers` | 50109 | Suscriptores de eventos `OnAfterValidateEvent` para `Lot No.` y `Quantity (Base)` en `Tracking Specification` (6500). Pre-rellena DUoM Ratio y DUoM Second Qty al asignar un lote en Item Tracking Lines. Modo Fixed: usa ratio fijo. Variable/AlwaysVariable: prioridad de ratio: (1) ratio manual ya informado en tracking (≠ 0); (2) ratio de lote de `DUoM Lot Ratio` si existe; (3) DUoM Ratio de la Purchase Line origen como fallback cuando DUoM Ratio = 0 y no hay ratio de lote registrado (bugfix Issue actual). Sin sobrescribir ratios manuales. (Issues 22, bugfix) |
 | `DUoM Tracking Copy Subs` | 50110 | Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón `OnAfterCopyTracking*` de `Codeunit 6516 "Package Management"`. Cadena directa: `Tracking Specification` → `Item Journal Line` (`OnAfterCopyTrackingFromSpec`) → `Item Ledger Entry` (`OnAfterCopyTrackingFromItemJnlLine`). Cadena inversa: `Item Ledger Entry` → `Item Journal Line` (`OnAfterCopyTrackingFromItemLedgEntry`). **Persistencia de Item Tracking Lines:** `Tracking Specification` buffer → `Reservation Entry` vía `OnAfterCopyTrackingFromTrackingSpec` (al cerrar la página). Recarga: `Reservation Entry` → `Tracking Specification` buffer vía `OnAfterCopyTrackingFromReservEntry` (al reabrir la página). **Clear/Blank (Issue 25):** `OnAfterClearTracking` y `OnAfterSetTrackingBlank` en `Tracking Specification`; `OnAfterClearTracking` y `OnAfterClearNewTracking` en `Reservation Entry`; `OnAfterClearTracking` en `Item Journal Line` — resetean DUoM Ratio y DUoM Second Qty a 0 al reinicializar líneas de tracking. **Copy adicionales (Issue 25):** `OnAfterCopyTrackingFromTrackingSpec` en `Tracking Specification` (copia entre buffers); `OnAfterCopyTrackingFromItemLedgEntry` en `Tracking Specification` (ILE → buffer en devoluciones); `OnAfterCopyTrackingFromNewItemJnlLine` en `Item Ledger Entry` (IJL new → ILE en reclasificación/transferencias). Reemplaza `OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE`. Signatures verificadas contra `Package Management (6516)` BC 27. (Issues 23, 190, 25) |
-| `DUoM Tracking Coherence Mgt` | 50111 | **Gestión centralizada de sincronización y validación DUoM** entre líneas de tracking y líneas de documento. Métodos públicos: `NormalizeTrackingDUoMSecondQty` (recalcula DUoM Ratio desde DUoM Second Qty en modos Variable/AlwaysVariable — llamado en `DUoM Second Qty.OnValidate`), `NormalizeTrackingQuantityBase` (recalcula DUoM Ratio desde DUoM Second Qty al cambiar `Quantity (Base)` en modos Variable/AlwaysVariable — llamado en `Quantity (Base).OnAfterValidate`), **`ValidateTrackingSpecLineForFieldEdit` (validación ligera de edición — permite estados intermedios con DUoM Second Qty = 0; no lanza AlwaysVariableMissingRatioErr durante edición de campo; llamado en `Quantity (Base).OnAfterValidate`)**, **`ValidateTrackingSpecBufferEachLine` (primera barrera de cierre — itera todas las líneas del buffer `Tracking Specification`, omite líneas vacías/de inserción con `IsFunctionalTrackingLine`, llama a `ValidateTrackingSpecLine` (estricta) por cada línea funcional; llamado en `OnQueryClosePage` ANTES de sync)**, `SyncPurchLineFromTrackingBuffer` (sincroniza `Purchase Line.DUoM Second Qty/Ratio` con el total agregado del buffer `Tracking Specification` — llamado en `OnQueryClosePage`; usa `LocalTrackingSpec.Copy(Rec, true)` para iterar sin tocar el cursor del page), `PersistDUoMToReservEntries` (**fallback legacy**; no se usa en el cierre normal de `Item Tracking Lines` para evitar conflictos de concurrencia), `ValidatePurchLineTrackingCoherence` (compara suma DUoM de `Reservation Entry` con `Purchase Line.DUoM Second Qty`), `ValidateTrackingSpecBufferForPurchLine` (sanity check post-sync del buffer temporal; también usa `LocalTrackingSpec.Copy(Rec, true)` para iterar sin tocar el cursor del page — seguridad de cursor crítica para evitar duplicados al reabrir), `ValidateTrackingSpecLine` (validación estricta: valida ratio y modo en un `Tracking Specification` individual; usada en `OnQueryClosePage` y posting), `CalcTrackingDUoMTotalsForPurchLine` (suma DUoM Second Qty de `Reservation Entry`), `AssertRatioCoherence`, `GetDUoMRoundingPrecision`, `GetExpectedRatio`. **Arquitectura de tres barreras:** (1) feedback ligero en `Quantity (Base).OnAfterValidate` (`ValidateTrackingSpecLineForFieldEdit` — no bloquea estados intermedios); feedback estricto en `DUoM Second Qty.OnValidate` y `DUoM Ratio.OnValidate` (`ValidateTrackingSpecLine`); (2) **`ValidateTrackingSpecBufferEachLine` en `OnQueryClosePage`** — primera barrera de cierre estricta, bloquea si algún lote tiene ratio incoherente o faltante antes de persistir; (3) `OnPostItemJnlLineOnAfterCopyDocumentFields` en `DUoM Purchase Subscribers` — segunda barrera server-side con `Reservation Entry` persistida antes del posting. |
+| `DUoM Tracking Coherence Mgt` | 50111 | **Gestión centralizada de validación/coherencia DUoM** para edición de tracking y flujos de documento. Métodos públicos principales: `NormalizeTrackingDUoMSecondQty`, `NormalizeTrackingQuantityBase`, `ValidateTrackingSpecLineForFieldEdit`, `ValidateTrackingSpecLine`, `ValidatePurchLineTrackingCoherence`, `CalcTrackingDUoMTotalsForPurchLine`, `AssertRatioCoherence`, `GetDUoMRoundingPrecision`, `GetExpectedRatio`. Este codeunit no define persistencia manual por cierre de página; el patrón vigente usa los eventos estándar de tracking/Reservation Entry. |
 | `DUoM Tracking Prop. Mgt` | 50125 | Capa centralizada del ciclo `abrir → editar → cerrar → reabrir` en `Item Tracking Lines`. Compara `Reservation Entry` con DUoM (`OnAfterEntriesAreIdentical`), normaliza signo/persistencia (`OnAfterMoveFields`, `OnCreateReservEntryExtraFields`), preserva DUoM en copias internas de `Tracking Specification` y rehidrata el buffer desde `Reservation Entry`/tracking entries con valores positivos en página. |
 
 ---
@@ -119,20 +119,21 @@ already covers the need:
 ## Fuente de verdad DUoM por nivel (Issue sync-tracking)
 
 ```
-Item Tracking Lines (TrackingSpec buffer) = fuente de verdad operativa por lote durante la recepción
-                       ↓ al cerrar con OK (SyncPurchLineFromTrackingBuffer)
-Purchase Line          = resumen agregado sincronizado desde tracking
-                       ↓ al registrar (OnAfterCopyTrackingFrom*)
-Item Ledger Entry      = verdad histórica contabilizada por lote
-Posted Purch. Rcpt. Line = histórico documental de la recepción
-DUoM Lot Ratio         = ratio real por lote (persistido en ILE post-posting)
+Item Tracking Lines (TrackingSpec buffer) = edición/visualización temporal por lote
+                       ↓ patrón estándar BC de tracking
+Reservation Entry      = persistencia operativa por lote (documento vivo)
+                       ↓ buffers temporales de tracking + split de posting
+Item Journal Line      = origen inmediato de DUoM en contabilización
+                       ↓ NormalizeILESign (DUoM Sign Mgt)
+Item Ledger Entry      = verdad histórica contabilizada por movimiento/lote
 ```
 
 **Regla de sincronización:**
-- `Purchase Line."DUoM Second Qty"` = SUM(tracking `"DUoM Second Qty"`)
-- `Purchase Line."DUoM Ratio"` = SUM(tracking `"DUoM Second Qty"`) / SUM(tracking `|Qty (Base)|`)
-- La sincronización ocurre en `OnQueryClosePage` (OK/LookupOK) de `DUoM Item Tracking Lines`.
-- Cada lote retiene su ratio real propio en `Tracking Specification`, `Reservation Entry` e `ILE`.
+- No existe sincronización manual `Tracking → Purchase Line` en el patrón vigente.
+- `Reservation Entry` es la persistencia operativa por lote.
+- `Purchase Line` puede contener datos agregados de documento, pero su recalculo desde tracking
+  queda fuera de alcance y debe tratarse como issue separado.
+- Cada lote retiene su ratio real propio en `Reservation Entry`, buffers de tracking e `ILE`.
 
 ---
 
@@ -154,17 +155,16 @@ Dos mecanismos paralelos cubren los dos paths de posting:
 **NORMA OBLIGATORIA**: `ILE."DUoM Second Qty"` **siempre** recibe sus datos del IJL.
 Nunca se calcula desde campos del ILE. La fórmula canónica es:
 ```al
-ILE."DUoM Second Qty" := IJL.Signed(Abs(IJL."DUoM Second Qty"))
+ILE."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(ILE, IJL."DUoM Second Qty");
 ```
-`Signed()` aplica el signo correcto según Entry Type (idioma estándar Microsoft BC):
-positivo para entradas (compra), negativo para salidas (venta, anulaciones).
+`NormalizeILESign()` aplica el signo correcto según el movimiento del ILE.
 
 **SIN Item Tracking** (artículos sin lotes):
 ```
 IJL (DUoM Ratio del artículo/variante, DUoM Second Qty ya calculado)
   → Codeunit "Item Jnl.-Post Line" · OnAfterInitItemLedgEntry   [50104]
       ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
-      ↓ ILE.DUoM Second Qty = IJL.Signed(Abs(IJL.DUoM Second Qty))
+      ↓ ILE.DUoM Second Qty = NormalizeILESign(ILE, IJL.DUoM Second Qty)
 Item Ledger Entry  ✓
 ```
 
@@ -176,10 +176,10 @@ Tracking Specification (con DUoM Ratio y DUoM Second Qty del lote)
       ↓ IJL.DUoM Second Qty = DUoM Second Qty del lote
 Item Journal Line  (ya tiene los valores correctos del lote)
   → Codeunit "Item Jnl.-Post Line" · OnAfterInitItemLedgEntry   [50104]
-      ↓ actualiza IJL si DUoM Lot Ratio (50102) lo sobreescribe
+      ↓ copia ratio + normaliza signo desde IJL (sin recalcular ratio)
   → Table "Item Ledger Entry" · OnAfterCopyTrackingFromItemJnlLine [50110]
       ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
-      ↓ ILE.DUoM Second Qty = IJL.Signed(Abs(IJL.Quantity) × DUoM Ratio)
+      ↓ ILE.DUoM Second Qty = NormalizeILESign(ILE, IJL.DUoM Second Qty)
 Item Ledger Entry  ✓
 ```
 
@@ -188,16 +188,17 @@ actualiza el IJL con el ratio de lote específico si `DUoM Lot Ratio (50102)` lo
 después `ILECopyTrackingFromItemJnlLine` lee del IJL ya actualizado. El IJL es siempre
 la fuente de verdad inmediata desde la que el ILE recibe sus valores DUoM.
 
-`DUoM Lot Ratio (50102)` actúa como fallback en el posting (cuando el IJL llega sin ratio
-de lote específico). Ambos subscribers (`OnAfterInitItemLedgEntry` y `ILECopyTrackingFromItemJnlLine`)
-aplican este fallback actualizando el IJL primero y leyendo del IJL al asignar el ILE.
+`DUoM Lot Ratio (50102)` puede intervenir en etapas previas para preparar el IJL, pero los
+subscribers finales de ILE/VE no recalculan ratio ni consultan tablas externas: copian ratio
+desde IJL y normalizan el signo mediante `DUoM Sign Mgt`.
 
 ### Principios de implementación
 
 - La **línea origen** mantiene información DUoM como **total agregado**.
 - El **ILE por lote** contiene la segunda cantidad y el ratio propios de ese lote.
 - El IJL (ya dividido por lote por BC) es la fuente inmediata del ILE: `ILE.DUoM Second Qty`
-  **nunca** se calcula desde `ILE.Quantity`. Siempre viene del IJL mediante copia pura.
+  **nunca** se calcula desde `ILE.Quantity`. Se toma del IJL y se normaliza el signo mediante
+  `DUoM Sign Mgt.NormalizeILESign(...)`.
 - `IJLCopyTrackingFromSpec` resuelve los valores DUoM para cada split de lote con la
   siguiente prioridad: (1) TrackingSpec aporta ratio → usar valores de tracking con signo
   del movimiento; (2) DUoM Lot Ratio (50102) tiene ratio para el lote → aplicar con signo;
@@ -257,72 +258,34 @@ aplican este fallback actualizando el IJL primero y leyendo del IJL al asignar e
   los campos DUoM del IJL **no** se borren cuando se limpia el tracking identificador
   (Lot No./Serial No./Package No.): son campos económicos, no identificadores de trazabilidad.
   Pruebas que lo confirman: T02, T03, T04–T09, T13, T14.
-- **Bug fix (sign + undo flow):** `DUoM Second Qty` en ILEs de salida y corrección ahora usa
-  `ILE.Quantity × DUoM Ratio` (con signo) en lugar de `Abs(ILE.Quantity) × DUoM Ratio`.
-  Esto garantiza que los ILEs de venta, anulación de recepción y anulación de envío tienen
-  `DUoM Second Qty` con el signo correcto (negativo para salidas/correcciones), replicando
-  la regla estándar de BC. Adicionalmente, `OnAfterInitItemLedgEntry` ahora cubre el flujo
-  de anulación sin trazabilidad de lote: cuando `IJL.DUoM = 0` y el IJL tiene
-  `Applies-to Entry`, el subscriber recupera el ratio del ILE original y lo aplica con signo
-  contrario. La misma lógica se aplica a `OnAfterInitValueEntry` para Value Entries.
+- **Bug fix (sign + undo flow):** la gestión de signo DUoM se centraliza en `DUoM Sign Mgt`
+  (`NormalizeILESign`, `ApplyUndoPurchReceiptSign`, `ApplyUndoSalesShptSign`,
+  `ApplyCorrectionILESign`). Los subscribers finales de ILE/VE toman magnitud desde IJL y
+  normalizan signo con `DUoM Sign Mgt`, sin recalcular desde `ILE.Quantity`.
   Pruebas añadidas: `DUoM Undo Rcpt Shpt Tests` (50227), T-UNDO-01..05.
 
 ---
 
-## Persistencia DUoM en Item Tracking Lines (Issues 22, 190)
+## Persistencia DUoM en Item Tracking Lines (patrón vigente)
 
-### Flujo de persistencia al cerrar la página — path Insert (primera edición)
-
-Cuando el usuario acepta (OK) la página `Item Tracking Lines` (6510) por primera vez
-(no existe `Reservation Entry` para ese lote), BC transfiere el buffer `Tracking Specification`
-a `Reservation Entry` en **dos pasos internos**:
+La persistencia DUoM en tracking sigue el patrón estándar de Business Central, alineado
+con Piezas:
 
 ```
-Usuario informa Lot No. + DUoM Ratio + DUoM Second Qty en buffer TrackingSpec
-→ OK
-→ BC (RegisterChange::Insert):
-   PASO 1: ReservEntry1.CopyTrackingFromSpec(OldTrackingSpec)
-   → Evento: Table "Reservation Entry" · OnAfterCopyTrackingFromTrackingSpec         [50110]
-        ↓ ReservEntry1."DUoM Ratio"      := TrackSpec."DUoM Ratio"
-        ↓ ReservEntry1."DUoM Second Qty" := TrackSpec."DUoM Second Qty"
-
-   PASO 2: CreateReservEntry.CreateReservEntryFor(..., ForReservEntry=ReservEntry1)
-           → internamente: InsertReservEntry.CopyTrackingFromReservEntry(ReservEntry1)
-   → Evento: Table "Reservation Entry" · OnAfterCopyTrackingFromReservEntry          [50110]
-        ↓ InsertReservEntry."DUoM Ratio"      := ReservEntry1."DUoM Ratio"
-        ↓ InsertReservEntry."DUoM Second Qty" := ReservEntry1."DUoM Second Qty"
-
-   PASO 3: CreateReservEntry.CreateEntry(...) → InsertReservEntry.Insert()
-Reservation Entry (tabla 337) ← fuente de verdad persistente por lote
+Tracking Specification (buffer)
+  → Reservation Entry (persistencia por lote)
+  → buffers temporales de tracking/posting
+  → Item Journal Line (split por lote)
+  → Item Ledger Entry
 ```
 
-> **Nota de diseño:** El Paso 2 era el eslabón faltante (bug). Sin el subscriber
-> `OnAfterCopyTrackingFromReservEntry` en Table "Reservation Entry", `InsertReservEntry`
-> quedaba con `DUoM Ratio = 0` aunque `ReservEntry1` ya lo tuviera correcto del Paso 1.
-> La corrección se implementa en el PR que cierra el issue de bug (tracking flow).
-
-### Flujo de persistencia al cerrar la página — segunda edición o sucesivas
-
-Cuando el usuario acepta (OK) la página en una **segunda apertura** (ya existe `Reservation Entry`
-para el lote), la extensión **no** modifica manualmente `Reservation Entry` desde `OnQueryClosePage`.
-La persistencia DUoM sigue el patrón estándar de eventos de tracking (`OnAfterMoveFields`,
-`OnCreateReservEntryExtraFields` y `CopyTrackingFrom*`) para evitar conflictos de concurrencia
-durante el cierre de la página.
-
-```
-Usuario modifica DUoM Ratio / DUoM Second Qty en buffer TrackingSpec
-→ OK → OnQueryClosePage (50112):
-   1. ValidateTrackingSpecBufferEachLine  ← validación per-lot (barrera temprana)
-   2. SyncPurchLineFromTrackingBuffer     ← PurchLine = SUM del buffer
-   3. ValidateTrackingSpecBufferForPurchLine ← sanity check agregado
-   4. Cierre estándar BC de Item Tracking Lines
-      + persistencia DUoM por subscribers estándar:
-        - Page "Item Tracking Lines"::OnAfterMoveFields (50125)
-        - Codeunit "Create Reserv. Entry"::OnCreateReservEntryExtraFields (50125)
-        - Table "Reservation Entry"::OnAfterCopyTrackingFromTrackingSpec / OnAfterCopyTrackingFromReservEntry (50110)
-      + rehidratación por:
-        - Codeunit "Item Tracking Doc. Management"::OnAfterFillTrackingSpecBufferFromReservEntry (50125)
-```
+Reglas vigentes:
+- No existe lógica DUoM en eventos de cierre de página (`OnBeforeClosePage`/`OnQueryClosePage`).
+- No existe sincronización manual `Tracking → Purchase Line`.
+- No existe persistencia manual tipo `PersistDUoMToReservEntries`.
+- La persistencia y recarga se apoyan en eventos estándar: `OnAfterMoveFields`,
+  `OnCreateReservEntryExtraFields`, `OnAfterCopyTrackingFromTrackingSpec`,
+  `OnAfterCopyTrackingFromReservEntry` y eventos de carga de buffer.
 
 ### Flujo de recarga al reabrir la página
 
@@ -377,9 +340,9 @@ El flujo completo queda cubierto por tests en codeunit 50219 `DUoM Purch Trackin
 | `T-REOPEN-07` `PurchLotTracking_SecondEdit_Variable_PersistsDUoMModify` | Variable — segunda edición persiste DUoM modificado (Modify path) |
 | `T-REOPEN-08` `PurchLotTracking_SecondEdit_AlwaysVariable_PersistsDUoMModify` | AlwaysVariable — segunda edición persiste DUoM modificado (Modify path) |
 
-Los tests T-PERSIST-01 y T-PERSIST-02 validan el path Insert (nueva RE).
-Los tests T-REOPEN-07 y T-REOPEN-08 validan el path Modify (RE existente actualizada
-vía `PersistDUoMToReservEntries` en codeunit 50111).
+Los tests T-PERSIST-01 y T-PERSIST-02 validan la persistencia estándar de tracking.
+Los tests T-REOPEN-07 y T-REOPEN-08 validan la recarga/cambio en reaperturas sucesivas
+sin depender de persistencia manual en cierre de página.
 
 ### Restricciones para no romper el Item Tracking estándar
 

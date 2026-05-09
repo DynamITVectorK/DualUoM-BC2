@@ -378,6 +378,9 @@ When working with item tracking, lot tracking, reservation entries, tracking spe
 - If a lot filter is needed, first apply the standard source filter and then apply the lot filter.
 - Before using any event, method, table, or page name, verify the exact signature and object name against the current Business Central symbols.
 - If standard library/helper methods exist, use them instead of custom ad-hoc logic.
+- Do not implement DUoM persistence or validation in page-close events (`OnBeforeClosePage`, `OnQueryClosePage`, `OnQueryClosePageEvent`).
+- Do not implement manual synchronization `Tracking Specification → Purchase Line`; if a document aggregate is needed, track it as a separate issue.
+- Keep DUoM lot persistence in the standard chain `Tracking Specification → Reservation Entry → posting buffers → Item Journal Line → Item Ledger Entry`.
 
 Preferred APIs:
 

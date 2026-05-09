@@ -1,5 +1,9 @@
 # fix: DUoM fields lost on second edit of Item Tracking Lines — Modify path
 
+> ⚠️ Documento histórico.
+> Este enfoque ha sido sustituido por el patrón Piezas vigente.
+> No usar como guía de implementación actual.
+
 ## Resumen del problema
 
 Cuando el usuario modificaba valores DUoM (`DUoM Ratio`, `DUoM Second Qty`) en
