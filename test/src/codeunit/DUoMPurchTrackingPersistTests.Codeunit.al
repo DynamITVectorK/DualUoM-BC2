@@ -1173,9 +1173,9 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     // genera ILE con los valores recalculados por lote.
     //
     // Referencia:
-    //   Primera edición: LOT-MODIFY-T7V → Base 4, Second 3, Ratio 0.75
-    //   Segunda edición: LOT-MODIFY-T7V → Base 4, Second 4, Ratio 1
-    //   Posting: ILE debe quedar con Base 4, Second 4, Ratio 1
+    //   Primera edición: LOT-MODIFY-T9V → Base 5, Second 3.75, Ratio 0.75
+    //   Segunda edición: LOT-MODIFY-T9V → Base 5, Second 4, Ratio 0.8
+    //   Posting: ILE debe quedar con Base 5, Second 4, Ratio 0.8
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_AssignAndVerify_MPH')]
@@ -1211,9 +1211,9 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchaseOrder.OpenEdit();
         PurchaseOrder.GotoRecord(PurchHeader);
         PurchaseOrder.PurchLines.First();
-        HandlerStep := 15;
+        HandlerStep := 21;
         PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
-        HandlerStep := 16;
+        HandlerStep := 22;
         PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
         PurchaseOrder.Close();
 
@@ -1223,22 +1223,22 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         // [THEN] El ILE conserva los valores recalculados por lote
         ILE.SetRange("Item No.", Item."No.");
         ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
-        ILE.SetRange("Lot No.", 'LOT-MODIFY-T7V');
+        ILE.SetRange("Lot No.", 'LOT-MODIFY-T9V');
         LibraryAssert.IsTrue(ILE.FindFirst(),
-            'T-REOPEN-09: Debe existir ILE para LOT-MODIFY-T7V tras contabilizar.');
+            'T-REOPEN-09: Debe existir ILE para LOT-MODIFY-T9V tras contabilizar.');
         LibraryAssert.AreNearlyEqual(
-            4, ILE.Quantity, 0.001,
-            'T-REOPEN-09: ILE.Quantity debe ser 4.');
+            5, ILE.Quantity, 0.001,
+            'T-REOPEN-09: ILE.Quantity debe ser 5.');
         LibraryAssert.AreNearlyEqual(
             4, ILE."DUoM Second Qty", 0.001,
             'T-REOPEN-09: ILE.DUoM Second Qty debe ser 4 tras segunda edición.');
         LibraryAssert.AreNearlyEqual(
-            1, ILE."DUoM Ratio", 0.001,
-            'T-REOPEN-09: ILE.DUoM Ratio debe ser 1 tras segunda edición.');
+            0.8, ILE."DUoM Ratio", 0.001,
+            'T-REOPEN-09: ILE.DUoM Ratio debe ser 0.8 tras segunda edición.');
     end;
 
     /// <summary>
-    /// ModalPageHandler para Item Tracking Lines — usado en veinte pasos:
+    /// ModalPageHandler para Item Tracking Lines — usado en veintidós pasos:
     ///
     ///   HandlerStep = 1: simula que el usuario introduce lote y valores DUoM manualmente.
     ///                    Lote: LOT-DUOM-001 · DUoM Ratio = 0.8 (= 8/10) · DUoM Second Qty = 8
@@ -1291,6 +1291,10 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     ///                     Modify path via flujo estándar de tracking.
     ///   HandlerStep = 20: tercera apertura T-REOPEN-08. Verifica Qty Base = 4,
     ///                     DUoM Ratio = 1 y DUoM Second Qty = 4 recargados.
+    ///   HandlerStep = 21: primera edición T-REOPEN-09 (Variable). Asigna
+    ///                     LOT-MODIFY-T9V, Quantity (Base) = 5, DUoM Second Qty = 3.75 → DUoM Ratio auto = 0.75.
+    ///   HandlerStep = 22: segunda edición T-REOPEN-09 (Variable). Mantiene Quantity (Base)
+    ///                     en 5 y modifica solo DUoM Second Qty a 4 → DUoM Ratio auto = 0.8.
     ///
     /// DUoM Ratio = 0.8 en modo AlwaysVariable: el trigger OnValidate de DUoM Ratio
     /// en DUoMTrackingSpecExt NO recalcula DUoM Second Qty (exit explícito para AlwaysVariable),
@@ -1634,6 +1638,24 @@ codeunit 50219 "DUoM Purch Tracking Persist"
                         ItemTrackingLines."DUoM Second Qty".AsDecimal(),
                         0.001,
                         'T-REOPEN-08: DUoM Second Qty debe ser 4 al reabrir (Modify path persistido).');
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            21:
+                begin
+                    // T-REOPEN-09: Primera edición — asignar lote en modo Variable con Qty Base = 5
+                    // Al validar DUoM Second Qty se calcula automáticamente DUoM Ratio = 3.75 / 5 = 0.75
+                    ItemTrackingLines.New();
+                    ItemTrackingLines."Lot No.".SetValue('LOT-MODIFY-T9V');
+                    ItemTrackingLines."Quantity (Base)".SetValue(5);
+                    ItemTrackingLines."DUoM Second Qty".SetValue(3.75);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            22:
+                begin
+                    // T-REOPEN-09: Segunda edición — mantener Qty Base en 5 y modificar solo DUoM Second Qty a 4
+                    // La validación de DUoM Second Qty recalcula automáticamente DUoM Ratio = 4 / 5 = 0.8
+                    ItemTrackingLines.First();
+                    ItemTrackingLines."DUoM Second Qty".SetValue(4);
                     ItemTrackingLines.OK().Invoke();
                 end;
         end;
