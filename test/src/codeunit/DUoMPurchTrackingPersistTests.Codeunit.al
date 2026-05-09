@@ -977,13 +977,15 @@ codeunit 50219 "DUoM Purch Tracking Persist"
             Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
 
-        // [GIVEN] Pedido de compra con línea de 5 unidades
+        // [GIVEN] Pedido de compra con línea de 5 unidades y recepción parcial de 4
+        //         (debe coincidir con el tracking real: Qty Base = 4)
         LibraryPurchase.CreateVendor(Vendor);
         LibraryPurchase.CreatePurchHeader(
             PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
         LibraryPurchase.CreatePurchaseLine(
             PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
         PurchLine.Validate(Quantity, 5);
+        PurchLine.Validate("Qty. to Receive", 4);
         PurchLine.Modify(true);
 
         PurchaseOrder.OpenEdit();
