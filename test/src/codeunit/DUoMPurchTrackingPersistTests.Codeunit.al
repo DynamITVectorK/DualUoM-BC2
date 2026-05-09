@@ -1237,6 +1237,133 @@ codeunit 50219 "DUoM Purch Tracking Persist"
             'T-REOPEN-09: ILE.DUoM Ratio debe ser 0.8 tras segunda edición.');
     end;
 
+    // -------------------------------------------------------------------------
+    // T-TRACKTOTAL-01 — Purchase Order muestra el total DUoM operativo desde tracking
+    //
+    // Verifica que el campo visual "DUoM Tracking Total" refleja la suma real
+    // de Reservation Entry por línea (verdad operativa per-lote).
+    //
+    // Purchase Line esperado/documental: 10 KG / 8 PCS
+    // Tracking:
+    //   LOTE-TT-A = 6 KG / 5 PCS
+    //   LOTE-TT-B = 4 KG / 3 PCS
+    // SUM(tracking) = 8 PCS
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure PurchOrderSubform_ShowsDUoMTrackingTotal_FromReservationEntry()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        PurchaseOrder: TestPage "Purchase Order";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Variable con lot tracking habilitado
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(
+            Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] Purchase Line esperado/documental = 8 PCS
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(
+            PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(
+            PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+
+        // [GIVEN] Tracking operativo per-lote total = 8 PCS
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-A', 6, 5 / 6);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-B', 4, 3 / 4);
+
+        // [WHEN] Se abre Purchase Order Subform en la línea
+        PurchaseOrder.OpenEdit();
+        PurchaseOrder.GotoRecord(PurchHeader);
+        PurchaseOrder.PurchLines.First();
+
+        // [THEN] DUoM Tracking Total muestra la suma de Reservation Entry
+        LibraryAssert.AreNearlyEqual(
+            8,
+            PurchaseOrder.PurchLines."DUoM Tracking Total".AsDecimal(),
+            0.001,
+            'T-TRACKTOTAL-01: DUoM Tracking Total debe reflejar SUM(Reservation Entry.DUoM Second Qty).');
+
+        // [THEN] DUoM Second Qty de línea mantiene su semántica esperado/documental
+        LibraryAssert.AreNearlyEqual(
+            8,
+            PurchaseOrder.PurchLines."DUoM Second Qty".AsDecimal(),
+            0.001,
+            'T-TRACKTOTAL-01: Purchase Line.DUoM Second Qty esperado/documental debe mantenerse en 8.');
+
+        PurchaseOrder.Close();
+    end;
+
+    // -------------------------------------------------------------------------
+    // T-TRACKTOTAL-02 — Tracking total puede diferir del valor documental esperado
+    //
+    // Verifica que no existe sincronización manual tracking -> Purchase Line:
+    //   - "DUoM Tracking Total" muestra la realidad operativa per-lote (7)
+    //   - "DUoM Second Qty" de línea conserva el valor documental esperado (8)
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure PurchOrderSubform_TrackingTotal_DiffersFromDocumentExpected_NoSync()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        PurchaseOrder: TestPage "Purchase Order";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Variable con lot tracking habilitado
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(
+            Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] Purchase Line esperado/documental = 8 PCS
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(
+            PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(
+            PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+
+        // [GIVEN] Tracking operativo per-lote total = 7 PCS
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-C', 6, 5 / 6);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-D', 4, 2 / 4);
+
+        // [WHEN] Se abre Purchase Order Subform en la línea
+        PurchaseOrder.OpenEdit();
+        PurchaseOrder.GotoRecord(PurchHeader);
+        PurchaseOrder.PurchLines.First();
+
+        // [THEN] DUoM Tracking Total refleja la verdad per-lote (7)
+        LibraryAssert.AreNearlyEqual(
+            7,
+            PurchaseOrder.PurchLines."DUoM Tracking Total".AsDecimal(),
+            0.001,
+            'T-TRACKTOTAL-02: DUoM Tracking Total debe reflejar la realidad operativa per-lote (7).');
+
+        // [THEN] DUoM Second Qty de línea no se sincroniza automáticamente desde tracking
+        LibraryAssert.AreNearlyEqual(
+            8,
+            PurchaseOrder.PurchLines."DUoM Second Qty".AsDecimal(),
+            0.001,
+            'T-TRACKTOTAL-02: Purchase Line.DUoM Second Qty esperado/documental no debe sincronizarse desde tracking.');
+
+        PurchaseOrder.Close();
+    end;
+
     /// <summary>
     /// ModalPageHandler para Item Tracking Lines — usado en veintidós pasos:
     ///

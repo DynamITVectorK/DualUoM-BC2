@@ -141,6 +141,9 @@ El modelo correcto de Business Central es:
 ```
 
 - Los campos DUoM de la **línea origen** son **totales agregados**.
+- En compras, `Purchase Line."DUoM Second Qty"` se interpreta como **valor esperado/documental**.
+  El total operativo real por lotes se obtiene desde `Reservation Entry` bajo demanda (UI:
+  `DUoM Tracking Total`), sin sincronización manual de vuelta a la línea.
 - Cada **ILE por lote** contiene la segunda cantidad y el ratio **específicos de ese lote**.
 - El **total DUoM de la línea** debe ser coherente con la suma de las cantidades DUoM
   de todos los ILEs generados para esa línea.
