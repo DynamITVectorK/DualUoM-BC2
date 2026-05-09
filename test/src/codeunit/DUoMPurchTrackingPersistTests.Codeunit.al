@@ -1278,8 +1278,8 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchLine.Modify(true);
 
         // [GIVEN] Tracking operativo per-lote total = 8 PCS
-        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-A', 6, 5 / 6);
-        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-B', 4, 3 / 4);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-A', 6, 0.833333);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-B', 4, 0.75);
 
         // [WHEN] Se abre Purchase Order Subform en la línea
         PurchaseOrder.OpenEdit();
@@ -1339,8 +1339,8 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchLine.Modify(true);
 
         // [GIVEN] Tracking operativo per-lote total = 7 PCS
-        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-C', 6, 5 / 6);
-        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-D', 4, 2 / 4);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-C', 6, 0.833333);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-D', 4, 0.5);
 
         // [WHEN] Se abre Purchase Order Subform en la línea
         PurchaseOrder.OpenEdit();

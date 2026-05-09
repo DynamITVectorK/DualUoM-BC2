@@ -79,6 +79,7 @@ pageextension 50101 "DUoM Purchase Order Subform" extends "Purchase Order Subfor
         if Rec."No." = '' then
             exit;
 
+        // TotalBaseQty se ignora en UI: este campo solo muestra el total DUoM agregado.
         DUoMCoherenceMgt.CalcTrackingDUoMTotalsForPurchLine(
             Rec, DUoMTrackingSecondQtyTotal, TotalBaseQty);
     end;
