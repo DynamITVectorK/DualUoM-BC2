@@ -94,21 +94,6 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
             TempTrackingSpecification.Modify(false);
     end;
 
-    procedure ValidateTrackingBeforeClose(var TrackingSpecification: Record "Tracking Specification")
-    var
-        DUoMTrackingCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
-    begin
-        DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferEachLine(TrackingSpecification);
-
-        // El cierre agregado implementado hoy en el repo solo existe para Purchase Line.
-        // Sales permanece cubierto por la persistencia DUoM por lote y por la validación
-        // inmediata de Tracking Specification, pero no tiene aún helper equivalente de sync.
-        if TrackingSpecification."Source Type" = Database::"Purchase Line" then begin
-            DUoMTrackingCoherenceMgt.SyncPurchLineFromTrackingBuffer(TrackingSpecification);
-            DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferForPurchLine(TrackingSpecification);
-        end;
-    end;
-
     procedure AreReservEntriesDUoMIdentical(
         ReservEntry1: Record "Reservation Entry";
         ReservEntry2: Record "Reservation Entry"): Boolean

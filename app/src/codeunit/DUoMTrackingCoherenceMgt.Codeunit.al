@@ -7,13 +7,13 @@
 ///     (NormalizeTrackingDUoMSecondQty / NormalizeTrackingQuantityBase) — called on
 ///     DUoM Second Qty.OnValidate and Quantity (Base).OnAfterValidate.
 ///   - Validate each functional line in the Tracking Specification buffer for per-lot
-///     ratio coherence (ValidateTrackingSpecBufferEachLine) — called from OnQueryClosePage
-///     BEFORE SyncPurchLineFromTrackingBuffer so that inconsistent per-lot ratios are
-///     caught before any data is persisted. Empty/insertion lines are skipped.
-///   - Sync Purchase Line DUoM fields from the tracking buffer aggregate
-///     (SyncPurchLineFromTrackingBuffer) — called on OnQueryClosePage.
+///     ratio coherence (ValidateTrackingSpecBufferEachLine) — can be called directly from
+///     production code or tests. Empty/insertion lines are skipped.
+///   - Synchronize Purchase Line DUoM fields from the tracking buffer aggregate
+///     (SyncPurchLineFromTrackingBuffer) — available for controlled recovery routines
+///     outside the page-close path.
 ///   - Validate the aggregate DUoM total from a Tracking Specification buffer against
-///     the source Purchase Line (pre-persist, UI-close validation).
+///     the source Purchase Line.
 ///   - Validate a Purchase Line against its tracking entries (Reservation Entries).
 ///   - Validate a single Tracking Specification line for ratio/mode coherence.
 ///   - Calculate DUoM totals from Reservation Entries for a Purchase Line.
@@ -24,8 +24,7 @@
 ///
 /// Source of truth hierarchy:
 ///   Item Tracking Lines (TrackingSpec buffer) = per-lot reality during reception.
-///   Purchase Line = aggregate summary synced from tracking on close.
-///   Reservation Entry = per-lot persistence after OK.
+///   Reservation Entry = per-lot persistence after OK (standard BC tracking events).
 ///   Item Ledger Entry = historical truth after posting.
 ///
 /// Conventions:
@@ -43,10 +42,8 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// Validates that the sum of DUoM Second Qty across all Tracking Specification buffer
     /// records for the same Purchase Line source matches PurchLine."DUoM Second Qty".
     ///
-    /// Called from: DUoM Item Tracking Lines pageextension (50112) in OnQueryClosePage
-    /// to block page close when the aggregate DUoM tracking total does not match the
-    /// source Purchase Line. Uses the live Tracking Specification buffer (temporary table),
-    /// not Reservation Entry, so validation occurs BEFORE any data is persisted.
+    /// Uses the live Tracking Specification buffer (temporary table), not Reservation Entry,
+    /// so validation occurs before any data is persisted.
     ///
     /// Steps:
     ///   1. Exit if TrackingSpec source type is not Purchase Line.
@@ -60,7 +57,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// Reset()/FindSet()/Next() from modifying the page's Rec cursor and causing
     /// duplicate tracking entries on reopen.
     ///
-    /// Called from: DUoM Item Tracking Lines (50112) — OnQueryClosePage.
+    /// Can be called from: production code, posting guards, or unit tests.
     /// </summary>
     procedure ValidateTrackingSpecBufferForPurchLine(var TrackingSpec: Record "Tracking Specification")
     var
@@ -294,11 +291,6 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// so that TestPage insertion rows and page navigation artefacts do not trigger
     /// false-positive validation errors.
     ///
-    /// This method is the early-validation barrier called from OnQueryClosePage
-    /// BEFORE SyncPurchLineFromTrackingBuffer.  Catching per-lot ratio incoherence
-    /// at this point prevents inconsistent data from being persisted to Reservation
-    /// Entry and subsequently blocking the posting flow.
-    ///
     /// The server-side posting guard (ValidatePurchLineTrackingCoherence, called from
     /// DUoM Purchase Subscribers 50102) remains as a second safety barrier for data
     /// that may arrive via code paths that bypass the Item Tracking Lines UI.
@@ -306,7 +298,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// Cursor safety: iteration uses a LOCAL COPY of TrackingSpec (via Copy(Rec, true))
     /// to avoid modifying the page's Rec cursor.  See docs/development/coding-standards.md.
     ///
-    /// Called from: DUoM Item Tracking Lines pageextension (50112) — OnQueryClosePage.
+    /// Can be called from: production code, posting guards, or unit tests.
     /// </summary>
     procedure ValidateTrackingSpecBufferEachLine(var TrackingSpec: Record "Tracking Specification")
     var
@@ -353,7 +345,8 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// interfere with BC's standard Item Tracking Lines close mechanism and cause
     /// duplicate Tracking Specification / Reservation Entry records.
     ///
-    /// Called from: DUoM Item Tracking Lines pageextension (50112) on OnQueryClosePage.
+    /// Available for: controlled maintenance/recovery routines or direct calls from tests.
+    /// Do not call from page-close events (OnQueryClosePage, OnBeforeClosePage, etc.).
     /// </summary>
     procedure SyncPurchLineFromTrackingBuffer(var TrackingSpec: Record "Tracking Specification")
     var
@@ -624,7 +617,8 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     end;
 
     /// <summary>
-    /// Legacy fallback. Do not call from Page "Item Tracking Lines".OnQueryClosePage.
+    /// Controlled recovery routine. Do not call from page-close events
+    /// (OnQueryClosePage, OnQueryClosePageEvent, OnBeforeClosePage).
     ///
     /// Modifying Reservation Entry during page close can trigger the standard BC concurrency
     /// error: "Another user has modified the item tracking data since it was retrieved

@@ -1,35 +1,24 @@
 /// <summary>
-/// Tests TDD para la sincronización y validación de cierre de Item Tracking Lines con DUoM.
+/// Tests TDD para la validación de cierre de Item Tracking Lines con DUoM.
 ///
 /// Escenarios cubiertos:
-///   T-CLOSE-01: Total DUoM superior a la línea → Purchase Line sincronizada (suma=5, línea→5)
-///   T-CLOSE-02: Total DUoM igual a la línea → cierre con OK sin error, línea permanece igual
-///   T-CLOSE-03: Ratios distintos por lote pero total correcto → cierre permitido, ratios preservados
-///   T-CLOSE-04: Total DUoM inferior a la línea → Purchase Line sincronizada (suma=3, línea→3)
+///   T-CLOSE-02: Total DUoM igual a la línea → DUoM por lote persiste en ReservEntry
+///   T-CLOSE-03: Ratios distintos por lote pero total correcto → ratios preservados en ReservEntry
 ///   T-CLOSE-06: La validación pre-posting sigue existiendo como segunda barrera
+///
+/// Nota: T-CLOSE-01 (sync PurchLine alta) y T-CLOSE-04 (sync PurchLine baja) han sido
+/// eliminados. La sincronización de la Purchase Line desde Item Tracking Lines pertenecía
+/// a OnQueryClosePage, que ha sido eliminado por no seguir el patrón de Piezas. La fuente
+/// de verdad DUoM por lote es Reservation Entry; la Purchase Line no se sincroniza
+/// automáticamente desde el tracking.
 ///
 /// Nota: el escenario T-CLOSE-05 (cancelación sin OK) fue eliminado porque no existe
 /// un patrón soportado en AL TestPage para cerrar la page 6510 sin OK sin provocar un
 /// doble cierre ("RunModal could not close page 6510 as it has already been closed").
-/// La acción Cancel no está disponible en TestPage "Item Tracking Lines" y llamar a
-/// ItemTrackingLines.Close() dentro del ModalPageHandler causa el doble cierre.
-/// La cobertura de "no persistencia al cancelar" queda fuera del alcance de los tests
-/// automatizados mientras no exista un patrón soportado por la plataforma BC.
-///
-/// Diseño de sincronización y validación (nuevo flujo desde el issue de sync):
-///   OnQueryClosePage (DUoM Item Tracking Lines, 50112)
-///     → SyncPurchLineFromTrackingBuffer (DUoM Tracking Coherence Mgt, 50111)
-///       → PurchLine."DUoM Second Qty" := SUM(TrackingSpec."DUoM Second Qty")
-///       → PurchLine."DUoM Ratio" := Total / TotalBase
-///     → ValidateTrackingSpecBufferForPurchLine (sanity check, siempre pasa tras sync)
-///
-/// La sincronización convierte la Purchase Line en resumen agregado del tracking.
-/// Item Tracking Lines = fuente de verdad por lote.
-/// Purchase Line = resumen agregado sincronizado desde tracking.
 ///
 /// La validación pre-posting (segunda barrera) queda intacta:
 ///   OnPostItemJnlLineOnAfterCopyDocumentFields → ValidatePurchLineTrackingCoherence
-///   (cubre flujos donde OnQueryClosePage no se ejecutó, e.g., inserción directa en RE)
+///   (cubre flujos donde datos incoherentes se insertan directamente en RE)
 ///
 /// Convención de ratios:
 ///   DUoM Second Qty = Quantity (Base) × DUoM Ratio
@@ -46,78 +35,16 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     TestPermissions = Disabled;
 
     // -------------------------------------------------------------------------
-    // T-CLOSE-01 — Total DUoM superior a la línea: Purchase Line sincronizada
-    //
-    // Con el nuevo diseño, Item Tracking Lines es la fuente de verdad.
-    // Cuando el total de tracking supera el valor inicial de la Purchase Line,
-    // el cierre con OK sincroniza la Purchase Line con el total de tracking.
-    // La línea de pedido refleja el agregado real informado en tracking.
-    //
-    // Purchase Line: Quantity = 2 / DUoM Second Qty = 4 / DUoM Ratio = 2
-    // Tracking:
-    //   Lot HH:  Qty (Base) = 1 / DUoM Ratio = 2 / DUoM Second Qty = 2
-    //   Lot LOL: Qty (Base) = 1 / DUoM Ratio = 3 / DUoM Second Qty = 3
-    // SUM(tracking) = 5 → Purchase Line.DUoM Second Qty = 5, DUoM Ratio = 5/2 = 2.5
-    // -------------------------------------------------------------------------
-    [Test]
-    [HandlerFunctions('ItemTrackingLines_CloseTest_MPH')]
-    procedure CloseOK_DUoMTotalHigh_SyncsToPurchLine()
-    var
-        Item: Record Item;
-        Vendor: Record Vendor;
-        PurchHeader: Record "Purchase Header";
-        PurchLine: Record "Purchase Line";
-        PurchaseOrder: TestPage "Purchase Order";
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-        LibraryInventory: Codeunit "Library - Inventory";
-        LibraryPurchase: Codeunit "Library - Purchase";
-        LibraryAssert: Codeunit "Library Assert";
-    begin
-        // [GIVEN] Artículo con DUoM Variable y seguimiento por lote
-        LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(
-            Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
-        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
-
-        // [GIVEN] Purchase Line: Qty = 2 / DUoM Second Qty = 4 (ratio 2)
-        LibraryPurchase.CreateVendor(Vendor);
-        LibraryPurchase.CreatePurchHeader(
-            PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
-        LibraryPurchase.CreatePurchaseLine(
-            PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
-        PurchLine.Validate(Quantity, 2);
-        PurchLine.Validate("DUoM Ratio", 2);   // DUoM Second Qty = 2 × 2 = 4
-        PurchLine.Modify(true);
-
-        // [WHEN] El usuario abre Item Tracking Lines con dos lotes (suma DUoM = 5)
-        //        y cierra con OK (HandlerStep = 1)
-        PurchaseOrder.OpenEdit();
-        PurchaseOrder.GotoRecord(PurchHeader);
-        HandlerStep := 1;
-        PurchaseOrder.PurchLines.First();
-
-        // [THEN] Sin error: Purchase Line queda sincronizada con el total de tracking (5)
-        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
-        PurchaseOrder.Close();
-
-        // [THEN] Purchase Line refleja el total real del tracking
-        PurchLine.Get(PurchHeader."Document Type", PurchHeader."No.", PurchLine."Line No.");
-        LibraryAssert.AreNearlyEqual(
-            5, PurchLine."DUoM Second Qty", 0.001,
-            'T-CLOSE-01: PurchLine.DUoM Second Qty debe ser 5 (suma real del tracking).');
-        LibraryAssert.AreNearlyEqual(
-            2.5, PurchLine."DUoM Ratio", 0.001,
-            'T-CLOSE-01: PurchLine.DUoM Ratio debe ser 5/2 = 2.5 (ratio agregado del tracking).');
-    end;
-
-    // -------------------------------------------------------------------------
     // T-CLOSE-02 — Total DUoM igual a la línea: cierre permitido
+    //
+    // Verifica que al cerrar Item Tracking Lines con dos lotes cuyo total DUoM
+    // coincide con la Purchase Line, las Reservation Entries persisten el DUoM.
     //
     // Purchase Line: Quantity = 2 / DUoM Second Qty = 4 / DUoM Ratio = 2
     // Tracking:
     //   Lot HH:  Qty (Base) = 1 / DUoM Ratio = 2 / DUoM Second Qty = 2
     //   Lot LOL: Qty (Base) = 1 / DUoM Ratio = 2 / DUoM Second Qty = 2
-    // SUM(tracking) = 4 = 4 → Sin error
+    // SUM(tracking) = 4 = 4 → Sin error; ReservEntry tiene DUoM correcto.
     // -------------------------------------------------------------------------
     [Test]
     [HandlerFunctions('ItemTrackingLines_CloseTest_MPH')]
@@ -258,79 +185,14 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T-CLOSE-04 — Total DUoM inferior a la línea: Purchase Line sincronizada
+    // T-CLOSE-06 — La validación pre-posting existe como segunda barrera
     //
-    // Con el nuevo diseño, Item Tracking Lines es la fuente de verdad.
-    // Cuando el total de tracking es inferior al valor inicial de la Purchase Line,
-    // el cierre con OK sincroniza la Purchase Line con el total real del tracking.
+    // Verifica que la validación pre-posting en DUoM Purchase Subscribers (50102)
+    // bloquea el registro cuando los datos DUoM en Reservation Entry son incoherentes
+    // con la Purchase Line.
     //
-    // Purchase Line: Quantity = 2 / DUoM Second Qty = 4 / DUoM Ratio = 2
-    // Tracking:
-    //   Lot HH:  Qty (Base) = 1 / DUoM Ratio = 2 / DUoM Second Qty = 2
-    //   Lot LOL: Qty (Base) = 1 / DUoM Ratio = 1 / DUoM Second Qty = 1
-    // SUM(tracking) = 3 → Purchase Line.DUoM Second Qty = 3, DUoM Ratio = 3/2 = 1.5
-    // -------------------------------------------------------------------------
-    [Test]
-    [HandlerFunctions('ItemTrackingLines_CloseTest_MPH')]
-    procedure CloseOK_DUoMTotalLow_SyncsToPurchLine()
-    var
-        Item: Record Item;
-        Vendor: Record Vendor;
-        PurchHeader: Record "Purchase Header";
-        PurchLine: Record "Purchase Line";
-        PurchaseOrder: TestPage "Purchase Order";
-        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
-        LibraryInventory: Codeunit "Library - Inventory";
-        LibraryPurchase: Codeunit "Library - Purchase";
-        LibraryAssert: Codeunit "Library Assert";
-    begin
-        // [GIVEN] Artículo con DUoM Variable y seguimiento por lote
-        LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(
-            Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
-        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
-
-        // [GIVEN] Purchase Line: Qty = 2 / DUoM Second Qty = 4 (ratio 2)
-        LibraryPurchase.CreateVendor(Vendor);
-        LibraryPurchase.CreatePurchHeader(
-            PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
-        LibraryPurchase.CreatePurchaseLine(
-            PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
-        PurchLine.Validate(Quantity, 2);
-        PurchLine.Validate("DUoM Ratio", 2);   // DUoM Second Qty = 4
-        PurchLine.Modify(true);
-
-        // [WHEN] El usuario abre Item Tracking Lines con dos lotes (suma DUoM = 3)
-        //        y cierra con OK (HandlerStep = 4)
-        PurchaseOrder.OpenEdit();
-        PurchaseOrder.GotoRecord(PurchHeader);
-        HandlerStep := 4;
-        PurchaseOrder.PurchLines.First();
-
-        // [THEN] Sin error: Purchase Line queda sincronizada con el total real del tracking (3)
-        PurchaseOrder.PurchLines."Item Tracking Lines".Invoke();
-        PurchaseOrder.Close();
-
-        // [THEN] Purchase Line refleja el total real del tracking
-        PurchLine.Get(PurchHeader."Document Type", PurchHeader."No.", PurchLine."Line No.");
-        LibraryAssert.AreNearlyEqual(
-            3, PurchLine."DUoM Second Qty", 0.001,
-            'T-CLOSE-04: PurchLine.DUoM Second Qty debe ser 3 (suma real del tracking).');
-        LibraryAssert.AreNearlyEqual(
-            1.5, PurchLine."DUoM Ratio", 0.001,
-            'T-CLOSE-04: PurchLine.DUoM Ratio debe ser 3/2 = 1.5 (ratio agregado del tracking).');
-    end;
-
-    // -------------------------------------------------------------------------
-    // T-CLOSE-06 — La validación pre-posting sigue funcionando como segunda barrera
-    //
-    // Verifica que la sincronización y validación de OnQueryClosePage no sustituyen
-    // la validación pre-posting en DUoM Purchase Subscribers (50102).
-    //
-    // OnQueryClosePage solo se ejecuta cuando el usuario cierra Item Tracking Lines
-    // vía la UI. Si los datos se insertan directamente en Reservation Entry (bypass UI),
-    // OnQueryClosePage nunca se ejecuta. El posting debe seguir siendo bloqueado
-    // por la validación pre-posting como segunda barrera de seguridad.
+    // Esta barrera es independiente de la UI de Item Tracking Lines y se dispara
+    // incluso cuando los datos se insertan directamente en Reservation Entry.
     //
     // Purchase Line: Quantity = 2 / DUoM Second Qty = 4 (ratio 2)
     // Reservation Entry directa (bypass UI):
@@ -380,19 +242,13 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     end;
 
     /// <summary>
-    /// ModalPageHandler para Item Tracking Lines — utilizado por los tests T-CLOSE-01..04.
-    ///
-    ///   HandlerStep = 1: Lote HH (ratio=2, second=2) + Lote LOL (ratio=3, second=3)
-    ///                    Suma = 5 → al cerrar con OK, Purchase Line se sincroniza: DUoM = 5, ratio = 2.5
+    /// ModalPageHandler para Item Tracking Lines — utilizado por los tests T-CLOSE-02 y T-CLOSE-03.
     ///
     ///   HandlerStep = 2: Lote HH (ratio=2, second=2) + Lote LOL (ratio=2, second=2)
-    ///                    Suma = 4 = 4 → OK sin error; línea permanece con DUoM = 4
+    ///                    Suma = 4 = 4 → OK sin error; ReservEntry conserva DUoM por lote
     ///
     ///   HandlerStep = 3: Lote LOT-A (ratio=1.5, second=1.5) + Lote LOT-B (ratio=2.5, second=2.5)
-    ///                    Suma = 4 = 4 → OK sin error; ratios distintos preservados
-    ///
-    ///   HandlerStep = 4: Lote HH (ratio=2, second=2) + Lote LOL (ratio=1, second=1)
-    ///                    Suma = 3 → al cerrar con OK, Purchase Line se sincroniza: DUoM = 3, ratio = 1.5
+    ///                    Suma = 4 = 4 → OK sin error; ratios distintos preservados en ReservEntry
     ///
     /// Notas:
     ///   - En modo Variable sin DUoM Lot Ratio registrado, el subscriber aplica el
@@ -400,35 +256,15 @@ codeunit 50222 "DUoM Purch Track Close Tests"
     ///     Para ratios distintos al fallback, se sobreescribe DUoM Ratio explícitamente.
     ///   - SetValue("DUoM Ratio", x) provoca el trigger OnValidate de la tabla
     ///     DUoM Tracking Spec Ext que auto-calcula DUoM Second Qty = Qty × x (Variable mode).
-    ///   - El nuevo flujo de cierre: SyncPurchLineFromTrackingBuffer → ValidateTrackingSpecBufferForPurchLine.
-    ///     La sync siempre actualiza la Purchase Line antes de la validación, por lo que
-    ///     la validación siempre pasa (PurchLine = suma del tracking).
     /// </summary>
     [ModalPageHandler]
     procedure ItemTrackingLines_CloseTest_MPH(
         var ItemTrackingLines: TestPage "Item Tracking Lines")
     begin
         case HandlerStep of
-            1:
-                begin
-                    // T-CLOSE-01: suma = 2 + 3 = 5 → OK sincroniza Purchase Line a 5 (sin error)
-                    ItemTrackingLines.New();
-                    ItemTrackingLines."Lot No.".SetValue('HH');
-                    ItemTrackingLines."Quantity (Base)".SetValue(1);
-                    // Fallback DUoM Ratio = 2 (desde PurchLine) → DUoM Second Qty = 2 ✓
-                    // No es necesario sobrescribir el ratio para HH en este paso
-                    ItemTrackingLines.New();
-                    ItemTrackingLines."Lot No.".SetValue('LOL');
-                    ItemTrackingLines."Quantity (Base)".SetValue(1);
-                    // Sobrescribir el fallback (2) con ratio 3 para que second=3
-                    ItemTrackingLines."DUoM Ratio".SetValue(3);
-                    // DUoM Second Qty auto-calculado = 1 × 3 = 3 (Variable mode)
-                    // OK cierra la página — sync: PurchLine.DUoM = 5, ratio = 5/2 = 2.5
-                    ItemTrackingLines.OK().Invoke();
-                end;
             2:
                 begin
-                    // T-CLOSE-02: suma = 2 + 2 = 4 = 4 → OK sin error
+                    // T-CLOSE-02: suma = 2 + 2 = 4 = 4 → OK sin error; ReservEntry conserva DUoM
                     ItemTrackingLines.New();
                     ItemTrackingLines."Lot No.".SetValue('HH');
                     ItemTrackingLines."Quantity (Base)".SetValue(1);
@@ -452,21 +288,6 @@ codeunit 50222 "DUoM Purch Track Close Tests"
                     ItemTrackingLines."Quantity (Base)".SetValue(1);
                     ItemTrackingLines."DUoM Ratio".SetValue(2.5);
                     // DUoM Second Qty = 1 × 2.5 = 2.5 (auto-calculado en Variable mode)
-                    ItemTrackingLines.OK().Invoke();
-                end;
-            4:
-                begin
-                    // T-CLOSE-04: suma = 2 + 1 = 3 → OK sincroniza Purchase Line a 3 (sin error)
-                    ItemTrackingLines.New();
-                    ItemTrackingLines."Lot No.".SetValue('HH');
-                    ItemTrackingLines."Quantity (Base)".SetValue(1);
-                    // Fallback DUoM Ratio = 2 → DUoM Second Qty = 2 ✓
-                    ItemTrackingLines.New();
-                    ItemTrackingLines."Lot No.".SetValue('LOL');
-                    ItemTrackingLines."Quantity (Base)".SetValue(1);
-                    // Sobrescribir fallback con ratio 1 → DUoM Second Qty = 1
-                    ItemTrackingLines."DUoM Ratio".SetValue(1);
-                    // OK cierra la página — sync: PurchLine.DUoM = 3, ratio = 3/2 = 1.5
                     ItemTrackingLines.OK().Invoke();
                 end;
         end;

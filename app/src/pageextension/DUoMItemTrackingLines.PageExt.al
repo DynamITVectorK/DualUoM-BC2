@@ -8,6 +8,13 @@
 /// Both fields are editable so the user can review and override values per lot assignment.
 /// For items without DUoM enabled the columns are shown empty (no conditional hide).
 ///
+/// DUoM follows the same lot-tracking propagation pattern as the Pieces add-on:
+///   Tracking Specification → Reservation Entry → Temp Tracking Spec / Global Record Set
+///   → Temp Split Item Journal Line → Item Journal Line → Item Ledger Entry.
+/// Do not persist or validate DUoM through page-close events (OnQueryClosePage,
+/// OnQueryClosePageEvent, OnBeforeClosePage). Persistence and sign normalization happen
+/// exclusively through the standard tracking event chain.
+///
 /// DUoM Second Qty.OnValidate (Variable/AlwaysVariable modes):
 ///   Calls NormalizeTrackingDUoMSecondQty BEFORE ValidateTrackingSpecLine so that when
 ///   the user enters real pieces during reception, DUoM Ratio is recalculated from the
@@ -18,23 +25,11 @@
 ///   Calls NormalizeTrackingQuantityBase (recalculates DUoM Ratio when both Qty Base and
 ///   DUoM Second Qty are non-zero), then calls ValidateTrackingSpecLineForFieldEdit.
 ///   The light-weight field-edit validation does NOT raise an error when DUoM Second Qty
-///   is still zero — that is a valid intermediate state during editing. Strict validation
-///   (including AlwaysVariable missing-ratio rule) runs only at close and posting.
+///   is still zero — that is a valid intermediate state during editing.
 ///
 /// OnValidate handlers on both DUoM fields delegate to DUoM Tracking Coherence Mgt (50111)
 /// for immediate UI feedback on ratio coherence and mode-specific rules. The server-side
 /// validation guard (pre-posting) is in DUoM Purchase Subscribers (50102).
-///
-/// OnQueryClosePage (OK/LookupOK):
-///   1. Calls ValidateTrackingSpecBufferEachLine to validate per-lot DUoM ratio coherence
-///      for every functional tracking line BEFORE any data is persisted. Empty/insertion
-///      lines are skipped. This is the first (early) barrier against inconsistent ratios.
-///   2. Calls SyncPurchLineFromTrackingBuffer to update the source Purchase Line with the
-///      aggregate DUoM totals from tracking. The Purchase Line is the aggregate summary;
-///      each tracking line (lot) retains its own per-lot ratio.
-///   3. Calls ValidateTrackingSpecBufferForPurchLine as sanity check after sync.
-///   The pre-posting validation in DUoM Purchase Subscribers (50102) remains as a second
-///   safety barrier for data that may arrive by other means (e.g., direct code insertion).
 /// </summary>
 pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
 {
@@ -114,18 +109,6 @@ pageextension 50112 "DUoM Item Tracking Lines" extends "Item Tracking Lines"
                 if DUoMItemSetup."Dual UoM Enabled" then
                     if DUoMItemSetup."Second UoM Code" <> '' then
                         DUoMSecondQtyCaption := '3,' + DUoMItemSetup."Second UoM Code";
-    end;
-
-    trigger OnQueryClosePage(CloseAction: Action): Boolean
-    var
-        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
-    begin
-        // Only validate on acceptance (OK / LookupOK). Cancel and other close
-        // actions must never be blocked by DUoM aggregate validation.
-        if not (CloseAction in [Action::OK, Action::LookupOK]) then
-            exit(true);
-        DUoMTrackingPropMgt.ValidateTrackingBeforeClose(Rec);
-        exit(true);
     end;
 
     var
