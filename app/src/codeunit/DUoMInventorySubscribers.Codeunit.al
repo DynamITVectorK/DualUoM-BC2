@@ -167,6 +167,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
         var TempGlobalItemLedgerEntry: Record "Item Ledger Entry" temporary;
         var TempGlobalItemEntryRelation: Record "Item Entry Relation" temporary;
         var IsHandled: Boolean)
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         // Guard: en el flujo undo con trazabilidad de lote/serie, BC llama
         // CopyTrackingFromItemLedgEntry antes de este evento, lo que dispara
@@ -178,9 +180,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
         if PurchRcptLine."DUoM Ratio" = 0 then
             exit;
         ItemJournalLine."DUoM Ratio" := PurchRcptLine."DUoM Ratio";
-        // La corrección invierte la recepción original (Qty > 0) → ILE corrección con Qty < 0.
-        // OnAfterInitItemLedgEntry (50104) normaliza de nuevo contra el signo real del ILE.
-        ItemJournalLine."DUoM Second Qty" := -Abs(PurchRcptLine."DUoM Second Qty");
+        // Signo centralizado en DUoM Sign Mgt: la corrección invierte la recepción
+        // original (Qty > 0) → IJL con DUoM Second Qty negativa.
+        ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyUndoPurchReceiptSign(
+            PurchRcptLine."DUoM Second Qty");
     end;
 
     /// <summary>
@@ -214,6 +217,8 @@ codeunit 50104 "DUoM Inventory Subscribers"
         var TempGlobalItemLedgerEntry: Record "Item Ledger Entry" temporary;
         var TempGlobalItemEntryRelation: Record "Item Entry Relation" temporary;
         var IsHandled: Boolean)
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         // Guard: en el flujo undo con trazabilidad de lote/serie, BC llama
         // CopyTrackingFromItemLedgEntry antes de este evento, lo que dispara
@@ -225,9 +230,10 @@ codeunit 50104 "DUoM Inventory Subscribers"
         if SalesShipmentLine."DUoM Ratio" = 0 then
             exit;
         ItemJournalLine."DUoM Ratio" := SalesShipmentLine."DUoM Ratio";
-        // La corrección invierte el envío original (Qty < 0) → ILE corrección con Qty > 0.
-        // OnAfterInitItemLedgEntry (50104) normaliza de nuevo contra el signo real del ILE.
-        ItemJournalLine."DUoM Second Qty" := Abs(SalesShipmentLine."DUoM Second Qty");
+        // Signo centralizado en DUoM Sign Mgt: la corrección invierte el envío
+        // original (Qty < 0) → IJL con DUoM Second Qty positiva.
+        ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyUndoSalesShptSign(
+            SalesShipmentLine."DUoM Second Qty");
     end;
 
     /// <summary>
@@ -387,11 +393,15 @@ codeunit 50104 "DUoM Inventory Subscribers"
         var NewItemLedgerEntry: Record "Item Ledger Entry";
         var OldItemLedgerEntry: Record "Item Ledger Entry";
         var ItemJournalLine: Record "Item Journal Line")
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
     begin
         if OldItemLedgerEntry."DUoM Ratio" = 0 then
             exit;
         NewItemLedgerEntry."DUoM Ratio" := OldItemLedgerEntry."DUoM Ratio";
-        NewItemLedgerEntry."DUoM Second Qty" := -OldItemLedgerEntry."DUoM Second Qty";
+        // Signo centralizado en DUoM Sign Mgt: la corrección invierte el ILE original.
+        NewItemLedgerEntry."DUoM Second Qty" := DUoMSignMgt.ApplyCorrectionILESign(
+            OldItemLedgerEntry."DUoM Second Qty");
     end;
 
     /// <summary>

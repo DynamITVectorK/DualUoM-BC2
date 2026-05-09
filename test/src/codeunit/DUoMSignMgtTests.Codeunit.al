@@ -346,4 +346,133 @@ codeunit 50228 "DUoM Sign Mgt Tests"
         LibraryAssert.AreEqual(8, DUoMSignMgt.NormalizeILESign(ILE, 8),
             'Undo shipment: ILE corrección con Qty > 0 → DUoM Second Qty positiva.');
     end;
+
+    // =========================================================================
+    // ApplyUndoPurchReceiptSign — siempre negativo
+    // =========================================================================
+
+    [Test]
+    procedure ApplyUndoPurchReceiptSign_PositiveOriginal_ReturnsNegative()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Albarán de compra original con DUoM Second Qty = 8 (positiva)
+        // [WHEN] Se calcula el signo de la anulación
+        // [THEN] Resultado negativo (la corrección invierte la recepción original)
+        LibraryAssert.AreEqual(-8, DUoMSignMgt.ApplyUndoPurchReceiptSign(8),
+            'Undo receipt (positivo original) → DUoM Second Qty debe ser negativa.');
+    end;
+
+    [Test]
+    procedure ApplyUndoPurchReceiptSign_NegativeOriginal_ReturnsNegative()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Albarán de compra con DUoM Second Qty con signo incorrecto (negativa)
+        // [WHEN] Se calcula el signo de la anulación
+        // [THEN] Resultado negativo (siempre negativo, sin doble inversión)
+        LibraryAssert.AreEqual(-8, DUoMSignMgt.ApplyUndoPurchReceiptSign(-8),
+            'Undo receipt (negativo original) → DUoM Second Qty debe seguir siendo negativa.');
+    end;
+
+    [Test]
+    procedure ApplyUndoPurchReceiptSign_Zero_ReturnsZero()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Albarán de compra sin DUoM (SecondQty = 0)
+        // [WHEN] Se calcula el signo de la anulación
+        // [THEN] Devuelve 0
+        LibraryAssert.AreEqual(0, DUoMSignMgt.ApplyUndoPurchReceiptSign(0),
+            'Undo receipt con SecondQty = 0 → debe devolver 0.');
+    end;
+
+    // =========================================================================
+    // ApplyUndoSalesShptSign — siempre positivo
+    // =========================================================================
+
+    [Test]
+    procedure ApplyUndoSalesShptSign_NegativeOriginal_ReturnsPositive()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Albarán de venta original con DUoM Second Qty = -8 (negativa, salida)
+        // [WHEN] Se calcula el signo de la anulación
+        // [THEN] Resultado positivo (la corrección invierte el envío original)
+        LibraryAssert.AreEqual(8, DUoMSignMgt.ApplyUndoSalesShptSign(-8),
+            'Undo shipment (negativo original) → DUoM Second Qty debe ser positiva.');
+    end;
+
+    [Test]
+    procedure ApplyUndoSalesShptSign_PositiveOriginal_ReturnsPositive()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Albarán de venta con DUoM Second Qty con signo incorrecto (positiva)
+        // [WHEN] Se calcula el signo de la anulación
+        // [THEN] Resultado positivo (siempre positivo, sin doble inversión)
+        LibraryAssert.AreEqual(8, DUoMSignMgt.ApplyUndoSalesShptSign(8),
+            'Undo shipment (positivo original) → DUoM Second Qty debe seguir siendo positiva.');
+    end;
+
+    [Test]
+    procedure ApplyUndoSalesShptSign_Zero_ReturnsZero()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Albarán de venta sin DUoM (SecondQty = 0)
+        // [WHEN] Se calcula el signo de la anulación
+        // [THEN] Devuelve 0
+        LibraryAssert.AreEqual(0, DUoMSignMgt.ApplyUndoSalesShptSign(0),
+            'Undo shipment con SecondQty = 0 → debe devolver 0.');
+    end;
+
+    // =========================================================================
+    // ApplyCorrectionILESign — negación del ILE original
+    // =========================================================================
+
+    [Test]
+    procedure ApplyCorrectionILESign_PositiveOriginalILE_ReturnsNegative()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] ILE original de compra: DUoM Second Qty = 8 (positiva, entrada)
+        // [WHEN] Se calcula el signo del ILE de corrección
+        // [THEN] Resultado negativo (la corrección invierte el ILE original)
+        LibraryAssert.AreEqual(-8, DUoMSignMgt.ApplyCorrectionILESign(8),
+            'ILE corrección de compra: resultado debe ser negativo (inversión del original positivo).');
+    end;
+
+    [Test]
+    procedure ApplyCorrectionILESign_NegativeOriginalILE_ReturnsPositive()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] ILE original de venta: DUoM Second Qty = -8 (negativa, salida)
+        // [WHEN] Se calcula el signo del ILE de corrección
+        // [THEN] Resultado positivo (la corrección invierte el ILE original)
+        LibraryAssert.AreEqual(8, DUoMSignMgt.ApplyCorrectionILESign(-8),
+            'ILE corrección de venta: resultado debe ser positivo (inversión del original negativo).');
+    end;
+
+    [Test]
+    procedure ApplyCorrectionILESign_Zero_ReturnsZero()
+    var
+        DUoMSignMgt: Codeunit "DUoM Sign Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] ILE original sin DUoM (SecondQty = 0)
+        // [WHEN] Se calcula el signo del ILE de corrección
+        // [THEN] Devuelve 0
+        LibraryAssert.AreEqual(0, DUoMSignMgt.ApplyCorrectionILESign(0),
+            'ILE corrección con SecondQty = 0 → debe devolver 0.');
+    end;
 }
