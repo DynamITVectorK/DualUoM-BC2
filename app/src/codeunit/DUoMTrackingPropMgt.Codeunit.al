@@ -116,8 +116,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         ReservationEntry: Record "Reservation Entry";
         var TrackingSpecification: Record "Tracking Specification")
     begin
-        // DUoM follows the Pieces pattern: user data is always stored positive.
-        // Abs() normalizes any signed value that may arrive from technical flows.
+        // DUoM sigue el patrón Piezas: los datos de usuario se almacenan siempre en positivo.
+        // Abs() normaliza cualquier valor con signo que pueda llegar de flujos técnicos.
         TrackingSpecification."DUoM Ratio" := Abs(ReservationEntry."DUoM Ratio");
         TrackingSpecification."DUoM Second Qty" := NormalizeSecondQtyForPage(
             ReservationEntry."DUoM Second Qty");
@@ -127,8 +127,8 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
         SourceTrackingSpec: Record "Tracking Specification";
         var DestTrackingSpec: Record "Tracking Specification")
     begin
-        // DUoM follows the Pieces pattern: the visible buffer always shows positive values.
-        // Abs() normalizes any signed value that may arrive from technical flows (e.g. sales).
+        // DUoM sigue el patrón Piezas: el buffer visible siempre muestra valores positivos.
+        // Abs() normaliza cualquier valor con signo que pueda llegar de flujos técnicos (p.ej. ventas).
         DestTrackingSpec."DUoM Ratio" := Abs(SourceTrackingSpec."DUoM Ratio");
         DestTrackingSpec."DUoM Second Qty" := NormalizeSecondQtyForPage(
             SourceTrackingSpec."DUoM Second Qty");
