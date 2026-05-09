@@ -1643,7 +1643,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
             21:
                 begin
                     // T-REOPEN-09: Primera edición — asignar lote en modo Variable con Qty Base = 5
-                    // La validación de DUoM Second Qty calcula automáticamente DUoM Ratio = 3.75 / 5 = 0.75
+                    // Al validar DUoM Second Qty se calcula automáticamente DUoM Ratio = 3.75 / 5 = 0.75
                     ItemTrackingLines.New();
                     ItemTrackingLines."Lot No.".SetValue('LOT-MODIFY-T9V');
                     ItemTrackingLines."Quantity (Base)".SetValue(5);
