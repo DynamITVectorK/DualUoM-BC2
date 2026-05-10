@@ -893,7 +893,7 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibraryAssert.IsTrue(ILE.FindFirst(),
             'Regresión venta 2 lotes: Debe existir ILE de venta para lote B.');
 
-        ILE.SetRange("Lot No.");
+        ILE.SetFilter("Lot No.", '%1|%2', LotNoA, LotNoB);
         if ILE.FindSet() then
             repeat
                 AggregatedILESecondQty += ILE."DUoM Second Qty";
