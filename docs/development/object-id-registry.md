@@ -136,6 +136,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50226 | DUoM Purch Lot Ratio Tests        | test/src/codeunit/DUoMPurchLotRatioTests.Codeunit.al             |
 | 50227 | DUoM Undo Rcpt Shpt Tests         | test/src/codeunit/DUoMUndoRcptShptTests.Codeunit.al              |
 | 50228 | DUoM Sign Mgt Tests               | test/src/codeunit/DUoMSignMgtTests.Codeunit.al                   |
+| 50229 | DUoM Doc Audit Tests              | test/src/codeunit/DUoMDocAuditTests.Codeunit.al                  |
 
 ### Permission Sets de test
 
@@ -150,4 +151,4 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | App      | Tipo                           | Próximo ID libre |
 |----------|--------------------------------|-----------------|
 | app/     | Cualquier tipo de objeto       | 50128           |
-| test/    | Codeunit / permissionset       | 50229           |
+| test/    | Codeunit / permissionset       | 50230           |
