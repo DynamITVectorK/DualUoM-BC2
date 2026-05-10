@@ -286,4 +286,39 @@ codeunit 50208 "DUoM Test Helpers"
         ReservEntry."DUoM Second Qty" := Qty * DUoMRatio;
         ReservEntry.Insert(true);
     end;
+
+    /// <summary>
+    /// Asegura que existe un registro Inventory Posting Setup para la ubicación indicada
+    /// y el grupo contable de inventario del artículo.
+    /// Es obligatorio en BC 27 antes de registrar movimientos contra ubicaciones creadas
+    /// dinámicamente en tests (p.ej. con LibraryWarehouse.CreateLocation).
+    /// Copia los campos no clave del registro de ubicación vacía '' como plantilla.
+    /// Si no existe ningún registro base con ubicación '' para el grupo indicado,
+    /// genera un error descriptivo en lugar de propagar un error de runtime de BC.
+    /// Nota: esta codeunit pertenece a la test app, que no tiene TranslationFile habilitado
+    /// en app.json; los mensajes de error son de ámbito de desarrollador y no requieren Label.
+    /// </summary>
+    procedure EnsureInventoryPostingSetupForLocation(Item: Record Item; LocationCode: Code[10])
+    var
+        InventoryPostingSetup: Record "Inventory Posting Setup";
+        DefaultInventoryPostingSetup: Record "Inventory Posting Setup";
+    begin
+        if InventoryPostingSetup.Get(LocationCode, Item."Inventory Posting Group") then
+            exit;
+
+        // Buscar el registro con ubicación vacía '' como plantilla (fuente determinista).
+        DefaultInventoryPostingSetup.SetRange("Location Code", '');
+        DefaultInventoryPostingSetup.SetRange("Invt. Posting Group Code", Item."Inventory Posting Group");
+        if not DefaultInventoryPostingSetup.FindFirst() then
+            Error('Inventory Posting Setup not found for Invt. Posting Group %1. Cannot create setup for location %2.',
+                Item."Inventory Posting Group", LocationCode);
+
+        InventoryPostingSetup.Init();
+        // TransferFields(true): copia campos no-clave de la plantilla y deja los campos clave
+        // en blanco (Init). Los campos clave se asignan explícitamente a continuación.
+        InventoryPostingSetup.TransferFields(DefaultInventoryPostingSetup, true);
+        InventoryPostingSetup."Location Code" := LocationCode;
+        InventoryPostingSetup."Invt. Posting Group Code" := Item."Inventory Posting Group";
+        InventoryPostingSetup.Insert();
+    end;
 }

@@ -870,6 +870,8 @@ codeunit 50209 "DUoM ILE Integration Tests"
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1);
         LibraryWarehouse.CreateLocation(LocationBlue);
         LibraryWarehouse.CreateLocation(LocationRed);
+        DUoMTestHelpers.EnsureInventoryPostingSetupForLocation(Item, LocationBlue.Code);
+        DUoMTestHelpers.EnsureInventoryPostingSetupForLocation(Item, LocationRed.Code);
         PostPurchaseOrder(Item."No.", 8, LocationBlue.Code, '', WorkDate());
         PostPurchaseOrder(Item."No.", 5, LocationRed.Code, '', WorkDate());
 
@@ -934,6 +936,7 @@ codeunit 50209 "DUoM ILE Integration Tests"
         DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ICEBERG', ItemVariant);
         LibraryWarehouse.CreateLocation(LocationBlue);
         CutoffDate := DMY2Date(1, 2, 2026);
+        DUoMTestHelpers.EnsureInventoryPostingSetupForLocation(Item, LocationBlue.Code);
         PostPurchaseOrder(Item."No.", 8, LocationBlue.Code, 'ROMANA', DMY2Date(1, 1, 2026));
         PostPurchaseOrder(Item."No.", 5, LocationBlue.Code, 'ICEBERG', DMY2Date(15, 1, 2026));
         PostPurchaseOrder(Item."No.", 3, '', 'ROMANA', DMY2Date(1, 3, 2026));
