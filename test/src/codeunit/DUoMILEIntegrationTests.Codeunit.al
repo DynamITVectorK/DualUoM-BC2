@@ -825,7 +825,6 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
         LotNo: Code[50];
-        ReservSecondQty: Decimal;
     begin
         // [GIVEN] Purchase Line con DUoM Second Qty total y tracking de un lote coherente
         LibraryInventory.CreateItem(Item);
@@ -855,8 +854,7 @@ codeunit 50209 "DUoM ILE Integration Tests"
         ReservEntry.SetRange("Lot No.", LotNo);
         LibraryAssert.IsTrue(ReservEntry.FindFirst(),
             'Regresión 1 lote: Debe existir Reservation Entry para el lote asignado.');
-        ReservSecondQty := ReservEntry."DUoM Second Qty";
-        LibraryAssert.AreNearlyEqual(8, ReservSecondQty, 0.001,
+        LibraryAssert.AreNearlyEqual(8, ReservEntry."DUoM Second Qty", 0.001,
             'Regresión 1 lote: Reservation Entry.DUoM Second Qty debe ser 8.');
 
         // [WHEN] Se registra la recepción
@@ -870,8 +868,8 @@ codeunit 50209 "DUoM ILE Integration Tests"
             'Regresión 1 lote: Debe existir ILE de compra para el lote.');
         LibraryAssert.AreNearlyEqual(0.8, ILE."DUoM Ratio", 0.001,
             'Regresión 1 lote: ILE.DUoM Ratio debe ser 0.8.');
-        LibraryAssert.AreNearlyEqual(ReservSecondQty, ILE."DUoM Second Qty", 0.001,
-            'Regresión 1 lote: ILE.DUoM Second Qty debe coincidir con Reservation Entry.');
+        LibraryAssert.AreNearlyEqual(8, ILE."DUoM Second Qty", 0.001,
+            'Regresión 1 lote: ILE.DUoM Second Qty debe ser 8.');
 
         Item.Get(Item."No.");
         Item.CalcFields("DUoM Inventory");
@@ -894,8 +892,8 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibraryAssert: Codeunit "Library Assert";
         LotNoA: Code[50];
         LotNoB: Code[50];
-        TotalReservSecondQty: Decimal;
-        TotalILESecondQty: Decimal;
+        AggregatedReservSecondQty: Decimal;
+        AggregatedILESecondQty: Decimal;
     begin
         // [GIVEN] Purchase Line DUoM Second Qty = 8 y dos lotes con desglose 3 + 5
         LibraryInventory.CreateItem(Item);
@@ -929,9 +927,9 @@ codeunit 50209 "DUoM ILE Integration Tests"
         LibraryAssert.IsTrue(ReservEntry.FindSet(),
             'Regresión 2 lotes: Deben existir Reservation Entry positivas.');
         repeat
-            TotalReservSecondQty += ReservEntry."DUoM Second Qty";
+            AggregatedReservSecondQty += ReservEntry."DUoM Second Qty";
         until ReservEntry.Next() = 0;
-        LibraryAssert.AreNearlyEqual(8, TotalReservSecondQty, 0.001,
+        LibraryAssert.AreNearlyEqual(8, AggregatedReservSecondQty, 0.001,
             'Regresión 2 lotes: SUM(Reservation Entry.DUoM Second Qty) debe ser 8.');
 
         // [WHEN] Se registra la recepción
@@ -951,9 +949,9 @@ codeunit 50209 "DUoM ILE Integration Tests"
         ILE.SetRange("Lot No.");
         if ILE.FindSet() then
             repeat
-                TotalILESecondQty += ILE."DUoM Second Qty";
+                AggregatedILESecondQty += ILE."DUoM Second Qty";
             until ILE.Next() = 0;
-        LibraryAssert.AreNearlyEqual(8, TotalILESecondQty, 0.001,
+        LibraryAssert.AreNearlyEqual(8, AggregatedILESecondQty, 0.001,
             'Regresión 2 lotes: SUM(ILE.DUoM Second Qty) debe ser 8.');
 
         Item.Get(Item."No.");
