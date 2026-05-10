@@ -86,7 +86,7 @@ already covers the need:
 |---|---|---|---|
 | `DUoM Item Card Ext` | 50100 | `Item Card` | Acciones DUoM + campo informativo `DUoM Inventory` (solo lectura) |
 | `DUoM Item List Ext` | 50127 | `Item List` | Muestra `DUoM Inventory` para comparación masiva frente al inventario estándar |
-| `DUoM Purchase Order Subform` | 50101 | `Purchase Order Subform` | Muestra `DUoM Second Qty` (valor esperado/documental), `DUoM Tracking Total` calculado bajo demanda desde `Reservation Entry`, `DUoM Ratio` y `DUoM Unit Cost` en líneas de pedido de compra |
+| `DUoM Purchase Order Subform` | 50101 | `Purchase Order Subform` | Muestra `DUoM Second Qty` (total DUoM de la línea), `DUoM Ratio` y `DUoM Unit Cost` en líneas de pedido de compra |
 | `DUoM Sales Order Subform` | 50102 | `Sales Order Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de pedido de venta |
 | `DUoM Item Journal Ext` | 50103 | `Item Journal` | Muestra Second Qty y Ratio en líneas del diario de productos |
 | `DUoM Posted Rcpt. Subform` | 50104 | `Posted Purchase Rcpt. Subform` | Muestra Second Qty, Ratio y Unit Cost en líneas de recepción registrada (solo lectura) |
@@ -134,8 +134,8 @@ Item Ledger Entry      = verdad histórica contabilizada por movimiento/lote
 - `Reservation Entry` es la persistencia operativa por lote.
 - `Purchase Line."DUoM Second Qty"` mantiene semántica documental (valor esperado), no verdad
   operativa final por lote.
-- El agregado operativo se consulta bajo demanda en UI desde `Reservation Entry` (`DUoM Tracking Total`)
-  sin persistir sincronización `Tracking → Purchase Line`.
+- El agregado operativo por lote se consulta directamente desde `Reservation Entry` sin persistir
+  sincronización `Tracking → Purchase Line`.
 - Cada lote retiene su ratio real propio en `Reservation Entry`, buffers de tracking e `ILE`.
 - El stock DUoM registrado de artículo (`DUoM Inventory`) se consulta desde `Item Ledger Entry`
   mediante FlowField, sin usar `Reservation Entry` ni documentos abiertos.

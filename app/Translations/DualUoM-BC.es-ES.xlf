@@ -276,22 +276,10 @@
              PageExtension 1390132160  DUoM Purchase Order Subform
              ═══════════════════════════════════════════ -->
         <trans-unit id="PageExtension 1390132160 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
-          <source>Specifies the expected document-level secondary quantity for this purchase line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode. The real per-lot operational total is shown in DUoM Tracking Total.</source>
-          <target state="translated">Especifica la cantidad secundaria esperada a nivel documental para esta línea de compra en la segunda unidad de medida. Se calcula automáticamente en los modos Fijo y Variable; introdúzcala manualmente en el modo Siempre Variable. El total operativo real por lote se muestra en DUoM Tracking Total.</target>
+          <source>Specifies the total secondary quantity for this purchase line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode. The per-lot breakdown is stored in Reservation Entry.</source>
+          <target state="translated">Especifica la cantidad secundaria total para esta línea de compra en la segunda unidad de medida. Se calcula automáticamente en los modos Fijo y Variable; introdúzcala manualmente en el modo Siempre Variable. El desglose por lote se almacena en Reservation Entry.</target>
           <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field on Purchase Order Subform; no placeholders.</note>
           <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - Control DUoM Second Qty - Property ToolTip</note>
-        </trans-unit>
-        <trans-unit id="PageExtension 1390132160 - Control 1700199001 - Property 2879900210" translate="yes" xml:space="preserve">
-          <source>DUoM Tracking Total</source>
-          <target state="translated">Total seguimiento DUoM</target>
-          <note from="Developer" annotates="general" priority="2"></note>
-          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - Control DUoM Tracking Total - Property Caption</note>
-        </trans-unit>
-        <trans-unit id="PageExtension 1390132160 - Control 1700199001 - Property 1295455071" translate="yes" xml:space="preserve">
-          <source>Specifies the real operational DUoM total aggregated from Reservation Entry for this purchase line. This value is calculated on demand from lot tracking data and is not persisted on the purchase line.</source>
-          <target state="translated">Especifica el total DUoM operativo real agregado desde Reservation Entry para esta línea de compra. Este valor se calcula bajo demanda a partir de los datos de seguimiento por lote y no se persiste en la línea de compra.</target>
-          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Tracking Total field on Purchase Order Subform; no placeholders.</note>
-          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Purchase Order Subform - Control DUoM Tracking Total - Property ToolTip</note>
         </trans-unit>
         <trans-unit id="PageExtension 1390132160 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
           <source>Specifies the conversion ratio for this purchase line. Overrides the item default when the item uses Variable conversion mode.</source>

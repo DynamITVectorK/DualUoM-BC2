@@ -18,14 +18,7 @@ pageextension 50101 "DUoM Purchase Order Subform" extends "Purchase Order Subfor
                 ApplicationArea = All;
                 CaptionClass = DUoMSecondQtyCaption;
                 Editable = IsDUoMSecondQtyEditable;
-                ToolTip = 'Specifies the expected document-level secondary quantity for this purchase line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode. The real per-lot operational total is shown in DUoM Tracking Total.', Comment = 'ToolTip for DUoM Second Qty field on Purchase Order Subform; no placeholders.';
-            }
-            field("DUoM Tracking Total"; DUoMTrackingSecondQtyTotal)
-            {
-                ApplicationArea = All;
-                Caption = 'DUoM Tracking Total';
-                Editable = false;
-                ToolTip = 'Specifies the real operational DUoM total aggregated from Reservation Entry for this purchase line. This value is calculated on demand from lot tracking data and is not persisted on the purchase line.', Comment = 'ToolTip for DUoM Tracking Total field on Purchase Order Subform; no placeholders.';
+                ToolTip = 'Specifies the total secondary quantity for this purchase line in the second unit of measure. Computed automatically in Fixed and Variable modes; enter manually in Always Variable mode. The per-lot breakdown is stored in Reservation Entry.', Comment = 'ToolTip for DUoM Second Qty field on Purchase Order Subform; no placeholders.';
             }
             field("DUoM Ratio"; Rec."DUoM Ratio")
             {
@@ -43,7 +36,6 @@ pageextension 50101 "DUoM Purchase Order Subform" extends "Purchase Order Subfor
     trigger OnAfterGetRecord()
     begin
         UpdateDUoMLinePresentation();
-        CalcDUoMTrackingTotal();
     end;
 
     local procedure UpdateDUoMLinePresentation()
@@ -68,25 +60,8 @@ pageextension 50101 "DUoM Purchase Order Subform" extends "Purchase Order Subfor
         DUoMSecondQtyCaption := '3,' + DUoMItemSetup."Second UoM Code";
     end;
 
-    local procedure CalcDUoMTrackingTotal()
-    var
-        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
-        TotalBaseQty: Decimal;
-    begin
-        DUoMTrackingSecondQtyTotal := 0;
-        if Rec.Type <> Rec.Type::Item then
-            exit;
-        if Rec."No." = '' then
-            exit;
-
-        // TotalBaseQty se ignora en UI: este campo solo muestra el total DUoM agregado.
-        DUoMCoherenceMgt.CalcTrackingDUoMTotalsForPurchLine(
-            Rec, DUoMTrackingSecondQtyTotal, TotalBaseQty);
-    end;
-
     var
         IsDUoMSecondQtyEditable: Boolean;
-        DUoMTrackingSecondQtyTotal: Decimal;
         DUoMSecondQtyCaption: Text[30];
         DUoMSecondQtyDefaultLbl: Label 'DUoM Second Qty', Comment = 'Default column caption for DUoM Second Qty when no second unit of measure code is available; no placeholders.';
 }

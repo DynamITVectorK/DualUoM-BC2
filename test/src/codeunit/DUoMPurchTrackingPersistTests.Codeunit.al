@@ -24,6 +24,9 @@
 ///                (Modify path: ReservEntry existente actualiza DUoM Ratio e DUoM Second Qty)
 ///   T-REOPEN-08: AlwaysVariable — segunda edición persiste DUoM modificado
 ///                (Modify path via flujo estándar de tracking: OnAfterMoveFields → RE actualizada)
+///   T-COHERENCE-LINE-01: Variable — SUM(RE.DUoM Second Qty) = PL.DUoM Second Qty
+///                cuando el tracking está completo (2 lotes sumando 8 PCS)
+///   T-COHERENCE-LINE-02: Variable — PL.DUoM Second Qty no se sincroniza desde tracking
 ///
 /// Arquitectura cubierta:
 ///   - Persistencia por flujo estándar (Insert): TrackingSpec buffer → ReservEntry1 (CopyTrackingFromSpec)
@@ -1238,29 +1241,33 @@ codeunit 50219 "DUoM Purch Tracking Persist"
     end;
 
     // -------------------------------------------------------------------------
-    // T-TRACKTOTAL-01 — Purchase Order muestra el total DUoM operativo desde tracking
+    // T-COHERENCE-LINE-01 — Línea y tracking coherentes: SUM(RE) = PL.DUoM Second Qty
     //
-    // Verifica que el campo visual "DUoM Tracking Total" refleja la suma real
-    // de Reservation Entry por línea (verdad operativa per-lote).
+    // Verifica que, cuando el tracking está completo con 2 lotes que suman 8 PCS,
+    // la suma de Reservation Entry."DUoM Second Qty" coincide con
+    // Purchase Line."DUoM Second Qty" = 8 PCS y no se crean duplicados.
     //
-    // Purchase Line esperado/documental: 10 KG / 8 PCS
+    // Purchase Line: 10 KG / 8 PCS (auto-calculado ratio 0.8)
     // Tracking:
-    //   LOTE-TT-A = 6 KG / 5 PCS
-    //   LOTE-TT-B = 4 KG / 3 PCS
-    // SUM(tracking) = 8 PCS
+    //   LOTE-TT-A = 6 KG / 5 PCS  (ratio ≈ 0.8333)
+    //   LOTE-TT-B = 4 KG / 3 PCS  (ratio = 0.75)
+    // SUM(RE.DUoM Second Qty) ≈ 8 = PL.DUoM Second Qty
     // -------------------------------------------------------------------------
     [Test]
-    procedure PurchOrderSubform_ShowsDUoMTrackingTotal_FromReservationEntry()
+    procedure ReservEntry_SumDUoMQty_EqualsLine_WhenTrackingComplete()
     var
         Item: Record Item;
         Vendor: Record Vendor;
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
-        PurchaseOrder: TestPage "Purchase Order";
+        ReservEntry: Record "Reservation Entry";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+        TotalSecondQty: Decimal;
+        TotalBaseQty: Decimal;
     begin
         // [GIVEN] Artículo DUoM Variable con lot tracking habilitado
         LibraryInventory.CreateItem(Item);
@@ -1268,7 +1275,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
             Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
 
-        // [GIVEN] Purchase Line esperado/documental = 8 PCS
+        // [GIVEN] Purchase Line: 10 KG / 8 PCS (auto-calculado)
         LibraryPurchase.CreateVendor(Vendor);
         LibraryPurchase.CreatePurchHeader(
             PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
@@ -1277,51 +1284,67 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchLine.Validate(Quantity, 10);
         PurchLine.Modify(true);
 
-        // [GIVEN] Tracking operativo per-lote total = 8 PCS
+        // [GIVEN] Dos lotes en Reservation Entry cuya suma DUoM = 8 PCS
+        //   LOTE-TT-A: 6 KG × ratio 0.833333 ≈ 5 PCS
+        //   LOTE-TT-B: 4 KG × ratio 0.75 = 3 PCS → SUM ≈ 8 PCS
         DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-A', 6, 0.833333);
         DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-B', 4, 0.75);
 
-        // [WHEN] Se abre Purchase Order Subform en la línea
-        PurchaseOrder.OpenEdit();
-        PurchaseOrder.GotoRecord(PurchHeader);
-        PurchaseOrder.PurchLines.First();
+        // [WHEN] Se calcula el total DUoM desde Reservation Entry
+        DUoMCoherenceMgt.CalcTrackingDUoMTotalsForPurchLine(PurchLine, TotalSecondQty, TotalBaseQty);
 
-        // [THEN] DUoM Tracking Total muestra la suma de Reservation Entry
+        // [THEN] SUM(Reservation Entry.DUoM Second Qty) ≈ 8 = Purchase Line.DUoM Second Qty
+        PurchLine.Get(PurchLine."Document Type", PurchLine."Document No.", PurchLine."Line No.");
+        LibraryAssert.AreNearlyEqual(
+            PurchLine."DUoM Second Qty",
+            TotalSecondQty,
+            0.001,
+            'T-COHERENCE-LINE-01: SUM(RE.DUoM Second Qty) debe coincidir con PurchLine.DUoM Second Qty.');
+
+        // [THEN] Purchase Line.DUoM Second Qty no ha sido modificado desde el tracking
         LibraryAssert.AreNearlyEqual(
             8,
-            PurchaseOrder.PurchLines."DUoM Tracking Total".AsDecimal(),
+            PurchLine."DUoM Second Qty",
             0.001,
-            'T-TRACKTOTAL-01: DUoM Tracking Total debe reflejar SUM(Reservation Entry.DUoM Second Qty).');
+            'T-COHERENCE-LINE-01: Purchase Line.DUoM Second Qty debe ser 8.');
 
-        // [THEN] DUoM Second Qty de línea mantiene su semántica esperado/documental
-        LibraryAssert.AreNearlyEqual(
-            8,
-            PurchaseOrder.PurchLines."DUoM Second Qty".AsDecimal(),
-            0.001,
-            'T-TRACKTOTAL-01: Purchase Line.DUoM Second Qty esperado/documental debe mantenerse en 8.');
-
-        PurchaseOrder.Close();
+        // [THEN] No se han creado entradas duplicadas (exactamente 2 Reservation Entries positivas)
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange(Positive, true);
+        LibraryAssert.AreEqual(
+            2,
+            ReservEntry.Count(),
+            'T-COHERENCE-LINE-01: Deben existir exactamente 2 Reservation Entries positivas, sin duplicados.');
     end;
 
     // -------------------------------------------------------------------------
-    // T-TRACKTOTAL-02 — Tracking total puede diferir del valor documental esperado
+    // T-COHERENCE-LINE-02 — Purchase Line no se sincroniza desde tracking
     //
-    // Verifica que no existe sincronización manual tracking -> Purchase Line:
-    //   - "DUoM Tracking Total" muestra la realidad operativa per-lote (7)
-    //   - "DUoM Second Qty" de línea conserva el valor documental esperado (8)
+    // Verifica que no existe sincronización automática Tracking → Purchase Line:
+    //   - Purchase Line.DUoM Second Qty conserva su valor original (8)
+    //   - SUM(RE.DUoM Second Qty) = 7 (suma parcial per-lote)
+    // La incoherencia no modifica la línea; se bloqueará en posting/validación.
+    //
+    // Purchase Line: 10 KG / 8 PCS
+    // Tracking:
+    //   LOTE-TT-C = 6 KG / ~5 PCS  (ratio ≈ 0.8333)
+    //   LOTE-TT-D = 4 KG / 2 PCS   (ratio = 0.5)
+    // SUM(RE.DUoM Second Qty) ≈ 7 ≠ 8 = PL.DUoM Second Qty
     // -------------------------------------------------------------------------
     [Test]
-    procedure PurchOrderSubform_TrackingTotal_DiffersFromDocumentExpected_NoSync()
+    procedure PurchLine_DUoMSecondQty_NotSyncedFromTracking()
     var
         Item: Record Item;
         Vendor: Record Vendor;
         PurchHeader: Record "Purchase Header";
         PurchLine: Record "Purchase Line";
-        PurchaseOrder: TestPage "Purchase Order";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibraryPurchase: Codeunit "Library - Purchase";
         LibraryAssert: Codeunit "Library Assert";
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+        TotalSecondQty: Decimal;
+        TotalBaseQty: Decimal;
     begin
         // [GIVEN] Artículo DUoM Variable con lot tracking habilitado
         LibraryInventory.CreateItem(Item);
@@ -1329,7 +1352,7 @@ codeunit 50219 "DUoM Purch Tracking Persist"
             Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
 
-        // [GIVEN] Purchase Line esperado/documental = 8 PCS
+        // [GIVEN] Purchase Line: 10 KG / 8 PCS
         LibraryPurchase.CreateVendor(Vendor);
         LibraryPurchase.CreatePurchHeader(
             PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
@@ -1338,30 +1361,29 @@ codeunit 50219 "DUoM Purch Tracking Persist"
         PurchLine.Validate(Quantity, 10);
         PurchLine.Modify(true);
 
-        // [GIVEN] Tracking operativo per-lote total = 7 PCS
+        // [GIVEN] Dos lotes en Reservation Entry cuya suma DUoM ≈ 7 PCS (≠ 8 PCS de la línea)
+        //   LOTE-TT-C: 6 KG × ratio 0.833333 ≈ 5 PCS
+        //   LOTE-TT-D: 4 KG × ratio 0.5 = 2 PCS → SUM ≈ 7 PCS
         DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-C', 6, 0.833333);
         DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, 'LOTE-TT-D', 4, 0.5);
 
-        // [WHEN] Se abre Purchase Order Subform en la línea
-        PurchaseOrder.OpenEdit();
-        PurchaseOrder.GotoRecord(PurchHeader);
-        PurchaseOrder.PurchLines.First();
+        // [WHEN] Se calcula el total DUoM desde Reservation Entry
+        DUoMCoherenceMgt.CalcTrackingDUoMTotalsForPurchLine(PurchLine, TotalSecondQty, TotalBaseQty);
 
-        // [THEN] DUoM Tracking Total refleja la verdad per-lote (7)
+        // [THEN] SUM(RE.DUoM Second Qty) ≈ 7 (desglose parcial per-lote)
         LibraryAssert.AreNearlyEqual(
             7,
-            PurchaseOrder.PurchLines."DUoM Tracking Total".AsDecimal(),
+            TotalSecondQty,
             0.001,
-            'T-TRACKTOTAL-02: DUoM Tracking Total debe reflejar la realidad operativa per-lote (7).');
+            'T-COHERENCE-LINE-02: SUM(RE.DUoM Second Qty) debe ser ≈ 7.');
 
-        // [THEN] DUoM Second Qty de línea no se sincroniza automáticamente desde tracking
+        // [THEN] Purchase Line.DUoM Second Qty NO se sincroniza automáticamente desde tracking
+        PurchLine.Get(PurchLine."Document Type", PurchLine."Document No.", PurchLine."Line No.");
         LibraryAssert.AreNearlyEqual(
             8,
-            PurchaseOrder.PurchLines."DUoM Second Qty".AsDecimal(),
+            PurchLine."DUoM Second Qty",
             0.001,
-            'T-TRACKTOTAL-02: Purchase Line.DUoM Second Qty esperado/documental no debe sincronizarse desde tracking.');
-
-        PurchaseOrder.Close();
+            'T-COHERENCE-LINE-02: Purchase Line.DUoM Second Qty no debe sincronizarse desde tracking (debe seguir siendo 8).');
     end;
 
     /// <summary>
