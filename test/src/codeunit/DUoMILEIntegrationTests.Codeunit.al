@@ -812,6 +812,155 @@ codeunit 50209 "DUoM ILE Integration Tests"
     end;
 
     [Test]
+    procedure Regression_PurchaseOneLot_LineReservILEInventory_Coherent()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ReservEntry: Record "Reservation Entry";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+    begin
+        // [GIVEN] Purchase Line con DUoM Second Qty total y tracking de un lote coherente
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        LotNo := 'LOT-REG-1';
+
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNo, 10, 0.8);
+
+        // [THEN] Purchase Line mantiene el total DUoM y Reservation Entry conserva desglose
+        PurchLine.Get(PurchLine."Document Type", PurchLine."Document No.", PurchLine."Line No.");
+        LibraryAssert.AreNearlyEqual(8, PurchLine."DUoM Second Qty", 0.001,
+            'Regresión 1 lote: Purchase Line.DUoM Second Qty debe mantenerse en 8.');
+
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange("Lot No.", LotNo);
+        LibraryAssert.IsTrue(ReservEntry.FindFirst(),
+            'Regresión 1 lote: Debe existir Reservation Entry para el lote asignado.');
+        LibraryAssert.AreNearlyEqual(8, ReservEntry."DUoM Second Qty", 0.001,
+            'Regresión 1 lote: Reservation Entry.DUoM Second Qty debe ser 8.');
+
+        // [WHEN] Se registra la recepción
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [THEN] ILE recibe DUoM correctamente y DUoM Inventory refleja el stock registrado
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
+        ILE.SetRange("Lot No.", LotNo);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'Regresión 1 lote: Debe existir ILE de compra para el lote.');
+        LibraryAssert.AreNearlyEqual(0.8, ILE."DUoM Ratio", 0.001,
+            'Regresión 1 lote: ILE.DUoM Ratio debe ser 0.8.');
+        LibraryAssert.AreNearlyEqual(8, ILE."DUoM Second Qty", 0.001,
+            'Regresión 1 lote: ILE.DUoM Second Qty debe ser 8.');
+
+        Item.Get(Item."No.");
+        Item.CalcFields("DUoM Inventory");
+        LibraryAssert.AreNearlyEqual(8, Item."DUoM Inventory", 0.001,
+            'Regresión 1 lote: DUoM Inventory debe ser 8.');
+    end;
+
+    [Test]
+    procedure Regression_PurchaseTwoLots_SumsToLineILEAndInventory()
+    var
+        Item: Record Item;
+        Vendor: Record Vendor;
+        PurchHeader: Record "Purchase Header";
+        PurchLine: Record "Purchase Line";
+        ReservEntry: Record "Reservation Entry";
+        ILE: Record "Item Ledger Entry";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryPurchase: Codeunit "Library - Purchase";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNoA: Code[50];
+        LotNoB: Code[50];
+        AggregatedReservSecondQty: Decimal;
+        AggregatedILESecondQty: Decimal;
+    begin
+        // [GIVEN] Purchase Line DUoM Second Qty = 8 y dos lotes con desglose 3 + 5
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0.8);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        LotNoA := 'LOT-REG-2A';
+        LotNoB := 'LOT-REG-2B';
+
+        LibraryPurchase.CreateVendor(Vendor);
+        LibraryPurchase.CreatePurchHeader(PurchHeader, PurchHeader."Document Type"::Order, Vendor."No.");
+        LibraryPurchase.CreatePurchaseLine(PurchLine, PurchHeader, PurchLine.Type::Item, Item."No.", 0);
+        PurchLine.Validate(Quantity, 10);
+        PurchLine.Modify(true);
+
+        // Lote A = 3 (5 × 0.6), Lote B = 5 (5 × 1.0), SUM = 8
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNoA, 5, 0.6);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToPurchLine(PurchLine, LotNoB, 5, 1.0);
+
+        PurchLine.Get(PurchLine."Document Type", PurchLine."Document No.", PurchLine."Line No.");
+        LibraryAssert.AreNearlyEqual(8, PurchLine."DUoM Second Qty", 0.001,
+            'Regresión 2 lotes: Purchase Line.DUoM Second Qty debe mantenerse en 8.');
+
+        ReservEntry.SetSourceFilter(
+            Database::"Purchase Line",
+            PurchLine."Document Type".AsInteger(),
+            PurchHeader."No.",
+            PurchLine."Line No.",
+            true);
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange(Positive, true);
+        LibraryAssert.IsTrue(ReservEntry.FindSet(),
+            'Regresión 2 lotes: Deben existir Reservation Entry positivas.');
+        repeat
+            AggregatedReservSecondQty += ReservEntry."DUoM Second Qty";
+        until ReservEntry.Next() = 0;
+        LibraryAssert.AreNearlyEqual(8, AggregatedReservSecondQty, 0.001,
+            'Regresión 2 lotes: SUM(Reservation Entry.DUoM Second Qty) debe ser 8.');
+
+        // [WHEN] Se registra la recepción
+        LibraryPurchase.PostPurchaseDocument(PurchHeader, true, false);
+
+        // [THEN] Se crean ILE por lote y su suma DUoM también es 8
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Entry Type", ILE."Entry Type"::Purchase);
+        ILE.SetRange("Lot No.", LotNoA);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'Regresión 2 lotes: Debe existir ILE para el lote A.');
+
+        ILE.SetRange("Lot No.", LotNoB);
+        LibraryAssert.IsTrue(ILE.FindFirst(),
+            'Regresión 2 lotes: Debe existir ILE para el lote B.');
+
+        ILE.SetRange("Lot No.");
+        if ILE.FindSet() then
+            repeat
+                AggregatedILESecondQty += ILE."DUoM Second Qty";
+            until ILE.Next() = 0;
+        LibraryAssert.AreNearlyEqual(8, AggregatedILESecondQty, 0.001,
+            'Regresión 2 lotes: SUM(ILE.DUoM Second Qty) debe ser 8.');
+
+        Item.Get(Item."No.");
+        Item.CalcFields("DUoM Inventory");
+        LibraryAssert.AreNearlyEqual(8, Item."DUoM Inventory", 0.001,
+            'Regresión 2 lotes: DUoM Inventory debe ser 8.');
+    end;
+
+    [Test]
     procedure DUoMInventory_PurchasePosting_IncreasesStock()
     var
         Item: Record Item;
