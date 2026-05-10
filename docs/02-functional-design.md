@@ -141,9 +141,9 @@ El modelo correcto de Business Central es:
 ```
 
 - Los campos DUoM de la **línea origen** son **totales agregados**.
-- En compras, `Purchase Line."DUoM Second Qty"` se interpreta como **valor esperado/documental**.
-  El total operativo real por lotes se obtiene desde `Reservation Entry` bajo demanda (UI:
-  `DUoM Tracking Total`), sin sincronización manual de vuelta a la línea.
+- En compras, `Purchase Line."DUoM Second Qty"` es el **total DUoM de la línea**.
+  El desglose operativo real por lotes se almacena en `Reservation Entry` (fuente de verdad por lote),
+  sin sincronización manual de vuelta a la línea.
 - Cada **ILE por lote** contiene la segunda cantidad y el ratio **específicos de ese lote**.
 - El **total DUoM de la línea** debe ser coherente con la suma de las cantidades DUoM
   de todos los ILEs generados para esa línea.
@@ -403,8 +403,8 @@ accesible desde la acción **DUoM Lot Ratios** en la página `DUoM Item Setup`.
   de tracking estándar de Item).
 - `DUoM Inventory` **no** incluye documentos abiertos ni tracking pendiente.
 - Diferenciación funcional:
-  - `DUoM Tracking Total` = total operativo en documento vivo (fuente: `Reservation Entry`).
   - `DUoM Inventory` = stock histórico contabilizado (fuente: `Item Ledger Entry`).
+  - `Reservation Entry."DUoM Second Qty"` = desglose operativo por lote en documento vivo.
 - Physical inventory counts support second qty entry
 
 ### Warehouse (Phase 2)
