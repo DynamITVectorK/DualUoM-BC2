@@ -75,6 +75,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | 50216 | DUoM Cost Price Tests | DUoM Unit Cost / DUoM Unit Price, propagación a históricos, DUoM Second Qty en Value Entry |
 | 50217 | DUoM Lot Ratio Tests | DUoM Lot Ratio (table), DUoM Lot Subscribers (Issue 13) |
 | 50218 | DUoM Item Tracking Tests | DUoM Tracking Subscribers, DUoM Tracking Spec Ext, DUoM Item Tracking Lines (Issue 22) |
+| 50229 | DUoM Doc Audit Tests | Auditoría propagación: DUoM Unit Cost/Price en históricos, signo ILE y VE en abonos |
 
 ---
 
@@ -90,21 +91,21 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Purchase Line (TableExt) | ✅ 50205 | ✅ 50209, 50210, 50214 | **Completa** | E2E cubre Fixed (50209, 50210) y Variable/AlwaysVariable (50214) |
 | DUoM Sales Line (TableExt) | ✅ 50206 | ✅ 50209, 50210, 50214 | **Completa** | E2E cubre Fixed (50209, 50210) y Variable (50214) |
 | DUoM Item Journal Line (TableExt) | ✅ 50207 | ✅ 50209 | **Completa** | |
-| DUoM Item Ledger Entry (TableExt) | ✅ 50207 | ✅ 50209 | **Completa** | E2E cubre Fixed (50209) y Variable/AlwaysVariable (50214) |
+| DUoM Item Ledger Entry (TableExt) | ✅ 50207 | ✅ 50209, 50229 | **Completa** | E2E cubre Fixed (50209) y Variable/AlwaysVariable (50214); signo abonos (50229 T-AUDIT-04/05) |
 | DUoM Purch. Rcpt. Line (TableExt) | — | ✅ 50209, 50216 | **Completa** | Fixed (50209), DUoM Unit Cost propagado (50216 T05) |
 | DUoM Sales Shipment Line (TableExt) | — | ✅ 50209, 50216 | **Completa** | Fixed (50209), DUoM Unit Price propagado (50216 T06) |
-| DUoM Purch. Inv. Line (TableExt) | — | ✅ 50210 | **Completa** | |
-| DUoM Purch. Cr. Memo Line (TableExt) | — | ✅ 50210 | **Completa** | |
+| DUoM Purch. Inv. Line (TableExt) | — | ✅ 50210, 50229 | **Completa** | DUoM Second Qty + Ratio (50210), DUoM Unit Cost (50229 T-AUDIT-01) |
+| DUoM Purch. Cr. Memo Line (TableExt) | — | ✅ 50210, 50229 | **Completa** | DUoM Second Qty + Ratio (50210), DUoM Unit Cost (50229 T-AUDIT-02) |
 | DUoM Sales Invoice Line (TableExt) | — | ✅ 50210, 50216 | **Completa** | DUoM Unit Price propagado (50216 T06) |
-| DUoM Sales Cr.Memo Line (TableExt) | — | ✅ 50210 | **Completa** | |
-| DUoM Value Entry Ext (TableExt 50121) | — | ✅ 50216 | **Completa** | DUoM Second Qty en Value Entry tras compra (T07) y venta (T08) |
+| DUoM Sales Cr.Memo Line (TableExt) | — | ✅ 50210, 50229 | **Completa** | DUoM Second Qty + Ratio (50210), DUoM Unit Price (50229 T-AUDIT-03) |
+| DUoM Value Entry Ext (TableExt 50121) | — | ✅ 50216, 50229 | **Completa** | DUoM Second Qty tras compra (T07) y venta (T08); signo abonos (50229 T-AUDIT-06/07) |
 | DUoM Tracking Spec Ext (TableExt 50122) | ✅ 50218 | ✅ 50218 (T05, T06) | **Completa** | T01–T04 unitarios, T05 E2E coherencia buffer→ILE, T06 modelo 1:N (Issue 22) |
 | DUoM Reservation Entry Ext (TableExt 50123) | — | — | **N/A** | Campos reservados; propagación desde Tracking Spec no implementada en BC 27 (AL0282 — limitación conocida, tarea futura N-lotes) |
 | DUoM Calc Engine (cu 50101) | ✅ 50204 | — | **Completa** | Todos los modos, casos límite, rounding |
 | DUoM Purchase Subscribers (cu 50102) | ✅ 50205 | ✅ 50209, 50210, 50214 | **Completa** | Variable y AlwaysVariable cubiertos en 50214 |
 | DUoM Sales Subscribers (cu 50103) | ✅ 50206 | ✅ 50209, 50210, 50214 | **Completa** | Variable cubierto en 50214 |
-| DUoM Inventory Subscribers (cu 50104) | ✅ 50207 | ✅ 50209, 50216 | **Buena** | Subscriber ILE y Value Entry testeados indirectamente |
-| DUoM Doc Transfer Helper (cu 50105) | ❌ Ninguno directo | ✅ 50209, 50210, 50216 | **Indirecta** | Cubierto vía E2E; sin tests unitarios aislados (GAP P2) |
+| DUoM Inventory Subscribers (cu 50104) | ✅ 50207 | ✅ 50209, 50216, 50229 | **Completa** | Subscriber ILE y Value Entry cubiertos; signo abonos verificado (50229) |
+| DUoM Doc Transfer Helper (cu 50105) | ❌ Ninguno directo | ✅ 50209, 50210, 50216, 50229 | **Indirecta** | Cubierto vía E2E incluyendo los 6 flujos de copia; sin tests unitarios aislados (GAP P2) |
 | DUoM UoM Helper (cu 50106) | ✅ 50213 | Indirecta | **Completa** | 7 tests unitarios directos (GAP P0-01 cerrado) |
 | DUoM Setup Resolver (cu 50107) | ✅ 50211 | — | **Completa** | Jerarquía Item→Variante cubierta |
 | DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 cubierta; aplicación de ratio durante posting cubierta (T04–T10) |
@@ -196,13 +197,16 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 > **Nota:** Los tests de coste/precio en doble UoM (DualUoMPurchInvoiceCostTest,
 > DualUoMSalesPriceTest) y el test de Value Entry (DualUoMValueEntryTest) han sido
 > **implementados** en `DUoM Cost Price Tests` (codeunit 50216, tests T01–T08).
+> Los huecos adicionales identificados en la auditoría (DUoM Unit Cost en Purch. Inv. Line
+> y Purch. Cr. Memo Line, DUoM Unit Price en Sales Cr. Memo Line, signo ILE/VE en abonos)
+> han sido **cerrados** en `DUoM Doc Audit Tests` (codeunit 50229, tests T-AUDIT-01–07).
 > Quedan retirados de esta tabla de gaps.
 
 ---
 
 ## Estado Actual del Test Suite
 
-> **Última actualización:** auditoría de alineación docs-código — 2026-04-29 (Issues 13, 20, 21)
+> **Última actualización:** auditoría propagación históricos y VE — 2026-05-10
 
 | Codeunit | ID | Tests | Estado |
 |----------|----|-------|--------|
@@ -223,3 +227,4 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 | DUoM Variant Del Tests | 50215 | 3 tests | ✅ |
 | DUoM Cost Price Tests | 50216 | 8 tests (T01–T08) | ✅ |
 | DUoM Lot Ratio Tests | 50217 | 9 tests (T02–T10, T12) | ✅ |
+| DUoM Doc Audit Tests | 50229 | 7 tests (T-AUDIT-01–07) | ✅ |
