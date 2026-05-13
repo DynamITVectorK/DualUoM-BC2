@@ -420,7 +420,7 @@ accesible desde la acción **DUoM Lot Ratios** en la página `DUoM Item Setup`.
 
 - Sales order lines and shipment lines get a `Second Qty` field
 - En la fase actual, el flujo soportado es el envío directo sin WMS; el soporte de picking
-  pertenece a la Phase 2 / Issue 15
+  pertenece a la **Phase 2 (Issue 15 — Directed Put-Away and Pick DUoM Fields)** del backlog
 - Invoice line shows second qty from shipment
 
 ### Inventory

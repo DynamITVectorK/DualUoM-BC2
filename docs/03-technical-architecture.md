@@ -393,6 +393,10 @@ La prioridad global de fuentes de ratio (todos los modos) es:
 TrackingSpec.DUoM Ratio > DUoM Lot Ratio (50102) > IJL.DUoM Ratio > sin ratio (= 0)
 ```
 
+Donde `TrackingSpec.DUoM Ratio` representa el valor ya informado por el usuario en
+`Item Tracking Lines` o rehidratado desde `Reservation Entry` al reabrir la página.
+Si ese valor existe, prevalece porque es el dato operativo específico del lote en edición.
+
 Ver `docs/02-functional-design.md` — sección "Política AlwaysVariable + lotes" para
 la descripción funcional completa con rationale por caso.
 
