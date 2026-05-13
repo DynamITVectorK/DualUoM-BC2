@@ -1087,7 +1087,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
         SalesOrder.GotoRecord(SalesHeader);
         SalesTrackStep := 1;
         SalesOrder.SalesLines.First();
-        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+        SalesOrder.SalesLines.ItemTrackingLines.Invoke();
 
         // [THEN] Persistencia real en Reservation Entry usando filtro estándar de origen
         ReservEntry.SetSourceFilter(
@@ -1110,7 +1110,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
 
         // [WHEN] Segunda apertura: rehidratar y verificar que no aparece a cero ni duplica
         SalesTrackStep := 2;
-        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+        SalesOrder.SalesLines.ItemTrackingLines.Invoke();
         SalesOrder.Close();
     end;
 
@@ -1150,11 +1150,11 @@ codeunit 50218 "DUoM Item Tracking Tests"
 
         // [WHEN] Primera edición y cierre
         SalesTrackStep := 3;
-        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+        SalesOrder.SalesLines.ItemTrackingLines.Invoke();
 
         // [WHEN] Segunda edición y cierre
         SalesTrackStep := 4;
-        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+        SalesOrder.SalesLines.ItemTrackingLines.Invoke();
 
         // [THEN] Reservation Entry queda con el último valor
         ReservEntry.SetSourceFilter(
@@ -1177,7 +1177,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
 
         // [WHEN] Tercera apertura para verificar recarga de último valor (no histórico, no cero)
         SalesTrackStep := 5;
-        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+        SalesOrder.SalesLines.ItemTrackingLines.Invoke();
         SalesOrder.Close();
     end;
 
