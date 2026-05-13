@@ -805,7 +805,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
     // T21 — Variable + sin ratio de lote + fuente Sales Line → fallback a Sales Line
     // -------------------------------------------------------------------------
     [Test]
-    procedure TrackingSpec_Variable_NoLotRatio_SalesLineFallback_DUoMApplied()
+    procedure T21_SalesLineFallback()
     var
         Item: Record Item;
         Customer: Record Customer;
@@ -854,7 +854,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
     // T22 — Variable + ratio de lote existe → ratio de lote gana sobre Sales Line
     // -------------------------------------------------------------------------
     [Test]
-    procedure TrackingSpec_Variable_LotRatioExists_LotRatioWinsOverSalesLine()
+    procedure T22_SalesLotRatioWins()
     var
         Item: Record Item;
         Customer: Record Customer;
@@ -904,7 +904,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
     // T23 — Variable + ratio manual en tracking (ventas) → no sobrescribir
     // -------------------------------------------------------------------------
     [Test]
-    procedure TrackingSpec_Variable_ManualRatioSet_SalesFallbackDoesNotOverwrite()
+    procedure T23_SalesManualPreserve()
     var
         Item: Record Item;
         Customer: Record Customer;
@@ -952,7 +952,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
     // T24 — Múltiples lotes en ventas sin ratio de lote → fallback de Sales Line
     // -------------------------------------------------------------------------
     [Test]
-    procedure TrackingSpec_Variable_TwoLots_NoLotRatio_BothGetSalesLineFallback()
+    procedure T24_SalesTwoLotsFallback()
     var
         Item: Record Item;
         Customer: Record Customer;
@@ -1014,7 +1014,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
     // T25 — Ventas: segunda persistencia y rehidratación recuperan el último valor
     // -------------------------------------------------------------------------
     [Test]
-    procedure TrackingPropMgt_SalesSecondEdit_RehydrateUsesLatestDUoMValues()
+    procedure T25_SalesLastEditRehydrate()
     var
         TrackingSpec: Record "Tracking Specification";
         RehydratedTrackingSpec: Record "Tracking Specification";
