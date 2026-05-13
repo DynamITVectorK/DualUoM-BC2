@@ -1075,7 +1075,6 @@ codeunit 50218 "DUoM Item Tracking Tests"
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
         ReservEntry: Record "Reservation Entry";
-        TrackingSpec: Record "Tracking Specification";
         RehydratedSpec: Record "Tracking Specification";
         DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
@@ -1110,13 +1109,11 @@ codeunit 50218 "DUoM Item Tracking Tests"
             true);
         ReservEntry.SetRange("Item No.", Item."No.");
         ReservEntry.SetRange("Lot No.", 'LOT-S-REOPEN-T26');
-        ReservEntry.FindFirst();
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T26: Debe existir Reservation Entry para la Sales Line y lote LOT-S-REOPEN-T26.');
 
-        TrackingSpec.Init();
-        TrackingSpec."DUoM Ratio" := 2.5;
-        TrackingSpec."DUoM Second Qty" := 5;
-        DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(TrackingSpec, ReservEntry);
-        ReservEntry.Modify(true);
+        ApplyDUoMToReservEntry(2.5, 5, ReservEntry);
 
         // [THEN] Persistencia real en Reservation Entry usando filtro estándar de origen
         LibraryAssert.AreNearlyEqual(
@@ -1174,7 +1171,6 @@ codeunit 50218 "DUoM Item Tracking Tests"
         SalesHeader: Record "Sales Header";
         SalesLine: Record "Sales Line";
         ReservEntry: Record "Reservation Entry";
-        TrackingSpec: Record "Tracking Specification";
         RehydratedSpec: Record "Tracking Specification";
         DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
@@ -1207,13 +1203,11 @@ codeunit 50218 "DUoM Item Tracking Tests"
             true);
         ReservEntry.SetRange("Item No.", Item."No.");
         ReservEntry.SetRange("Lot No.", 'LOT-S-MOD-T27');
-        ReservEntry.FindFirst();
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T27: Debe existir Reservation Entry para la Sales Line y lote LOT-S-MOD-T27 (primera edición).');
 
-        TrackingSpec.Init();
-        TrackingSpec."DUoM Ratio" := 1;
-        TrackingSpec."DUoM Second Qty" := 4;
-        DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(TrackingSpec, ReservEntry);
-        ReservEntry.Modify(true);
+        ApplyDUoMToReservEntry(1, 4, ReservEntry);
 
         // [THEN] Reservation Entry queda con el último valor (no el previo 0.75/3)
         LibraryAssert.AreNearlyEqual(
@@ -1405,5 +1399,33 @@ codeunit 50218 "DUoM Item Tracking Tests"
         LibraryAssert.AreNearlyEqual(
             8, TotalSecondQty, 0.001,
             'T20: La suma funcional debe ignorar la línea vacía de inserción.');
+    end;
+
+    /// <summary>
+    /// Simula el cierre de la página Item Tracking Lines (equivale a OnAfterMoveFields):
+    /// crea un Tracking Specification mínimo con los valores DUoM proporcionados,
+    /// llama a CopyTrackingSpecToReservEntry para normalizar el signo según el origen
+    /// (signo estándar BC vía SignFactor) y persiste el resultado en la Reservation Entry.
+    ///
+    /// Parámetros:
+    ///   DUoMRatio  — Ratio DUoM visible en la página (user-facing positivo).
+    ///   SecondQty  — DUoM Second Qty visible en la página (user-facing positivo).
+    ///   ReservEntry — Reservation Entry a actualizar (in/out).
+    /// </summary>
+    local procedure ApplyDUoMToReservEntry(
+        DUoMRatio: Decimal;
+        SecondQty: Decimal;
+        var ReservEntry: Record "Reservation Entry")
+    var
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
+    begin
+        TrackingSpec.Init();
+        TrackingSpec."DUoM Ratio" := DUoMRatio;
+        TrackingSpec."DUoM Second Qty" := SecondQty;
+        DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(TrackingSpec, ReservEntry);
+        // Modify(true): se ejecutan triggers de tabla, equivalente al comportamiento estándar
+        // de BC cuando el framework persiste la Reservation Entry tras OnAfterMoveFields.
+        ReservEntry.Modify(true);
     end;
 }
