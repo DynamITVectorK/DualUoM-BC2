@@ -337,7 +337,7 @@ El subscriber `OnAfterValidateEvent["Quantity (Base)"]` (codeunit 50109) sí rec
 
 ### Test de regresión
 
-El flujo completo queda cubierto por tests en codeunit 50219 `DUoM Purch Tracking Persist`:
+El flujo completo queda cubierto por tests de compra y venta:
 
 | Test | Escenario |
 |------|-----------|
@@ -347,10 +347,14 @@ El flujo completo queda cubierto por tests en codeunit 50219 `DUoM Purch Trackin
 | `T-PERSIST-04` `ItemTracking_NoImpactOnItemsWithoutDUoM` | Sin DUoM — Item Tracking Lines no introduce DUoM en ReservEntry |
 | `T-REOPEN-07` `PurchLotTracking_SecondEdit_Variable_PersistsDUoMModify` | Variable — segunda edición persiste DUoM modificado (Modify path) |
 | `T-REOPEN-08` `PurchLotTracking_SecondEdit_AlwaysVariable_PersistsDUoMModify` | AlwaysVariable — segunda edición persiste DUoM modificado (Modify path) |
+| `T26_SalesReopenPersist` | Sales — reapertura real de Item Tracking Lines conserva DUoM manual (TrackingSpec ↔ ReservEntry) |
+| `T27_SalesLastEditWins` | Sales — segunda edición prevalece tras cerrar/reabrir (last edit wins) |
 
 Los tests T-PERSIST-01 y T-PERSIST-02 validan la persistencia estándar de tracking.
 Los tests T-REOPEN-07 y T-REOPEN-08 validan la recarga/cambio en reaperturas sucesivas
 sin depender de persistencia manual en cierre de página.
+Los tests T26/T27 extienden la misma política al flujo real de ventas con `Sales Order`
+y validación explícita en `Reservation Entry` usando filtros estándar de origen.
 
 ### Restricciones para no romper el Item Tracking estándar
 
