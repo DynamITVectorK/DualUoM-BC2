@@ -1473,9 +1473,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
         LibraryInventory.CreateItemJournalLine(
             ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
-            "Item Ledger Entry Type"::Purchase, Item."No.", 0);
-        ItemJnlLine.Validate(Quantity, Qty);
-        ItemJnlLine.Modify(true);
+            "Item Ledger Entry Type"::Purchase, Item."No.", Qty);
         DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, Qty);
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
     end;
