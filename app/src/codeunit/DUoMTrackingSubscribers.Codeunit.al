@@ -63,8 +63,8 @@ codeunit 50109 "DUoM Tracking Subscribers"
     /// Aplica la ratio DUoM correspondiente a los campos del Tracking Specification.
     /// En modo Fixed: aplica el ratio fijo del artículo/variante.
     /// En modo Variable/AlwaysVariable: aplica el ratio del lote si existe en DUoM Lot Ratio;
-    /// si no existe, usa el ratio de la Purchase Line origen como fallback cuando DUoM Ratio = 0;
-    /// si tampoco hay Purchase Line con ratio, deja los campos DUoM sin cambios.
+    /// si no existe, usa el ratio de la línea origen (Purchase/Sales) como fallback cuando
+    /// DUoM Ratio = 0; si tampoco hay línea origen con ratio, deja los campos DUoM sin cambios.
     /// </summary>
     local procedure ApplyLotRatioToTrackingSpec(var TrackingSpec: Record "Tracking Specification")
     var
@@ -100,9 +100,9 @@ codeunit 50109 "DUoM Tracking Subscribers"
         if not DUoMLotRatio.Get(TrackingSpec."Item No.", TrackingSpec."Lot No.") then begin
             // Sin ratio de lote para esta combinación artículo/lote:
             // - Si ya hay un ratio manual en la línea (≠ 0), no sobrescribir.
-            // - Si DUoM Ratio = 0, intentar fallback desde la Purchase Line origen.
+            // - Si DUoM Ratio = 0, intentar fallback desde la línea origen (Purchase/Sales).
             if TrackingSpec."DUoM Ratio" = 0 then
-                TryApplyPurchLineFallback(TrackingSpec, RoundingPrecision);
+                TryApplySourceLineFallback(TrackingSpec, RoundingPrecision);
             exit;
         end;
 
@@ -140,43 +140,56 @@ codeunit 50109 "DUoM Tracking Subscribers"
     end;
 
     /// <summary>
-    /// Fallback: aplica el DUoM Ratio de la Purchase Line origen cuando no existe
+    /// Fallback: aplica el DUoM Ratio de la línea origen (Purchase/Sales) cuando no existe
     /// ratio de lote en DUoM Lot Ratio y DUoM Ratio de la línea de tracking es cero.
     ///
     /// Solo aplica cuando:
-    ///   1. Source Type de la Tracking Specification es Purchase Line.
-    ///   2. La Purchase Line origen existe en base de datos y tiene DUoM Ratio > 0.
+    ///   1. Source Type de la Tracking Specification es Purchase Line o Sales Line.
+    ///   2. La línea origen existe en base de datos y tiene DUoM Ratio > 0.
     ///   3. DUoM Ratio en la Tracking Specification es 0 (sin ratio manual ni de lote previo).
     ///
-    /// Prioridad de ratio: manual (≠ 0) > DUoM Lot Ratio > Purchase Line (este procedimiento).
+    /// Prioridad de ratio: manual (≠ 0) > DUoM Lot Ratio > línea origen (este procedimiento).
     /// Publisher: invocado desde ApplyLotRatioToTrackingSpec al validar Lot No.
-    /// Firma verificada: Purchase Line.Get(DocType, DocNo, LineNo) — BC 27 / runtime 15.
+    /// Firmas verificadas: Purchase Line.Get(...) y Sales Line.Get(...) — BC 27 / runtime 15.
     /// </summary>
-    local procedure TryApplyPurchLineFallback(
+    local procedure TryApplySourceLineFallback(
         var TrackingSpec: Record "Tracking Specification";
         RoundingPrecision: Decimal)
     var
         PurchLine: Record "Purchase Line";
+        SalesLine: Record "Sales Line";
+        SourceLineRatio: Decimal;
     begin
-        // Solo aplica cuando la fuente es una Purchase Line
-        if TrackingSpec."Source Type" <> Database::"Purchase Line" then
+        SourceLineRatio := 0;
+        case TrackingSpec."Source Type" of
+            Database::"Purchase Line":
+                begin
+                    if not PurchLine.Get(
+                            "Purchase Document Type".FromInteger(TrackingSpec."Source Subtype"),
+                            TrackingSpec."Source ID",
+                            TrackingSpec."Source Ref. No.") then
+                        exit;
+                    SourceLineRatio := PurchLine."DUoM Ratio";
+                end;
+            Database::"Sales Line":
+                begin
+                    if not SalesLine.Get(
+                            "Sales Document Type".FromInteger(TrackingSpec."Source Subtype"),
+                            TrackingSpec."Source ID",
+                            TrackingSpec."Source Ref. No.") then
+                        exit;
+                    SourceLineRatio := SalesLine."DUoM Ratio";
+                end;
+            else
+                exit;
+        end;
+
+        if SourceLineRatio = 0 then
             exit;
 
-        // Intentar recuperar la Purchase Line origen por su clave primaria
-        if not PurchLine.Get(
-                "Purchase Document Type".FromInteger(TrackingSpec."Source Subtype"),
-                TrackingSpec."Source ID",
-                TrackingSpec."Source Ref. No.") then
-            exit;
-
-        // Si la Purchase Line no tiene ratio DUoM, no hay fallback disponible
-        if PurchLine."DUoM Ratio" = 0 then
-            exit;
-
-        // Aplicar ratio de la Purchase Line como fallback
-        TrackingSpec."DUoM Ratio" := PurchLine."DUoM Ratio";
+        TrackingSpec."DUoM Ratio" := SourceLineRatio;
         TrackingSpec."DUoM Second Qty" := Round(
-            Abs(TrackingSpec."Quantity (Base)") * PurchLine."DUoM Ratio",
+            Abs(TrackingSpec."Quantity (Base)") * SourceLineRatio,
             RoundingPrecision);
     end;
 }

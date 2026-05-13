@@ -110,7 +110,7 @@ already covers the need:
 | `DUoM UoM Helper` | 50106 | Helper de UoM: `GetSecondUoMRoundingPrecision(ItemNo)` y `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` para obtener `Qty. Rounding Precision` de la tabla `Item Unit of Measure` |
 | `DUoM Setup Resolver` | 50107 | Centraliza la resolución jerárquica Item → Variante de la configuración DUoM efectiva. Todos los suscriptores y triggers deben llamar a `GetEffectiveSetup(ItemNo, VariantCode, ...)` |
 | `DUoM Lot Subscribers` | 50108 | Utilidades para integración DUoM con lotes. Método público `TryApplyLotRatioToILE` conservado para tests unitarios de bajo nivel (ya no se invoca desde el flujo de posting). Helper interno `ApplyLotRatioToItemJournalLine` para escenarios controlados de un único lote (uso en tests unitarios de bajo nivel). El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` fue **eliminado** (Issue 21) por asumir incorrectamente 1 línea = 1 lote. |
-| `DUoM Tracking Subscribers` | 50109 | Suscriptores de eventos `OnAfterValidateEvent` para `Lot No.` y `Quantity (Base)` en `Tracking Specification` (6500). Pre-rellena DUoM Ratio y DUoM Second Qty al asignar un lote en Item Tracking Lines. Modo Fixed: usa ratio fijo. Variable/AlwaysVariable: prioridad de ratio: (1) ratio manual ya informado en tracking (≠ 0); (2) ratio de lote de `DUoM Lot Ratio` si existe; (3) DUoM Ratio de la Purchase Line origen como fallback cuando DUoM Ratio = 0 y no hay ratio de lote registrado (bugfix Issue actual). Sin sobrescribir ratios manuales. (Issues 22, bugfix) |
+| `DUoM Tracking Subscribers` | 50109 | Suscriptores de eventos `OnAfterValidateEvent` para `Lot No.` y `Quantity (Base)` en `Tracking Specification` (6500). Pre-rellena DUoM Ratio y DUoM Second Qty al asignar un lote en Item Tracking Lines. Modo Fixed: usa ratio fijo. Variable/AlwaysVariable: prioridad de ratio: (1) ratio manual ya informado en tracking (≠ 0); (2) ratio de lote de `DUoM Lot Ratio` si existe; (3) DUoM Ratio de la línea origen (`Purchase Line`/`Sales Line`) como fallback cuando DUoM Ratio = 0 y no hay ratio de lote registrado. Sin sobrescribir ratios manuales. (Issues 22, bugfix) |
 | `DUoM Tracking Copy Subs` | 50110 | Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón `OnAfterCopyTracking*` de `Codeunit 6516 "Package Management"`. Cadena directa: `Tracking Specification` → `Item Journal Line` (`OnAfterCopyTrackingFromSpec`) → `Item Ledger Entry` (`OnAfterCopyTrackingFromItemJnlLine`). Cadena inversa: `Item Ledger Entry` → `Item Journal Line` (`OnAfterCopyTrackingFromItemLedgEntry`). **Persistencia de Item Tracking Lines:** `Tracking Specification` buffer → `Reservation Entry` vía `OnAfterCopyTrackingFromTrackingSpec` (al cerrar la página). Recarga: `Reservation Entry` → `Tracking Specification` buffer vía `OnAfterCopyTrackingFromReservEntry` (al reabrir la página). **Clear/Blank (Issue 25):** `OnAfterClearTracking` y `OnAfterSetTrackingBlank` en `Tracking Specification`; `OnAfterClearTracking` y `OnAfterClearNewTracking` en `Reservation Entry`; `OnAfterClearTracking` en `Item Journal Line` — resetean DUoM Ratio y DUoM Second Qty a 0 al reinicializar líneas de tracking. **Copy adicionales (Issue 25):** `OnAfterCopyTrackingFromTrackingSpec` en `Tracking Specification` (copia entre buffers); `OnAfterCopyTrackingFromItemLedgEntry` en `Tracking Specification` (ILE → buffer en devoluciones); `OnAfterCopyTrackingFromNewItemJnlLine` en `Item Ledger Entry` (IJL new → ILE en reclasificación/transferencias). Reemplaza `OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE`. Signatures verificadas contra `Package Management (6516)` BC 27. (Issues 23, 190, 25) |
 | `DUoM Tracking Coherence Mgt` | 50111 | **Gestión centralizada de validación/coherencia DUoM** para edición de tracking y flujos de documento. Métodos públicos principales: `NormalizeTrackingDUoMSecondQty`, `NormalizeTrackingQuantityBase`, `ValidateTrackingSpecLineForFieldEdit`, `ValidateTrackingSpecLine`, `ValidatePurchLineTrackingCoherence`, `CalcTrackingDUoMTotalsForPurchLine`, `AssertRatioCoherence`, `GetDUoMRoundingPrecision`, `GetExpectedRatio`. Este codeunit no define persistencia manual por cierre de página; el patrón vigente usa los eventos estándar de tracking/Reservation Entry. |
 | `DUoM Tracking Prop. Mgt` | 50125 | Capa centralizada del ciclo `abrir → editar → cerrar → reabrir` en `Item Tracking Lines`. Compara `Reservation Entry` con DUoM (`OnAfterEntriesAreIdentical`), normaliza signo/persistencia (`OnAfterMoveFields`, `OnCreateReservEntryExtraFields`), preserva DUoM en copias internas de `Tracking Specification` y rehidrata el buffer desde `Reservation Entry`/tracking entries con valores positivos en página. |
@@ -337,7 +337,7 @@ El subscriber `OnAfterValidateEvent["Quantity (Base)"]` (codeunit 50109) sí rec
 
 ### Test de regresión
 
-El flujo completo queda cubierto por tests en codeunit 50219 `DUoM Purch Tracking Persist`:
+El flujo completo queda cubierto por tests de compra y venta:
 
 | Test | Escenario |
 |------|-----------|
@@ -347,10 +347,14 @@ El flujo completo queda cubierto por tests en codeunit 50219 `DUoM Purch Trackin
 | `T-PERSIST-04` `ItemTracking_NoImpactOnItemsWithoutDUoM` | Sin DUoM — Item Tracking Lines no introduce DUoM en ReservEntry |
 | `T-REOPEN-07` `PurchLotTracking_SecondEdit_Variable_PersistsDUoMModify` | Variable — segunda edición persiste DUoM modificado (Modify path) |
 | `T-REOPEN-08` `PurchLotTracking_SecondEdit_AlwaysVariable_PersistsDUoMModify` | AlwaysVariable — segunda edición persiste DUoM modificado (Modify path) |
+| `T26_SalesReopenPersist` | Sales — reapertura real de Item Tracking Lines conserva DUoM manual (TrackingSpec ↔ ReservEntry) |
+| `T27_SalesLastEditWins` | Sales — segunda edición prevalece tras cerrar/reabrir (last edit wins) |
 
 Los tests T-PERSIST-01 y T-PERSIST-02 validan la persistencia estándar de tracking.
 Los tests T-REOPEN-07 y T-REOPEN-08 validan la recarga/cambio en reaperturas sucesivas
 sin depender de persistencia manual en cierre de página.
+Los tests T26/T27 extienden la misma política al flujo real de ventas con `Sales Order`
+y validación explícita en `Reservation Entry` usando filtros estándar de origen.
 
 ### Restricciones para no romper el Item Tracking estándar
 

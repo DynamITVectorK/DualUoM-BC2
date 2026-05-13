@@ -23,6 +23,13 @@
 ///   T18 — Reservation Entry → TrackingSpec rehidrata valores positivos para la página
 ///   T19 — TrackingSpec → TrackingSpec preserva los campos DUoM
 ///   T20 — La suma funcional de tracking ignora líneas vacías/de inserción
+///   T21 — Variable + sin ratio de lote + fuente Sales Line → fallback a SalesLine.DUoM Ratio
+///   T22 — Variable + ratio de lote existe → ratio de lote gana sobre Sales Line
+///   T23 — Variable + ratio manual en tracking (ventas) → no sobrescribir con fallback
+///   T24 — Múltiples lotes en ventas sin ratio → cada lote recibe fallback de Sales Line
+///   T25 — Ventas: segunda persistencia y rehidratación recargan el último valor DUoM
+///   T26 — Reapertura real en Sales Item Tracking preserva DUoM manual
+///   T27 — Reapertura real en Sales Item Tracking: última edición prevalece
 ///
 /// Arquitectura de tests:
 ///   T01–T04, T07–T09: tests unitarios sobre buffers in-memory (sin Insert).
@@ -36,6 +43,13 @@
 ///                     Sin Insert de Tracking Specification (buffer in-memory + fuente real).
 ///   T16–T20:          tests unitarios de la capa `DUoM Tracking Prop. Mgt` (50125)
 ///                     para comparación DUoM, normalización de signo y suma funcional.
+///   T21–T24:          tests unitarios del fallback de línea origen para Sales Line
+///                     (simetría funcional con Purchase Line).
+///   T25:              test unitario de persistencia/reapertura lógica en ventas:
+///                     la última edición en tracking prevalece al rehidratar.
+///   T26–T27:          tests de integración con TestPage "Sales Order" + modal
+///                     "Item Tracking Lines": persistencia real en Reservation Entry
+///                     y rehidratación al reabrir.
 /// </summary>
 codeunit 50218 "DUoM Item Tracking Tests"
 {
@@ -793,6 +807,381 @@ codeunit 50218 "DUoM Item Tracking Tests"
     end;
 
     // -------------------------------------------------------------------------
+    // T21 — Variable + sin ratio de lote + fuente Sales Line → fallback a Sales Line
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure T21_SalesLineFallback()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+
+        // [GIVEN] Sales Line con DUoM Ratio = 1.25
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 1);
+        SalesLine."DUoM Ratio" := 1.25;
+        SalesLine.Modify(false);
+
+        // [GIVEN] Tracking Specification apuntando a la Sales Line, sin ratio de lote y DUoM Ratio = 0
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Quantity (Base)" := 1;
+        TrackingSpec."Source Type" := Database::"Sales Line";
+        TrackingSpec."Source Subtype" := SalesLine."Document Type".AsInteger();
+        TrackingSpec."Source ID" := SalesLine."Document No.";
+        TrackingSpec."Source Ref. No." := SalesLine."Line No.";
+
+        // [WHEN] Validate Lot No. sin ratio de lote
+        TrackingSpec.Validate("Lot No.", 'LOT-T21');
+
+        // [THEN] Se aplica fallback desde Sales Line
+        LibraryAssert.AreEqual(1.25, TrackingSpec."DUoM Ratio",
+            'T21: DUoM Ratio debe tomar el fallback de Sales Line (1.25).');
+        LibraryAssert.AreNearlyEqual(1.25, TrackingSpec."DUoM Second Qty", 0.001,
+            'T21: DUoM Second Qty debe ser Quantity (Base) × DUoM Ratio de Sales Line.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T22 — Variable + ratio de lote existe → ratio de lote gana sobre Sales Line
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure T22_SalesLotRatioWins()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable y ratio de lote definido
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.CreateLotRatio(Item."No.", 'LOT-T22', 1.10);
+
+        // [GIVEN] Sales Line con ratio distinto (debe perder prioridad frente al lote)
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 1);
+        SalesLine."DUoM Ratio" := 1.25;
+        SalesLine.Modify(false);
+
+        // [GIVEN] Tracking con fuente Sales Line y ratio inicial 0
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Quantity (Base)" := 1;
+        TrackingSpec."Source Type" := Database::"Sales Line";
+        TrackingSpec."Source Subtype" := SalesLine."Document Type".AsInteger();
+        TrackingSpec."Source ID" := SalesLine."Document No.";
+        TrackingSpec."Source Ref. No." := SalesLine."Line No.";
+
+        // [WHEN] Validate Lot No. con ratio de lote
+        TrackingSpec.Validate("Lot No.", 'LOT-T22');
+
+        // [THEN] Prevalece el ratio del lote
+        LibraryAssert.AreEqual(1.10, TrackingSpec."DUoM Ratio",
+            'T22: DUoM Ratio debe ser el ratio de lote, no el fallback de Sales Line.');
+        LibraryAssert.AreNearlyEqual(1.10, TrackingSpec."DUoM Second Qty", 0.001,
+            'T22: DUoM Second Qty debe calcularse con el ratio de lote.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T23 — Variable + ratio manual en tracking (ventas) → no sobrescribir
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure T23_SalesManualPreserve()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        TrackingSpec: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo con DUoM Variable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+
+        // [GIVEN] Sales Line con DUoM Ratio = 1.25
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 2);
+        SalesLine."DUoM Ratio" := 1.25;
+        SalesLine.Modify(false);
+
+        // [GIVEN] Tracking con ratio manual ya informado (1.40)
+        TrackingSpec.Init();
+        TrackingSpec."Entry No." := 1;
+        TrackingSpec."Item No." := Item."No.";
+        TrackingSpec."Quantity (Base)" := 2;
+        TrackingSpec."DUoM Ratio" := 1.40;
+        TrackingSpec."Source Type" := Database::"Sales Line";
+        TrackingSpec."Source Subtype" := SalesLine."Document Type".AsInteger();
+        TrackingSpec."Source ID" := SalesLine."Document No.";
+        TrackingSpec."Source Ref. No." := SalesLine."Line No.";
+
+        // [WHEN] Validate Lot No. sin ratio de lote
+        TrackingSpec.Validate("Lot No.", 'LOT-T23');
+
+        // [THEN] El ratio manual no se sobreescribe
+        LibraryAssert.AreEqual(1.40, TrackingSpec."DUoM Ratio",
+            'T23: DUoM Ratio manual no debe sobrescribirse por fallback de Sales Line.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T24 — Múltiples lotes en ventas sin ratio de lote → fallback de Sales Line
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure T24_SalesTwoLotsFallback()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        TrackingSpecA: Record "Tracking Specification";
+        TrackingSpecB: Record "Tracking Specification";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Variable y Sales Line con ratio 0.8
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 10);
+        SalesLine."DUoM Ratio" := 0.8;
+        SalesLine.Modify(false);
+
+        // [GIVEN] Dos lotes de tracking de la misma Sales Line
+        TrackingSpecA.Init();
+        TrackingSpecA."Entry No." := 1;
+        TrackingSpecA."Item No." := Item."No.";
+        TrackingSpecA."Quantity (Base)" := 6;
+        TrackingSpecA."Source Type" := Database::"Sales Line";
+        TrackingSpecA."Source Subtype" := SalesLine."Document Type".AsInteger();
+        TrackingSpecA."Source ID" := SalesLine."Document No.";
+        TrackingSpecA."Source Ref. No." := SalesLine."Line No.";
+
+        TrackingSpecB.Init();
+        TrackingSpecB."Entry No." := 2;
+        TrackingSpecB."Item No." := Item."No.";
+        TrackingSpecB."Quantity (Base)" := 4;
+        TrackingSpecB."Source Type" := Database::"Sales Line";
+        TrackingSpecB."Source Subtype" := SalesLine."Document Type".AsInteger();
+        TrackingSpecB."Source ID" := SalesLine."Document No.";
+        TrackingSpecB."Source Ref. No." := SalesLine."Line No.";
+
+        // [WHEN] Se valida lote en ambas líneas
+        TrackingSpecA.Validate("Lot No.", 'LOTE-T24A');
+        TrackingSpecB.Validate("Lot No.", 'LOTE-T24B');
+
+        // [THEN] Ambos lotes reciben el fallback de Sales Line
+        LibraryAssert.AreEqual(0.8, TrackingSpecA."DUoM Ratio",
+            'T24: LOTE-A debe recibir DUoM Ratio de Sales Line.');
+        LibraryAssert.AreNearlyEqual(4.8, TrackingSpecA."DUoM Second Qty", 0.001,
+            'T24: LOTE-A DUoM Second Qty debe ser 6 × 0.8.');
+        LibraryAssert.AreEqual(0.8, TrackingSpecB."DUoM Ratio",
+            'T24: LOTE-B debe recibir DUoM Ratio de Sales Line.');
+        LibraryAssert.AreNearlyEqual(3.2, TrackingSpecB."DUoM Second Qty", 0.001,
+            'T24: LOTE-B DUoM Second Qty debe ser 4 × 0.8.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T25 — Ventas: segunda persistencia y rehidratación recuperan el último valor
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure T25_SalesLastEditRehydrate()
+    var
+        TrackingSpec: Record "Tracking Specification";
+        RehydratedTrackingSpec: Record "Tracking Specification";
+        ReservEntry: Record "Reservation Entry";
+        DUoMTrackingPropMgt: Codeunit "DUoM Tracking Prop. Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Reservation Entry de Sales Line (fuente de verdad por lote)
+        ReservEntry.Init();
+        ReservEntry.SetSource(Database::"Sales Line", 1, 'SO-T25', 10000, '', 0);
+
+        // [WHEN] Primera persistencia DUoM desde tracking
+        TrackingSpec.Init();
+        TrackingSpec."DUoM Ratio" := 1.20;
+        TrackingSpec."DUoM Second Qty" := 6;
+        DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(TrackingSpec, ReservEntry);
+
+        // [WHEN] Segunda persistencia (edición posterior): debe prevalecer este valor
+        TrackingSpec."DUoM Ratio" := 1.50;
+        TrackingSpec."DUoM Second Qty" := 7.5;
+        DUoMTrackingPropMgt.CopyTrackingSpecToReservEntry(TrackingSpec, ReservEntry);
+
+        // [WHEN] Reapertura/rehidratación del buffer desde Reservation Entry
+        DUoMTrackingPropMgt.CopyReservEntryToTrackingSpec(ReservEntry, RehydratedTrackingSpec);
+
+        // [THEN] Se recuperan los últimos valores persistidos
+        LibraryAssert.AreNearlyEqual(1.50, RehydratedTrackingSpec."DUoM Ratio", 0.001,
+            'T25: Al reabrir, DUoM Ratio debe reflejar la última edición.');
+        LibraryAssert.AreNearlyEqual(7.5, RehydratedTrackingSpec."DUoM Second Qty", 0.001,
+            'T25: Al reabrir, DUoM Second Qty debe reflejar la última edición.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T26 — Reapertura real en Sales Item Tracking preserva DUoM manual
+    // -------------------------------------------------------------------------
+    [Test]
+    [HandlerFunctions('SalesItemTracking_MPH')]
+    procedure T26_SalesReopenPersist()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        ReservEntry: Record "Reservation Entry";
+        SalesOrder: TestPage "Sales Order";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Variable con tracking por lote
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] Sales Order con línea de 2 unidades
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 2);
+        SalesLine.Modify(true);
+
+        // [WHEN] Primera apertura: informar lote + DUoM manual
+        SalesOrder.OpenEdit();
+        SalesOrder.GotoRecord(SalesHeader);
+        SalesTrackStep := 1;
+        SalesOrder.SalesLines.First();
+        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+
+        // [THEN] Persistencia real en Reservation Entry usando filtro estándar de origen
+        ReservEntry.SetSourceFilter(
+            Database::"Sales Line",
+            SalesLine."Document Type".AsInteger(),
+            SalesHeader."No.",
+            SalesLine."Line No.",
+            true);
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange("Lot No.", 'LOT-S-REOPEN-T26');
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T26: Debe existir Reservation Entry para la Sales Line y lote LOT-S-REOPEN-T26.');
+        LibraryAssert.AreNearlyEqual(
+            2.5, ReservEntry."DUoM Ratio", 0.001,
+            'T26: Reservation Entry.DUoM Ratio debe ser 2.5.');
+        LibraryAssert.AreNearlyEqual(
+            -5, ReservEntry."DUoM Second Qty", 0.001,
+            'T26: Reservation Entry.DUoM Second Qty debe persistirse con signo de venta (-5).');
+
+        // [WHEN] Segunda apertura: rehidratar y verificar que no aparece a cero ni duplica
+        SalesTrackStep := 2;
+        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+        SalesOrder.Close();
+    end;
+
+    // -------------------------------------------------------------------------
+    // T27 — Reapertura real en Sales Item Tracking: última edición prevalece
+    // -------------------------------------------------------------------------
+    [Test]
+    [HandlerFunctions('SalesItemTracking_MPH')]
+    procedure T27_SalesLastEditWins()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        ReservEntry: Record "Reservation Entry";
+        SalesOrder: TestPage "Sales Order";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Variable con tracking por lote
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+
+        // [GIVEN] Sales Order con línea de 4 unidades
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 4);
+        SalesLine.Modify(true);
+
+        SalesOrder.OpenEdit();
+        SalesOrder.GotoRecord(SalesHeader);
+        SalesOrder.SalesLines.First();
+
+        // [WHEN] Primera edición y cierre
+        SalesTrackStep := 3;
+        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+
+        // [WHEN] Segunda edición y cierre
+        SalesTrackStep := 4;
+        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+
+        // [THEN] Reservation Entry queda con el último valor
+        ReservEntry.SetSourceFilter(
+            Database::"Sales Line",
+            SalesLine."Document Type".AsInteger(),
+            SalesHeader."No.",
+            SalesLine."Line No.",
+            true);
+        ReservEntry.SetRange("Item No.", Item."No.");
+        ReservEntry.SetRange("Lot No.", 'LOT-S-MOD-T27');
+        LibraryAssert.IsTrue(
+            ReservEntry.FindFirst(),
+            'T27: Debe existir Reservation Entry para lote LOT-S-MOD-T27.');
+        LibraryAssert.AreNearlyEqual(
+            1, ReservEntry."DUoM Ratio", 0.001,
+            'T27: Debe persistirse el último DUoM Ratio (1).');
+        LibraryAssert.AreNearlyEqual(
+            -4, ReservEntry."DUoM Second Qty", 0.001,
+            'T27: Debe persistirse el último DUoM Second Qty con signo de venta (-4).');
+
+        // [WHEN] Tercera apertura para verificar recarga de último valor (no histórico, no cero)
+        SalesTrackStep := 5;
+        SalesOrder.SalesLines."Item Tracking Lines".Invoke();
+        SalesOrder.Close();
+    end;
+
+    // -------------------------------------------------------------------------
     // T16 — Comparación DUoM entre Reservation Entries
     // -------------------------------------------------------------------------
     [Test]
@@ -949,4 +1338,127 @@ codeunit 50218 "DUoM Item Tracking Tests"
             8, TotalSecondQty, 0.001,
             'T20: La suma funcional debe ignorar la línea vacía de inserción.');
     end;
+
+    /// <summary>
+    /// ModalPageHandler de integración para T26/T27 sobre Sales Order.
+    ///
+    /// Step 1: asigna LOT-S-REOPEN-T26, Qty Base=2, DUoM Second Qty=5 (ratio auto=2.5).
+    /// Step 2: verifica reapertura (2.5/5) y una sola línea funcional.
+    /// Step 3: primera edición T27 (LOT-S-MOD-T27, Qty Base=4, Second Qty=3, ratio auto=0.75).
+    /// Step 4: segunda edición T27 (Second Qty=4, ratio auto=1).
+    /// Step 5: verifica reapertura T27 (ratio=1, Second Qty=4) y una sola línea funcional.
+    /// </summary>
+    [ModalPageHandler]
+    procedure SalesItemTracking_MPH(var ItemTrackingLines: TestPage "Item Tracking Lines")
+    var
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        case SalesTrackStep of
+            1:
+                begin
+                    ItemTrackingLines.New();
+                    ItemTrackingLines."Lot No.".SetValue('LOT-S-REOPEN-T26');
+                    ItemTrackingLines."Quantity (Base)".SetValue(2);
+                    ItemTrackingLines."DUoM Second Qty".SetValue(5);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            2:
+                begin
+                    AssertSingleTrackLine(
+                        ItemTrackingLines,
+                        'LOT-S-REOPEN-T26',
+                        2,
+                        5,
+                        2.5,
+                        'T26');
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            3:
+                begin
+                    ItemTrackingLines.New();
+                    ItemTrackingLines."Lot No.".SetValue('LOT-S-MOD-T27');
+                    ItemTrackingLines."Quantity (Base)".SetValue(4);
+                    ItemTrackingLines."DUoM Second Qty".SetValue(3);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            4:
+                begin
+                    ItemTrackingLines.First();
+                    ItemTrackingLines."DUoM Second Qty".SetValue(4);
+                    ItemTrackingLines.OK().Invoke();
+                end;
+            5:
+                begin
+                    AssertSingleTrackLine(
+                        ItemTrackingLines,
+                        'LOT-S-MOD-T27',
+                        4,
+                        4,
+                        1,
+                        'T27');
+                    LibraryAssert.AreNearlyEqual(
+                        1,
+                        ItemTrackingLines."DUoM Ratio".AsDecimal(),
+                        0.001,
+                        'T27: Al reabrir debe mostrarse el último ratio (1), no el previo (0.75).');
+                    LibraryAssert.AreNearlyEqual(
+                        4,
+                        ItemTrackingLines."DUoM Second Qty".AsDecimal(),
+                        0.001,
+                        'T27: Al reabrir debe mostrarse el último DUoM Second Qty (4), no el previo (3) ni cero.');
+                    ItemTrackingLines.OK().Invoke();
+                end;
+        end;
+    end;
+
+    local procedure AssertSingleTrackLine(
+        var ItemTrackingLines: TestPage "Item Tracking Lines";
+        ExpectedLotNo: Code[50];
+        ExpectedQtyBase: Decimal;
+        ExpectedSecondQty: Decimal;
+        ExpectedRatio: Decimal;
+        TestId: Text)
+    var
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        ItemTrackingLines.First();
+        LibraryAssert.AreEqual(
+            ExpectedLotNo,
+            ItemTrackingLines."Lot No.".Value,
+            StrSubstNo('%1: El lote rehidratado no coincide.', TestId));
+        LibraryAssert.AreNearlyEqual(
+            ExpectedQtyBase,
+            ItemTrackingLines."Quantity (Base)".AsDecimal(),
+            0.001,
+            StrSubstNo('%1: Quantity (Base) rehidratada no coincide.', TestId));
+        LibraryAssert.AreNearlyEqual(
+            ExpectedSecondQty,
+            ItemTrackingLines."DUoM Second Qty".AsDecimal(),
+            0.001,
+            StrSubstNo('%1: DUoM Second Qty rehidratada no coincide.', TestId));
+        LibraryAssert.AreNearlyEqual(
+            ExpectedRatio,
+            ItemTrackingLines."DUoM Ratio".AsDecimal(),
+            0.001,
+            StrSubstNo('%1: DUoM Ratio rehidratado no coincide.', TestId));
+
+        ItemTrackingLines.Next();
+        LibraryAssert.IsFalse(
+            IsFunctionalTrackLine(ItemTrackingLines),
+            StrSubstNo('%1: Se detectó una segunda línea funcional (duplicado).', TestId));
+    end;
+
+    local procedure IsFunctionalTrackLine(var ItemTrackingLines: TestPage "Item Tracking Lines"): Boolean
+    begin
+        exit(
+            (ItemTrackingLines."Lot No.".Value <> '') or
+            (ItemTrackingLines."Serial No.".Value <> '') or
+            (ItemTrackingLines."Package No.".Value <> '') or
+            (ItemTrackingLines."Quantity (Base)".AsDecimal() <> 0) or
+            (ItemTrackingLines."DUoM Ratio".AsDecimal() <> 0) or
+            (ItemTrackingLines."DUoM Second Qty".AsDecimal() <> 0));
+    end;
+
+    var
+        SalesTrackStep: Integer;
 }
