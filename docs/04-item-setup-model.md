@@ -103,18 +103,21 @@ and by `DUoM Lot Subscribers` (codeunit 50108) for the Lot level:
 2. If VariantCode is not empty, check DUoM Item Variant Setup (50101).
    If a record exists → use its fields (Second UoM Code, Conversion Mode, Fixed Ratio).
 3. Otherwise → use the item-level fields from DUoM Item Setup.
-4. When posting creates an ILE (OnAfterInitItemLedgEntry):
-   DUoM Inventory Subscribers (50104) calls TryApplyLotRatioToILE from DUoM Lot Subscribers (50108).
-   ILE.DUoM Second Qty = Abs(ILE.Quantity) × ILE.DUoM Ratio (proportional per lot).
-   If lot has a registered ratio and mode ≠ Fixed → ILE.DUoM Ratio overridden with lot ratio.
-   Fixed mode: lot ratio is NEVER applied.
+4. When Item Tracking participates in posting:
+   `DUoM Tracking Subscribers` (50109) pre-fills `Tracking Specification`,
+   `DUoM Tracking Copy Subscribers` (50110) persists/reloads through `Reservation Entry`
+   and resolves the split `Item Journal Line` by lot.
+5. When the ILE is initialized:
+   the final subscriber copies `DUoM Ratio` and `DUoM Second Qty` from the split IJL
+   and normalizes the sign with `DUoM Sign Mgt` (50126).
 ```
 
 > **Nota arquitectónica (Issue 21):** No existe ningún subscriber que pre-rellene campos DUoM
-> al validar `Lot No.` en una línea de documento. El mecanismo productivo correcto para aplicar
-> el ratio de lote es `TryApplyLotRatioToILE` durante el posting, NO en el momento de la
-> validación del campo `Lot No.`. La línea origen mantiene valores DUoM como **total agregado**;
-> la ratio real por lote queda en el ILE de cada lote generado durante la contabilización.
+> al validar `Lot No.` en una línea de documento. El mecanismo productivo correcto usa la cadena
+> `Tracking Specification ↔ Reservation Entry → Item Journal Line split → Item Ledger Entry`,
+> NO la validación directa del campo `Lot No.` en una línea origen. La línea origen mantiene
+> valores DUoM como **total agregado**; la ratio real por lote queda en el split de tracking
+> y en el ILE de cada lote generado durante la contabilización.
 > `Item Journal Line."Lot No."` no es la fuente de verdad del ratio DUoM por lote.
 
 ---

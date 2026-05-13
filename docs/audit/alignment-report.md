@@ -1,6 +1,11 @@
 # Informe de Alineación de Documentación
 _Generado: 2026-04-22 — Actualizado: 2026-04-29 (Issues 13, 20, 21)_
 
+> **Estado de este documento:** registro histórico de auditorías puntuales.
+> Puede contener instantáneas ya superadas por cambios posteriores. La fuente de verdad
+> vigente para arquitectura y persistencia es `docs/02-functional-design.md`,
+> `docs/03-technical-architecture.md` y `docs/10-persistence-matrix.md`.
+
 ## Resumen
 
 Auditoría completa del repositorio DualUoM-BC. Se inventariaron todos los objetos AL
@@ -37,7 +42,7 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 | Archivo modificado | Qué cambió | Motivo |
 |--------------------|------------|--------|
 | `docs/02-functional-design.md` | Eliminada/reemplazada la sección duplicada "Lot-Specific Real Ratio" al final del documento que decía "Phase 2 feature" | El feature está implementado (Issue 13). La sección estaba desactualizada; ya existe una sección completa más arriba. |
-| `docs/04-item-setup-model.md` | Actualizado paso 4 de la jerarquía de resolución: eliminada la descripción del subscriber de validación `Lot No.` en IJL; reemplazado por la arquitectura correcta (TryApplyLotRatioToILE en posting) | El subscriber fue eliminado en Issue 21. La descripción anterior era engañosa. |
+| `docs/04-item-setup-model.md` | Actualizado paso 4 de la jerarquía de resolución: eliminada la descripción del subscriber de validación `Lot No.` en IJL; reemplazado por la cadena vigente `Tracking Specification ↔ Reservation Entry → IJL split → ILE` | El subscriber fue eliminado en Issue 21. La descripción anterior era engañosa. |
 | `docs/manual-usuario.md` | Sección 9.4 reescrita: eliminado el flujo de pre-relleno automático al validar Lot No. (subscriber inexistente); descripción correcta del mecanismo de posting | El subscriber que pre-rellenaba campos DUoM al validar Lot No. fue eliminado en Issue 21. |
 | `docs/manual-usuario.md` | FAQ "¿Se puede usar DUoM con seguimiento de lotes?" actualizada: eliminada afirmación de pre-relleno en Diario de productos al asignar lote | Misma causa: el subscriber fue eliminado en Issue 21. |
 | `docs/manual-usuario.md` | FAQ "¿El ratio de lote se aplica en los pedidos de compra o venta?" corregida | Eliminada afirmación de que en IJL se pre-rellena; descripción correcta del mecanismo de posting en todos los flujos. |
@@ -116,7 +121,7 @@ Los cambios se agrupan por archivo y tipo de discrepancia.
 | 50105 | `DUoM Doc Transfer Helper` | Internal | CopyFromPurchLineToPurchRcptLine, CopyFromSalesLineToShipLine, CopyFromPurchLineToPurchInvLine, CopyFromPurchLineToPurchCrMemoLine, CopyFromSalesLineToSalesInvLine, CopyFromSalesLineToSalesCrMemoLine |
 | 50106 | `DUoM UoM Helper` | Public | `GetSecondUoMRoundingPrecision(ItemNo)`, `GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode)` |
 | 50107 | `DUoM Setup Resolver` | Public | `GetEffectiveSetup(ItemNo, VariantCode, var SecondUoMCode, var ConversionMode, var FixedRatio): Boolean` |
-| 50108 | `DUoM Lot Subscribers` | Internal | Método público `TryApplyLotRatioToILE` (llamado desde 50104 en OnAfterInitItemLedgEntry). Helper interno `ApplyLotRatioToItemJournalLine` (solo uso en tests de bajo nivel). El subscriber OnAfterValidateEvent[Lot No.] en IJL fue eliminado en Issue 21. |
+| 50108 | `DUoM Lot Subscribers` | Internal | Helper de ratio por lote conservado para tests de bajo nivel. El flujo productivo ya no llama `TryApplyLotRatioToILE`; la aplicación real pasa por `DUoM Tracking Copy Subscribers` (50110). El subscriber OnAfterValidateEvent[Lot No.] en IJL fue eliminado en Issue 21. |
 
 ### TableExtensions
 

@@ -431,8 +431,8 @@ El proyecto tiene una base técnica excepcionalmente sólida. La Fase 1 completa
 | Codeunit | 50104 | `DUoM Inventory Subscribers` | Suscriptores ILE, Value Entry, diario, históricos |
 | Codeunit | 50105 | `DUoM Doc Transfer Helper` | Lógica centralizada de copia entre líneas |
 | Codeunit | 50106 | `DUoM UoM Helper` | Precisión de redondeo por artículo/UoM |
-| Codeunit | 50107 | `DUoM Setup Resolver` | Resolución jerárquica item → variante → lote |
-| Codeunit | 50108 | `DUoM Lot Subscribers` | Suscriptor IJL `Lot No.` + `TryApplyLotRatioToILE` |
+| Codeunit | 50107 | `DUoM Setup Resolver` | Resolución jerárquica item → variante |
+| Codeunit | 50108 | `DUoM Lot Subscribers` | Helper de ratio por lote conservado para tests de bajo nivel |
 | Page | 50100 | `DUoM Item Setup` | Tarjeta de configuración DUoM por artículo |
 | Page | 50101 | `DUoM Variant Setup List` | Lista de overrides DUoM por variante |
 | Page | 50102 | `DUoM Lot Ratio List` | Lista de ratios reales por lote |

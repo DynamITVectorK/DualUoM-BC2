@@ -40,7 +40,7 @@ Este blueprint cubre el diseño técnico de la integración DUoM con el subsiste
 | 11 | Rounding precision en DUoM Second Qty | ✅ |
 | 11b | Jerarquía Item → Variante con DUoM Setup Resolver | ✅ |
 | 12 | DUoM Unit Cost y Unit Price en líneas y históricos | ✅ |
-| 13 | DUoM Lot Ratio (tabla 50102), TryApplyLotRatioToILE | ✅ |
+| 13 | DUoM Lot Ratio (tabla 50102) | ✅ |
 | 20/21 | Modelo 1:N consolidado, patrón OnAfterCopyTracking* | ✅ |
 | 22/23 | Tracking Specification y Reservation Entry con DUoM | ✅ |
 
@@ -131,7 +131,8 @@ Warehouse Shipment Line ──► Warehouse Activity Line (Pick) ──► [Post
 │  Item Journal Line  │  DUoM Second Qty = X  ← propagar desde Receipt Line
 │  (buffer posting)   │  DUoM Ratio = R
 └──────────┬──────────┘
-           │ OnAfterInitItemLedgEntry (codeunit 50104, ya implementado)
+           │ OnAfterInitItemLedgEntry / OnAfterCopyTrackingFromItemJnlLine
+           │ (base ya implementada; el ILE siempre copia desde IJL)
            ▼
 ┌─────────────────────┐
 │ Item Ledger Entry   │  DUoM Second Qty = X  ✓
@@ -169,7 +170,8 @@ Warehouse Shipment Line ──► Warehouse Activity Line (Pick) ──► [Post
 │  Item Journal Line  │  DUoM Second Qty = Y  ← propagar desde Shipment Line
 │  (buffer posting)   │  DUoM Ratio = R
 └──────────┬──────────┘
-           │ OnAfterInitItemLedgEntry (codeunit 50104, ya implementado)
+           │ OnAfterInitItemLedgEntry / OnAfterCopyTrackingFromItemJnlLine
+           │ (base ya implementada; el ILE siempre copia desde IJL)
            ▼
 ┌─────────────────────┐
 │ Item Ledger Entry   │  DUoM Second Qty = Y  ✓ (negativo = salida)
@@ -443,7 +445,7 @@ LibraryWarehouse.CreateFullWMSLocation(Location, 2);  // 2 bins
 | Propagación Sales → Shipment (Fixed) | T04 | Venta | Fixed | `WhseShptLine.DUoM Second Qty` = `SalesLine.DUoM Second Qty` |
 | Posting Shipment → ILE (Fixed) | T05 | Venta | Fixed | `ILE.DUoM Second Qty` = valor correcto (negativo) |
 | Sin DUoM activo — sin impacto | T06 | Compra/Venta | N/A | `WhseRcptLine.DUoM Second Qty = 0`; flujo BC sin cambios |
-| *(Recomendado)* Lot Ratio en Receipt | T07 | Compra | AlwaysVariable | `ILE.DUoM Second Qty` calculado via `TryApplyLotRatioToILE` |
+| *(Recomendado)* Lot Ratio en Receipt | T07 | Compra | AlwaysVariable | `ILE.DUoM Second Qty` correcto vía `Tracking Specification / Reservation Entry → IJL split → ILE` |
 
 **Codeunit de tests:** `DUoM Warehouse Tests` (ID 50218).
 
@@ -631,7 +633,7 @@ Sólo implementar si:
 | `docs/issues/issue-14-warehouse-basic-duom-fields.md` | Especificación detallada de Issue 14 |
 | `docs/01-scope-mvp.md` | Scope Phase 2 (Warehouse) y Phase 3 |
 | [microsoft/ALAppExtensions](https://github.com/microsoft/ALAppExtensions) | Fuente de verdad para eventos y firmas BC 27 |
-| `app/src/codeunit/DUoMInventorySubscribers.Codeunit.al` (50104) | `OnAfterInitItemLedgEntry` — ya implementado, reutilizar en WMS |
+| `app/src/codeunit/DUoMInventorySubscribers.Codeunit.al` (50104) | Base sin tracking y posting documental ya implementada; reutilizar donde aplique en WMS |
 | `app/src/codeunit/DUoMDocTransferHelper.Codeunit.al` (50105) | Helper centralizado de copia — extender con métodos WMS |
 
 ---

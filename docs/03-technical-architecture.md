@@ -114,6 +114,7 @@ already covers the need:
 | `DUoM Tracking Copy Subs` | 50110 | Propaga DUoM Ratio y DUoM Second Qty siguiendo el patrón `OnAfterCopyTracking*` de `Codeunit 6516 "Package Management"`. Cadena directa: `Tracking Specification` → `Item Journal Line` (`OnAfterCopyTrackingFromSpec`) → `Item Ledger Entry` (`OnAfterCopyTrackingFromItemJnlLine`). Cadena inversa: `Item Ledger Entry` → `Item Journal Line` (`OnAfterCopyTrackingFromItemLedgEntry`). **Persistencia de Item Tracking Lines:** `Tracking Specification` buffer → `Reservation Entry` vía `OnAfterCopyTrackingFromTrackingSpec` (al cerrar la página). Recarga: `Reservation Entry` → `Tracking Specification` buffer vía `OnAfterCopyTrackingFromReservEntry` (al reabrir la página). **Clear/Blank (Issue 25):** `OnAfterClearTracking` y `OnAfterSetTrackingBlank` en `Tracking Specification`; `OnAfterClearTracking` y `OnAfterClearNewTracking` en `Reservation Entry`; `OnAfterClearTracking` en `Item Journal Line` — resetean DUoM Ratio y DUoM Second Qty a 0 al reinicializar líneas de tracking. **Copy adicionales (Issue 25):** `OnAfterCopyTrackingFromTrackingSpec` en `Tracking Specification` (copia entre buffers); `OnAfterCopyTrackingFromItemLedgEntry` en `Tracking Specification` (ILE → buffer en devoluciones); `OnAfterCopyTrackingFromNewItemJnlLine` en `Item Ledger Entry` (IJL new → ILE en reclasificación/transferencias). Reemplaza `OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE`. Signatures verificadas contra `Package Management (6516)` BC 27. (Issues 23, 190, 25) |
 | `DUoM Tracking Coherence Mgt` | 50111 | **Gestión centralizada de validación/coherencia DUoM** para edición de tracking y flujos de documento. Métodos públicos principales: `NormalizeTrackingDUoMSecondQty`, `NormalizeTrackingQuantityBase`, `ValidateTrackingSpecLineForFieldEdit`, `ValidateTrackingSpecLine`, `ValidatePurchLineTrackingCoherence`, `CalcTrackingDUoMTotalsForPurchLine`, `AssertRatioCoherence`, `GetDUoMRoundingPrecision`, `GetExpectedRatio`. Este codeunit no define persistencia manual por cierre de página; el patrón vigente usa los eventos estándar de tracking/Reservation Entry. |
 | `DUoM Tracking Prop. Mgt` | 50125 | Capa centralizada del ciclo `abrir → editar → cerrar → reabrir` en `Item Tracking Lines`. Compara `Reservation Entry` con DUoM (`OnAfterEntriesAreIdentical`), normaliza signo/persistencia (`OnAfterMoveFields`, `OnCreateReservEntryExtraFields`), preserva DUoM en copias internas de `Tracking Specification` y rehidrata el buffer desde `Reservation Entry`/tracking entries con valores positivos en página. |
+| `DUoM Sign Mgt` | 50126 | Gestión centralizada del signo DUoM. Métodos públicos: `NormalizeILESign`, `ApplyMovementSign`, `ApplyUndoPurchReceiptSign`, `ApplyUndoSalesShptSign`, `ApplyCorrectionILESign`. Ningún otro codeunit decide el signo de `DUoM Second Qty`. |
 
 ---
 
@@ -188,10 +189,11 @@ Item Journal Line  (ya tiene los valores correctos del lote)
 Item Ledger Entry  ✓
 ```
 
-Los dos paths coexisten sin conflicto: cuando hay Item Tracking activo, `OnAfterInitItemLedgEntry`
-actualiza el IJL con el ratio de lote específico si `DUoM Lot Ratio (50102)` lo sobreescribe;
-después `ILECopyTrackingFromItemJnlLine` lee del IJL ya actualizado. El IJL es siempre
-la fuente de verdad inmediata desde la que el ILE recibe sus valores DUoM.
+Los dos paths coexisten sin conflicto: cuando hay Item Tracking activo,
+`OnAfterInitItemLedgEntry` deja una copia coherente desde el IJL disponible en ese momento y
+después `ILECopyTrackingFromItemJnlLine` consolida el valor final específico del split por lote.
+La resolución de ratio DUoM por lote ocurre **antes**, en `IJLCopyTrackingFromSpec`; el IJL es
+siempre la fuente de verdad inmediata desde la que el ILE recibe sus valores DUoM.
 
 `DUoM Lot Ratio (50102)` puede intervenir en etapas previas para preparar el IJL, pero los
 subscribers finales de ILE/VE no recalculan ratio ni consultan tablas externas: copian ratio
@@ -231,7 +233,8 @@ desde IJL y normalizan el signo mediante `DUoM Sign Mgt`.
 - **Issue 13:** implementación inicial con `OnAfterInitItemLedgEntry` + `TryApplyLotRatioToILE`.
 - **Issue 20:** consolidación del modelo 1:N; corrección del bug de copia en AlwaysVariable.
 - **Issue 21:** eliminación del subscriber `OnAfterValidateEvent[Lot No.]` porque asumía
-  1 línea = 1 lote. El mecanismo productivo principal pasó a ser `OnAfterInitItemLedgEntry`.
+  1 línea = 1 lote. Se cerró el enfoque 1:1 y se dejó preparado el terreno para el patrón
+  estándar de tracking.
 - **Issue 23:** añadido patrón `OnAfterCopyTracking*` de `Package Management (6516)` (codeunit
   50110) para el flujo CON Item Tracking. `OnAfterInitItemLedgEntry` restaurado simplificado
   (sin `TryApplyLotRatioToILE`) para el flujo SIN Item Tracking.
