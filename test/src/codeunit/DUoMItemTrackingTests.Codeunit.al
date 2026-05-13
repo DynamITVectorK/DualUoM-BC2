@@ -1074,6 +1074,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        CreateAvailableLotInventoryForSales(Item, 'LOT-S-REOPEN-T26', 2);
 
         // [GIVEN] Sales Order con línea de 2 unidades
         LibrarySales.CreateCustomer(Customer);
@@ -1136,6 +1137,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 0);
         DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        CreateAvailableLotInventoryForSales(Item, 'LOT-S-MOD-T27', 4);
 
         // [GIVEN] Sales Order con línea de 4 unidades
         LibrarySales.CreateCustomer(Customer);
@@ -1457,6 +1459,23 @@ codeunit 50218 "DUoM Item Tracking Tests"
             (ItemTrackingLines."Quantity (Base)".AsDecimal() <> 0) or
             (ItemTrackingLines."DUoM Ratio".AsDecimal() <> 0) or
             (ItemTrackingLines."DUoM Second Qty".AsDecimal() <> 0));
+    end;
+
+    local procedure CreateAvailableLotInventoryForSales(var Item: Record Item; LotNo: Code[50]; Qty: Decimal)
+    var
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+    begin
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::"Positive Adjmt.", Item."No.", Qty);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, Qty);
+        LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
     end;
 
     var
