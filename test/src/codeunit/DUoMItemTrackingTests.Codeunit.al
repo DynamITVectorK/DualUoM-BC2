@@ -1461,7 +1461,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
             (ItemTrackingLines."DUoM Second Qty".AsDecimal() <> 0));
     end;
 
-    local procedure CreateAvailableLotInventoryForSales(Item: Record Item; LotNo: Code[50]; Qty: Decimal)
+    local procedure CreateAvailableLotInventoryForSales(var Item: Record Item; LotNo: Code[50]; Qty: Decimal)
     var
         ItemJnlTemplate: Record "Item Journal Template";
         ItemJnlBatch: Record "Item Journal Batch";
@@ -1473,7 +1473,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
         LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
         LibraryInventory.CreateItemJournalLine(
             ItemJnlLine, ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name,
-            "Item Ledger Entry Type"::Purchase, Item."No.", Qty);
+            "Item Ledger Entry Type"::"Positive Adjmt.", Item."No.", Qty);
         DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, Qty);
         LibraryInventory.PostItemJournalLine(ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
     end;
