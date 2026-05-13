@@ -366,34 +366,31 @@ sin depender de persistencia manual en cierre de página.
 
 ### Política AlwaysVariable + lotes — resumen técnico (Issue 177)
 
-La lógica de `OnAfterInitItemLedgEntry` (codeunit 50104) implementa cuatro sub-casos
-según la presencia de ratio de lote en `DUoM Lot Ratio` (50102), ratio manual en
-`IJL.DUoM Ratio` y asignación de lote:
+La lógica vigente del flujo tracking implementa cuatro sub-casos según la presencia
+de ratio de lote en `DUoM Lot Ratio` (50102), ratio manual en `IJL.DUoM Ratio`
+y asignación de lote. La magnitud se resuelve en `IJLCopyTrackingFromSpec` (50110)
+y el ILE final solo copia desde IJL con signo normalizado:
 
 | Caso | `DUoM Lot Ratio` (50102) | `IJL.DUoM Ratio` | `IJL.Lot No.` | `ILE.DUoM Second Qty` | Test |
 |------|--------------------------|------------------|----------------|------------------------|------|
-| 1 | ✅ Existe | — | Cualquiera | `Abs(ILE.Qty) × ratio_lote` | T08–T09 |
-| 2 | ❌ No existe | ≠ 0 (manual) | ✅ Asignado | `Abs(ILE.Qty) × ratio_manual` | T14 |
+| 1 | ✅ Existe | — | Cualquiera | El split IJL usa `ratio_lote`; el ILE copia desde IJL | T08–T09 |
+| 2 | ❌ No existe | ≠ 0 (manual) | ✅ Asignado | El split IJL usa `ratio_manual`; el ILE copia desde IJL | T14 |
 | 3 | ❌ No existe | 0 | ❌ Vacío | `IJL.DUoM Second Qty` (copia) | — |
 | 4 | ❌ No existe | 0 | ✅ Asignado | `0` (distribución imposible) | T10 |
 
-**Guarda en `OnAfterInitItemLedgEntry`** que diferencia los casos 3/4 del caso 2:
+**Resumen de implementación vigente:**
 
 ```al
-// Caso 4: AlwaysVariable + Lot No. + DUoM Ratio = 0 → ILE = 0 (salida anticipada)
-// Caso 2: si DUoM Ratio ≠ 0, pasa al cálculo general → ILE = Abs(Qty) × Ratio
-if ItemJournalLine."Lot No." <> '' then
-    if DUoMSetupResolver.GetEffectiveSetup(
-           ItemJournalLine."Item No.", ItemJournalLine."Variant Code",
-           SecondUoMCode, ConversionMode, FixedRatio) then
-        if ConversionMode = ConversionMode::AlwaysVariable then
-            if ItemJournalLine."DUoM Ratio" = 0 then
-                exit;
+// 1) IJLCopyTrackingFromSpec resuelve la magnitud del split
+// 2) ILECopyTrackingFromItemJnlLine copia desde IJL
+ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
+ItemLedgerEntry."DUoM Second Qty" :=
+    DUoMSignMgt.NormalizeILESign(ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
 ```
 
 La prioridad global de fuentes de ratio (todos los modos) es:
 ```
-DUoM Lot Ratio (50102) > IJL.DUoM Ratio (campo directo) > sin ratio (= 0)
+TrackingSpec.DUoM Ratio > DUoM Lot Ratio (50102) > IJL.DUoM Ratio > sin ratio (= 0)
 ```
 
 Ver `docs/02-functional-design.md` — sección "Política AlwaysVariable + lotes" para

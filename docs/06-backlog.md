@@ -79,6 +79,11 @@ GitHub Copilot Coding Agent.
 
 ## Phase 1 — MVP ✅ COMPLETADA
 
+> **Nota de lectura:** las fichas de issues completados que siguen son snapshots
+> históricos de implementación. Se conservan para trazabilidad del proyecto, pero la
+> arquitectura viva debe consultarse siempre en `docs/02-functional-design.md`,
+> `docs/03-technical-architecture.md` y `docs/10-persistence-matrix.md`.
+
 ### Issue 1 — Project Governance Baseline ✅ IMPLEMENTADO
 
 Creación de la base documental del proyecto: visión, alcance, diseño funcional,

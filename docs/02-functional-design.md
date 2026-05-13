@@ -185,8 +185,8 @@ Item Ledger Entry  ✓
 |------|---------------------------------------------|
 | Fixed | Ratio de lote NO aplicado. El ratio fijo siempre prevalece. |
 | Variable | Si existe ratio de lote → sobrescribe DUoM Ratio + recalcula DUoM Second Qty |
-| AlwaysVariable + ratio de lote en `DUoM Lot Ratio` | Ratio de lote → `ILE.DUoM Second Qty = Abs(ILE.Quantity) × ratio_lote` |
-| AlwaysVariable + sin ratio de lote + ratio manual en IJL (≠ 0) | Ratio manual → `ILE.DUoM Second Qty = Abs(ILE.Quantity) × ratio_manual`. Ver T14. |
+| AlwaysVariable + ratio de lote en `DUoM Lot Ratio` | El split IJL se calcula con `ratio_lote` y el ILE copia desde IJL con signo normalizado |
+| AlwaysVariable + sin ratio de lote + ratio manual en IJL (≠ 0) | El split IJL se calcula con `ratio_manual` y el ILE copia desde IJL con signo normalizado. Ver T14. |
 | AlwaysVariable + sin ratio de lote + sin Lot No. | Copia `DUoM Second Qty` directamente desde IJL (flujo sin trazabilidad de lote) |
 | AlwaysVariable + sin ratio de lote + con Lot No. + `DUoM Ratio = 0` | `ILE.DUoM Second Qty = 0`. Distribución imposible. Ver T10 y limitación conocida. |
 
@@ -199,8 +199,8 @@ campo `DUoM Ratio` del Item Journal Line.
 
 | # | Ratio de lote en `DUoM Lot Ratio` | Ratio manual en `IJL.DUoM Ratio` | Lot No. asignado | Resultado `ILE.DUoM Second Qty` | Test |
 |---|-----------------------------------|----------------------------------|------------------|---------------------------------|------|
-| 1 | ✅ Sí | — (prevalece el ratio de lote) | ✅ Sí | `Abs(ILE.Quantity) × ratio_lote` | T08–T09 |
-| 2 | ❌ No | ✅ Sí (introducido manualmente) | ✅ Sí | `Abs(ILE.Quantity) × ratio_manual` | T14 |
+| 1 | ✅ Sí | — (prevalece el ratio de lote) | ✅ Sí | El split IJL queda calculado con `ratio_lote`; el ILE copia desde IJL | T08–T09 |
+| 2 | ❌ No | ✅ Sí (introducido manualmente) | ✅ Sí | El split IJL queda calculado con `ratio_manual`; el ILE copia desde IJL | T14 |
 | 3 | ❌ No | ❌ No (`DUoM Ratio = 0`) | ❌ No | `IJL.DUoM Second Qty` (copia directa) | — |
 | 4 | ❌ No | ❌ No (`DUoM Ratio = 0`) | ✅ Sí | `0` (distribución imposible) | T10 |
 
@@ -419,7 +419,8 @@ accesible desde la acción **DUoM Lot Ratios** en la página `DUoM Item Setup`.
 ### Sales
 
 - Sales order lines and shipment lines get a `Second Qty` field
-- Picking (basic warehouse) deducts based on primary qty; second qty is informational
+- En la fase actual, el flujo soportado es el envío directo sin WMS; el soporte de picking
+  pertenece a la Phase 2 / Issue 15
 - Invoice line shows second qty from shipment
 
 ### Inventory
