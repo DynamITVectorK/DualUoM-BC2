@@ -57,7 +57,7 @@
     ├── Purchase Line ──[OnAfterInitFromPurchLine]──► Purch. Inv. Line
     │                    (mismos suscriptor y helper)
     │
-    ├── Purchase Line ──[OnPostItemJnlLineOnAfterCopyDocumentFields]──► Item Journal Line
+    ├── Purchase Line ──[OnBeforeItemJnlPostLine]──► Item Journal Line
     │                    Suscriptor: DUoM Inventory Subscribers (50104)
     │                    Campos copiados: DUoM Second Qty, DUoM Ratio
     │
@@ -123,18 +123,15 @@ construido por BC desde la línea de documento) como en el flujo directo de diar
 Item Journal Line
   ──[OnAfterInitItemLedgEntry]──► Item Ledger Entry
      Suscriptor: DUoM Inventory Subscribers (50104)
-     Lógica de prioridad:
-       1. AlwaysVariable + Lot No. + DUoM Ratio = 0 → ILE.DUoM Second Qty = 0 (T10)
-       2. DUoM Lot Ratio (50102) existe para el lote → AppliedRatio = ratio del lote
-       3. Sin ratio de lote → AppliedRatio = IJL.DUoM Ratio
-       ILE.DUoM Second Qty = Abs(ILE.Quantity) × AppliedRatio
-       Caso especial (ratio = 0, sin lote): ILE.DUoM Second Qty = IJL.DUoM Second Qty
+     Lógica:
+       1. ILE.DUoM Ratio = IJL.DUoM Ratio
+       2. ILE.DUoM Second Qty = NormalizeILESign(ILE, IJL.DUoM Second Qty)
+       3. La lógica de signo y undo/correction se centraliza en DUoM Sign Mgt (50126)
 
 Item Journal Line
   ──[OnAfterInitValueEntry]──► Value Entry
      Suscriptor: DUoM Inventory Subscribers (50104)
-     Lógica: ValueEntry.DUoM Second Qty = Abs(IJL.DUoM Second Qty)
-             (negativo para salidas: signo del ILE.Quantity)
+     Lógica: ValueEntry.DUoM Second Qty = NormalizeILESign(ItemLedgEntry, IJL.DUoM Second Qty)
 ```
 
 #### 2.3.2 CON Item Tracking (artículos con lote — patrón Package Management 6516)
@@ -148,15 +145,18 @@ Reservation Entry (con DUoM Ratio pre-registrado)
 Tracking Specification (buffer, por lote)
   ──[OnAfterCopyTrackingFromSpec]──► Item Journal Line (split por lote)
      Suscriptor: DUoM Tracking Copy Subscribers (50110)
-     Guard: si TrackingSpec.DUoM Ratio = 0, no sobrescribe el ratio existente en IJL
+     Prioridad de resolución:
+       1. TrackingSpec.DUoM Ratio
+       2. DUoM Lot Ratio (50102)
+       3. IJL.DUoM Ratio ya presente
+       4. Sin ratio disponible → DUoM Second Qty = 0
 
 Item Journal Line (split por lote)
   ──[OnAfterCopyTrackingFromItemJnlLine]──► Item Ledger Entry
      Suscriptor: DUoM Tracking Copy Subscribers (50110)
-     Lógica de prioridad:
-       1. DUoM Lot Ratio (50102) > IJL.DUoM Ratio
-       2. ILE.DUoM Second Qty = Abs(ILE.Quantity) × AppliedRatio
-       3. AlwaysVariable + Lot No. sin ratio → ILE.DUoM Second Qty = 0 (T10)
+     Lógica:
+       1. ILE.DUoM Ratio = IJL.DUoM Ratio
+       2. ILE.DUoM Second Qty = NormalizeILESign(ILE, IJL.DUoM Second Qty)
 ```
 
 **Orden de ejecución en BC 27:** `OnAfterInitItemLedgEntry` se dispara **antes** de
@@ -215,8 +215,9 @@ Item Ledger Entry (entrada de origen)
          NormalizeTrackingDUoMSecondQty: DUoM Ratio = DUoM Second Qty / Qty (Base)
 
     Validate DUoM Ratio en Tracking Specification
-      ──[OnValidate en DUoM Tracking Spec Ext (50122)]──► recálculo inmediato
-         Solo modos Fixed/Variable (AlwaysVariable: salida anticipada)
+      ──[OnValidate en DUoM Item Tracking Lines (50112)]──► validación inmediata
+         No recalcula por sí mismo `DUoM Second Qty`; delega en `ValidateTrackingSpecLine`
+         para comprobar coherencia y reglas del modo activo
 
 [2] Al confirmar Item Tracking Lines (OK), BC persiste en Reservation Entry
 
@@ -306,14 +307,14 @@ T-REOPEN-01 a T-REOPEN-05.
 ### 3.5 Prioridad global de fuentes de ratio al contabilizar
 
 ```
-DUoM Lot Ratio (50102) — ratio real medido por lote
-   > IJL.DUoM Ratio (campo directo) — ratio del lote desde TrackingSpec o del artículo
+TrackingSpec.DUoM Ratio (valor de usuario o recargado desde Reservation Entry)
+   > DUoM Lot Ratio (50102) — ratio real medido por lote
+   > IJL.DUoM Ratio (ratio heredado del documento / artículo)
    > sin ratio (= 0)
 ```
 
-Esta prioridad se aplica en:
-- `OnAfterInitItemLedgEntry` (codeunit 50104) — flujo SIN Item Tracking
-- `ILECopyTrackingFromItemJnlLine` (codeunit 50110) — flujo CON Item Tracking
+Esta prioridad se aplica en `IJLCopyTrackingFromSpec` (codeunit 50110). Los subscribers
+finales de ILE/VE no recalculan ratio: copian desde IJL y normalizan signo.
 
 ---
 
@@ -327,7 +328,7 @@ Esta prioridad se aplica en:
 | 4 | `Sales Line` | `Sales Shipment Line` | `OnAfterInitFromSalesLine` (Table 111) | 50104 | Second Qty, Ratio, Unit Price |
 | 5 | `Sales Line` | `Sales Invoice Line` | `OnAfterInitFromSalesLine` (Table 113) | 50104 | Second Qty, Ratio, Unit Price |
 | 6 | `Sales Line` | `Sales Cr.Memo Line` | `OnAfterInitFromSalesLine` (Table 115) | 50104 | Second Qty, Ratio, Unit Price |
-| 7 | `Purchase Line` | `Item Journal Line` | `OnPostItemJnlLineOnAfterCopyDocumentFields` (Cunit Purch.-Post) | 50104 | Second Qty, Ratio |
+| 7 | `Purchase Line` | `Item Journal Line` | `OnBeforeItemJnlPostLine` (Cunit Purch.-Post) | 50104 | Second Qty, Ratio |
 | 8 | `Sales Line` | `Item Journal Line` | `OnPostItemJnlLineOnAfterCopyDocumentFields` (Cunit Sales-Post) | 50104 | Second Qty, Ratio |
 | 9a | `Tracking Specification` | `Reservation Entry` | `OnAfterCopyTrackingFromTrackingSpec` (Table 337) | 50110 | Ratio, Second Qty |
 | 9b | `Reservation Entry` (origen) | `Reservation Entry` (destino) | `OnAfterCopyTrackingFromReservEntry` (Table 337) | 50110 | Ratio, Second Qty |
@@ -345,8 +346,9 @@ Esta prioridad se aplica en:
 > Item Tracking Lines o durante el posting.
 
 > **Pasos 11 y 12 coexisten.** El paso 12 (`OnAfterInitItemLedgEntry`) se ejecuta primero
-> y establece un valor provisional. El paso 11 (`ILECopyTrackingFromItemJnlLine`) se ejecuta
-> después cuando hay Item Tracking activo y consolida el valor final con ratio de lote.
+> y deja una copia coherente desde el IJL disponible en ese momento. El paso 11
+> (`ILECopyTrackingFromItemJnlLine`) se ejecuta después cuando hay Item Tracking activo y
+> consolida el valor final del split por lote, ya resuelto previamente en el IJL.
 
 ---
 

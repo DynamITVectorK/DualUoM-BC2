@@ -103,7 +103,10 @@ de BC cuando existe un helper de librería equivalente.
 > campos DUoM al validar `"Lot No."` en un Item Journal Line. El test T01 (que validaba ese
 > comportamiento) fue eliminado. Los tests T02/T03 verifican como regresión de diseño que
 > validar `"Lot No."` **NO interfiere** con campos DUoM (comportamiento correcto). El
-> mecanismo productivo de aplicación del ratio de lote es `TryApplyLotRatioToILE` en posting.
+> mecanismo productivo de aplicación del ratio de lote usa el patrón
+> `Tracking Specification ↔ Reservation Entry → Item Journal Line → Item Ledger Entry`
+> (codeunits 50109, 50110 y 50125). `TryApplyLotRatioToILE` se conserva solo para tests
+> unitarios de bajo nivel.
 
 ### Excepciones justificadas (documentadas en código)
 

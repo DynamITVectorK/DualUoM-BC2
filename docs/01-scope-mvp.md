@@ -24,12 +24,12 @@ an item using two units of measure with a variable conversion ratio.
   y `docs/03-technical-architecture.md` — sección "Modelo 1:N" para el diseño completo.
 - **Automated Tests** — unit + integration tests for all of the above
 
-> **Limitación conocida (BC 27):** Los campos DUoM en `Reservation Entry` (tabla 337)
-> están definidos (tableextension 50123) pero no se rellenan automáticamente desde
-> `Tracking Specification` porque el evento `OnAfterCopyTrackingFromTrackingSpec` de BC 27
-> no expone un parámetro `var Rec` modificable (AL0282). El ratio de lote llega
-> correctamente al `Item Ledger Entry` mediante la cadena
-> `Tracking Specification → Item Journal Line → Item Ledger Entry`.
+> **Estado actual de tracking (BC 27):** Los campos DUoM de `Reservation Entry` (tableextension
+> 50123) **sí** se rellenan y recargan mediante los eventos estándar
+> `OnAfterCopyTrackingFromTrackingSpec` y `OnAfterCopyTrackingFromReservEntry`
+> (codeunit 50110 + codeunit 50125). Mientras el documento está vivo, `Reservation Entry`
+> es la fuente de verdad per-lote; en contabilización, la cadena vigente es
+> `Reservation Entry → Tracking Specification → Item Journal Line → Item Ledger Entry`.
 
 ### MVP success criteria
 

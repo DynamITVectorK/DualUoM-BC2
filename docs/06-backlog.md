@@ -14,7 +14,9 @@ GitHub Copilot Coding Agent.
 
 > Nota: esta tabla contiene historial de implementación. Si un item menciona enfoques
 > antiguos (p. ej. lógica en `OnQueryClosePage` o sync manual `Tracking → Purchase Line`),
-> debe leerse como **registro histórico** y no como guía vigente.
+> debe leerse como **registro histórico** y no como guía vigente. Para arquitectura viva,
+> usar siempre `docs/02-functional-design.md`, `docs/03-technical-architecture.md`
+> y `docs/10-persistence-matrix.md`.
 
 | Issue | Título |
 |-------|--------|
@@ -76,6 +78,11 @@ GitHub Copilot Coding Agent.
 ---
 
 ## Phase 1 — MVP ✅ COMPLETADA
+
+> **Nota de lectura:** las fichas de issues completados que siguen son snapshots
+> históricos de implementación. Se conservan para trazabilidad del proyecto, pero la
+> arquitectura viva debe consultarse siempre en `docs/02-functional-design.md`,
+> `docs/03-technical-architecture.md` y `docs/10-persistence-matrix.md`.
 
 ### Issue 1 — Project Governance Baseline ✅ IMPLEMENTADO
 
@@ -429,11 +436,14 @@ asociado a un número de lote específico, integrado con el estándar de Item Tr
 - En BC 27, `Lot No.` **no es campo directo** en `Purchase Line` (tabla 39) ni en `Sales Line`
   (tabla 37). Los lotes se gestionan a través de `Item Tracking Lines` / `Reservation Entry`.
 - `Lot No.` **sí es campo directo** en `Item Journal Line` (tabla 83).
-- El override por lote en ILE se implementa en `OnAfterInitItemLedgEntry` (proporcional).
+- **Histórico:** la primera implementación aplicó el override por lote en
+  `OnAfterInitItemLedgEntry`; la arquitectura productiva vigente quedó más tarde consolidada
+  en el patrón `OnAfterCopyTracking*` + `Reservation Entry`.
 
-**Deliverables:**
-- `DUoM Lot Subscribers` (codeunit 50108): suscriptor IJL Lot No. + método `TryApplyLotRatioToILE`
-- `DUoM Inventory Subscribers` (50104) modificado: recálculo proporcional en `OnAfterInitItemLedgEntry`
+**Deliverables (snapshot histórico del issue):**
+- `DUoM Lot Subscribers` (codeunit 50108): helper de ratio por lote; el subscriber IJL `Lot No.`
+  fue eliminado después en Issue 21
+- `DUoM Inventory Subscribers` (50104) modificado: primera versión del recálculo proporcional
 - `DUoM Lot Ratio Tests` (test codeunit 50217): 7 tests (T01–T07)
 - Documentación actualizada: `docs/02-functional-design.md`, `docs/03-technical-architecture.md`,
   `docs/04-item-setup-model.md`, `docs/TestCoverageAudit.md`
@@ -510,7 +520,8 @@ El subscriber `OnAfterValidateEvent[Lot No.]` en `Item Journal Line` (codeunit 5
 **eliminado** porque asumía incorrectamente que validar `"Lot No."` en una IJL equivale a
 asignar un único lote con su ratio DUoM. En Business Central real:
 - Una IJL puede tener N lotes asignados vía Item Tracking / Reservation Entry.
-- La ratio real por lote se aplica a nivel de ILE durante el posting (`TryApplyLotRatioToILE`).
+- La ratio real por lote se resuelve en el patrón estándar
+  `Tracking Specification / Reservation Entry → IJL split → ILE`.
 - `Item Journal Line."Lot No."` no es la fuente de verdad de la ratio DUoM por lote.
 
 **Tests eliminados (premisa 1:1 inválida):**
@@ -525,7 +536,7 @@ asignar un único lote con su ratio DUoM. En Business Central real:
   No representa un escenario BC real de Item Tracking.
 
 **Tests productivos no modificados (mecanismo correcto):**
-- T04–T10: posting con Reservation Entries → TryApplyLotRatioToILE → ILE correcto por lote.
+- T04–T10: posting con Reservation Entries → split IJL → ILE correcto por lote.
 
 **Documentación actualizada:**
 - `docs/02-functional-design.md`: eliminado "Caso A" del flujo de integración; actualizada regla
@@ -567,13 +578,10 @@ Alcance implementado:
 - XLF actualizados (en-US y es-ES) con los nuevos textos de la page extension y
   table extension.
 
-**Limitación conocida (RT-05 — Propagación a Reservation Entry):**
-  No se implementa la propagación directa desde `Tracking Specification` hacia
-  `Reservation Entry` (337) en este issue por falta de un evento seguro verificado
-  en BC 27 con los parámetros necesarios. Los campos DUoM quedan disponibles en el
-  buffer de `Item Tracking Lines` durante la sesión interactiva. El ratio real por lote
-  se aplica al ILE durante el posting vía `TryApplyLotRatioToILE` (codeunit 50108).
-  Esta limitación queda documentada para una tarea futura N-lotes.
+**Nota histórica (RT-05 original del issue):**
+  La limitación original sobre `Reservation Entry` quedó cerrada posteriormente en
+  Issue 190 y hardenings posteriores. En el estado vigente, la propagación
+  `Tracking Specification ↔ Reservation Entry` **sí está implementada**.
 
 **Deliverables:**
 - `DUoMTrackingSpecExt.TableExt.al` (tableextension 50122)
@@ -596,8 +604,8 @@ pre-registro en 50102.
 **Solución:** nuevo codeunit `DUoM Tracking Copy Subscribers` (50110) con tres
 suscriptores siguiendo el patrón de `Package Management (6516)`:
 - `OnAfterCopyTrackingFromSpec` (Table IJL): propaga DUoM Ratio de TrackingSpec a IJL.
-- `OnAfterCopyTrackingFromItemJnlLine` (Table ILE): recalcula DUoM Second Qty exacta
-  del lote con `Abs(ILE.Quantity) × DUoM Ratio`.
+- `OnAfterCopyTrackingFromItemJnlLine` (Table ILE): copia ratio y cantidad desde el IJL
+  del split por lote y normaliza el signo final.
 - `OnAfterCopyTrackingFromItemLedgEntry` (Table IJL): flujo inverso (devoluciones).
 
 **Deliverables:**
@@ -759,7 +767,8 @@ Alcance (report extensions en BC 27):
 
 **Contexto:** Issue 21 eliminó el subscriber que asumía 1 línea = 1 lote y consolidó el modelo
 correcto: la ratio DUoM real por lote se almacena en `DUoM Lot Ratio` (50102) y se aplica
-durante el posting en `TryApplyLotRatioToILE`. Sin embargo, la arquitectura de *entrada* de
+durante el flujo estándar `Tracking Specification / Reservation Entry → IJL split → ILE`.
+Sin embargo, la arquitectura de *entrada* de
 datos de ratio de lote (cómo el usuario registra la ratio real al momento de la recepción/pesaje)
 aún no está integrada con el flujo estándar de Item Tracking de BC.
 

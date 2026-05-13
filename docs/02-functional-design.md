@@ -148,7 +148,8 @@ El modelo correcto de Business Central es:
 - El **total DUoM de la línea** debe ser coherente con la suma de las cantidades DUoM
   de todos los ILEs generados para esa línea.
 - **`Item Journal Line`."Lot No." no es la fuente de verdad de la ratio DUoM por lote.**
-  La ratio real por lote se almacena en `DUoM Lot Ratio` (50102) y se aplica a nivel de ILE.
+  La ratio real por lote se resuelve durante el flujo
+  `Tracking Specification / Reservation Entry → Item Journal Line split → Item Ledger Entry`.
 
 ### Flujo de integración implementado (Issues 13 → 20 → 21 → 23)
 
@@ -156,14 +157,19 @@ El modelo correcto de Business Central es:
 Purchase/Sales Line o IJL con N lotes vía Item Tracking:
   Usuario asigna N lotes en "Item Tracking Lines" (estándar BC)
   → DUoM Ratio pre-rellenado en Tracking Specification al asignar lote (codeunit 50109)
+  → Al confirmar la página: el detalle DUoM se persiste en Reservation Entry
+      → codeunit 50110 + 50125 (TrackingSpec ↔ Reservation Entry)
   → Al contabilizar: BC construye Tracking Specification desde Reservation Entry
-      → codeunit 50110 (TrackingSpecCopyTrackingFromReservEntry) copia DUoM Ratio
+      → codeunit 50110 (TrackingSpecCopyTrackingFromReservEntry) rehidrata DUoM Ratio/Second Qty
   → BC divide la línea por lote (split): un Item Journal Line por lote
-      → codeunit 50110 (IJLCopyTrackingFromSpec) copia DUoM Ratio de TrackingSpec al IJL
+      → codeunit 50110 (IJLCopyTrackingFromSpec) resuelve por prioridad:
+          (1) ratio del TrackingSpec
+          (2) ratio registrado en DUoM Lot Ratio
+          (3) ratio ya presente en el IJL padre
+          (4) sin ratio disponible → DUoM Second Qty = 0
   → Para cada ILE: codeunit 50110 (ILECopyTrackingFromItemJnlLine)
-      ↓ Prioridad: DUoM Lot Ratio (50102) > IJL.DUoM Ratio
-      ↓ ILE.DUoM Ratio = AppliedRatio
-      ↓ ILE.DUoM Second Qty = Abs(ILE.Quantity) × AppliedRatio
+      ↓ ILE.DUoM Ratio = IJL.DUoM Ratio
+      ↓ ILE.DUoM Second Qty = NormalizeILESign(ILE, IJL.DUoM Second Qty)
 Item Ledger Entry  ✓
 ```
 
@@ -179,8 +185,8 @@ Item Ledger Entry  ✓
 |------|---------------------------------------------|
 | Fixed | Ratio de lote NO aplicado. El ratio fijo siempre prevalece. |
 | Variable | Si existe ratio de lote → sobrescribe DUoM Ratio + recalcula DUoM Second Qty |
-| AlwaysVariable + ratio de lote en `DUoM Lot Ratio` | Ratio de lote → `ILE.DUoM Second Qty = Abs(ILE.Quantity) × ratio_lote` |
-| AlwaysVariable + sin ratio de lote + ratio manual en IJL (≠ 0) | Ratio manual → `ILE.DUoM Second Qty = Abs(ILE.Quantity) × ratio_manual`. Ver T14. |
+| AlwaysVariable + ratio de lote en `DUoM Lot Ratio` | El split IJL se calcula con `ratio_lote` y el ILE copia desde IJL con signo normalizado |
+| AlwaysVariable + sin ratio de lote + ratio manual en IJL (≠ 0) | El split IJL se calcula con `ratio_manual` y el ILE copia desde IJL con signo normalizado. Ver T14. |
 | AlwaysVariable + sin ratio de lote + sin Lot No. | Copia `DUoM Second Qty` directamente desde IJL (flujo sin trazabilidad de lote) |
 | AlwaysVariable + sin ratio de lote + con Lot No. + `DUoM Ratio = 0` | `ILE.DUoM Second Qty = 0`. Distribución imposible. Ver T10 y limitación conocida. |
 
@@ -193,17 +199,17 @@ campo `DUoM Ratio` del Item Journal Line.
 
 | # | Ratio de lote en `DUoM Lot Ratio` | Ratio manual en `IJL.DUoM Ratio` | Lot No. asignado | Resultado `ILE.DUoM Second Qty` | Test |
 |---|-----------------------------------|----------------------------------|------------------|---------------------------------|------|
-| 1 | ✅ Sí | — (prevalece el ratio de lote) | ✅ Sí | `Abs(ILE.Quantity) × ratio_lote` | T08–T09 |
-| 2 | ❌ No | ✅ Sí (introducido manualmente) | ✅ Sí | `Abs(ILE.Quantity) × ratio_manual` | T14 |
+| 1 | ✅ Sí | — (prevalece el ratio de lote) | ✅ Sí | El split IJL queda calculado con `ratio_lote`; el ILE copia desde IJL | T08–T09 |
+| 2 | ❌ No | ✅ Sí (introducido manualmente) | ✅ Sí | El split IJL queda calculado con `ratio_manual`; el ILE copia desde IJL | T14 |
 | 3 | ❌ No | ❌ No (`DUoM Ratio = 0`) | ❌ No | `IJL.DUoM Second Qty` (copia directa) | — |
 | 4 | ❌ No | ❌ No (`DUoM Ratio = 0`) | ✅ Sí | `0` (distribución imposible) | T10 |
 
 #### Rationale de la política
 
 1. **Ratio de lote prevalece (caso 1):** Cuando existe un registro en `DUoM Lot Ratio` (50102)
-   para el par `(Artículo, Lote)`, ese ratio se usa siempre. Es la fuente más precisa
-   disponible (ratio real medido). Implementado en `ILECopyTrackingFromItemJnlLine`
-   (codeunit 50110) con fallback a `OnAfterInitItemLedgEntry` (codeunit 50104).
+    para el par `(Artículo, Lote)`, ese ratio se usa siempre. Es la fuente más precisa
+    disponible (ratio real medido). Se resuelve en `IJLCopyTrackingFromSpec`
+    (codeunit 50110) antes de que el ILE copie los valores finales desde el IJL.
 
 2. **Ratio manual operativo (caso 2 — T14):** Cuando no existe ratio de lote en 50102
    pero el usuario ha introducido un `DUoM Ratio` manualmente en el IJL (p. ej. vía el
@@ -223,18 +229,26 @@ campo `DUoM Ratio` del Item Journal Line.
 
 #### Implementación en AL
 
-La política se implementa en `OnAfterInitItemLedgEntry` (codeunit 50104,
-`DUoM Inventory Subscribers`):
+La política vigente se implementa en dos pasos:
+
+- `IJLCopyTrackingFromSpec` (codeunit 50110) decide la magnitud DUoM del split por lote.
+- `ILECopyTrackingFromItemJnlLine` (codeunit 50110) copia ratio y cantidad desde el IJL
+  y normaliza el signo con `DUoM Sign Mgt`.
 
 ```al
-// AlwaysVariable + Lot No. + DUoM Ratio = 0 → ILE = 0 (T10)
-// AlwaysVariable + Lot No. + DUoM Ratio ≠ 0 → caída al cálculo general (T14)
-if ItemJournalLine."Lot No." <> '' then
-    if DUoMSetupResolver.GetEffectiveSetup(...) then
-        if ConversionMode = ConversionMode::AlwaysVariable then
-            if ItemJournalLine."DUoM Ratio" = 0 then
-                exit;  // caso 4: ILE queda en 0
-// caso 2: si DUoM Ratio ≠ 0, continúa y calcula Abs(ILE.Qty) × DUoM Ratio
+// IJLCopyTrackingFromSpec
+if TrackingSpecification."DUoM Ratio" <> 0 then
+    ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(... )
+else
+    if ItemJournalLine."DUoM Ratio" <> 0 then
+        ItemJournalLine."DUoM Second Qty" := DUoMSignMgt.ApplyMovementSign(... )
+    else
+        ItemJournalLine."DUoM Second Qty" := 0;
+
+// ILECopyTrackingFromItemJnlLine
+ItemLedgerEntry."DUoM Ratio" := ItemJnlLine."DUoM Ratio";
+ItemLedgerEntry."DUoM Second Qty" :=
+    DUoMSignMgt.NormalizeILESign(ItemLedgerEntry, ItemJnlLine."DUoM Second Qty");
 ```
 
 ### Limitación conocida: AlwaysVariable + multi-lote sin ratio de lote ni ratio manual (caso 4)
@@ -368,6 +382,22 @@ al `Item Ledger Entry` mediante la cadena
 codeunit 50110 (`DUoM Tracking Copy Subscribers`). Ver la sección anterior
 "Flujo de integración implementado" para el detalle completo.
 
+## Signo de `DUoM Second Qty`
+
+La magnitud DUoM se introduce y se muestra al usuario en positivo en tracking y documentos
+abiertos. El signo técnico se decide de forma centralizada en `DUoM Sign Mgt` (50126):
+
+- **Entradas** (compra, recepción, ajustes positivos): `DUoM Second Qty` positivo.
+- **Salidas** (venta, envío, ajustes negativos): `DUoM Second Qty` negativo.
+- **Correcciones / undo:** el signo se invierte respecto al movimiento original mediante
+  los helpers específicos de `DUoM Sign Mgt`.
+
+La regla de implementación es siempre la misma:
+
+```al
+ILE."DUoM Second Qty" := DUoMSignMgt.NormalizeILESign(ILE, IJL."DUoM Second Qty");
+```
+
 > **Importante:** los campos DUoM de la línea origen (Diario de productos, línea de compra
 > o venta) son **totales agregados**. La ratio real por lote queda en el ILE de cada lote,
 > no en la línea origen. Ver la sección anterior "Regla de diseño: línea origen como
@@ -389,7 +419,8 @@ accesible desde la acción **DUoM Lot Ratios** en la página `DUoM Item Setup`.
 ### Sales
 
 - Sales order lines and shipment lines get a `Second Qty` field
-- Picking (basic warehouse) deducts based on primary qty; second qty is informational
+- En la fase actual, el flujo soportado es el envío directo sin WMS; el soporte de picking
+  pertenece a la **Phase 2 (Issue 15 — Directed Put-Away and Pick DUoM Fields)** del backlog
 - Invoice line shows second qty from shipment
 
 ### Inventory
@@ -405,13 +436,15 @@ accesible desde la acción **DUoM Lot Ratios** en la página `DUoM Item Setup`.
 - Diferenciación funcional:
   - `DUoM Inventory` = stock histórico contabilizado (fuente: `Item Ledger Entry`).
   - `Reservation Entry."DUoM Second Qty"` = desglose operativo por lote en documento vivo.
-- Physical inventory counts support second qty entry
+- **Physical inventory DUoM** sigue pendiente para la Phase 2 (Issue 17).
 
 ### Warehouse (Phase 2)
 
-- Warehouse receipt and shipment lines get `Second Qty`
-- Directed pick/put-away lines get `Second Qty` for double-checking
-- Warehouse entries record second qty
+- **Pendiente, no implementado todavía.**
+- Future scope previsto:
+  - Warehouse receipt and shipment lines con `Second Qty`
+  - Directed pick/put-away lines con campos DUoM para doble verificación
+  - Warehouse entries con trazabilidad DUoM
 
 ---
 
