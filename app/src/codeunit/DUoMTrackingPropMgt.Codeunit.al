@@ -86,7 +86,10 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
     // TempTrackingSpecification.TransferFields(ReservEntry). En ventas, ese TransferFields
     // copia RE."DUoM Second Qty" = -5 al buffer temporal; este es el punto exacto donde
     // debe normalizarse al patrón piezas (+5 en pantalla) sin tocar Reservation Entry.
-    // Firma validada contra BC 27 BaseApp.
+    // Firma validada contra BC 27 BaseApp: Page 6510 "Item Tracking Lines",
+    // local procedure OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields(
+    //     var TempTrackingSpecification: Record "Tracking Specification" temporary;
+    //     var ReservEntry: Record "Reservation Entry")
     [EventSubscriber(ObjectType::Page, Page::"Item Tracking Lines", 'OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields', '', false, false)]
     local procedure OnAfterTransferFieldsToTempTrackingSpec(
         var TempTrackingSpecification: Record "Tracking Specification" temporary;
