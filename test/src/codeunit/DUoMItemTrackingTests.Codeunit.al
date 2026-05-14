@@ -1385,8 +1385,13 @@ codeunit 50218 "DUoM Item Tracking Tests"
                 end;
             4:
                 begin
-                    ItemTrackingLines.First();
+                    SelectTrackLineByLot(ItemTrackingLines, 'LOT-S-MOD-T27', 'T27');
                     ItemTrackingLines."DUoM Second Qty".SetValue(4);
+                    LibraryAssert.AreNearlyEqual(
+                        1,
+                        ItemTrackingLines."DUoM Ratio".AsDecimal(),
+                        0.001,
+                        'T27: En la segunda edición, DUoM Ratio debe recalcularse a 1 para LOT-S-MOD-T27.');
                     ItemTrackingLines.OK().Invoke();
                 end;
             5:
@@ -1448,6 +1453,21 @@ codeunit 50218 "DUoM Item Tracking Tests"
         LibraryAssert.IsFalse(
             IsFunctionalTrackLine(ItemTrackingLines),
             StrSubstNo('%1: Se detectó una segunda línea funcional (duplicado).', TestId));
+    end;
+
+    local procedure SelectTrackLineByLot(var ItemTrackingLines: TestPage "Item Tracking Lines"; ExpectedLotNo: Code[50]; TestId: Text)
+    var
+        LibraryAssert: Codeunit "Library Assert";
+        Found: Boolean;
+    begin
+        ItemTrackingLines.First();
+        repeat
+            Found := ItemTrackingLines."Lot No.".Value = ExpectedLotNo;
+        until Found or (not ItemTrackingLines.Next());
+
+        LibraryAssert.IsTrue(
+            Found,
+            StrSubstNo('%1: No se encontró la línea de tracking para el lote %2.', TestId, ExpectedLotNo));
     end;
 
     local procedure IsFunctionalTrackLine(var ItemTrackingLines: TestPage "Item Tracking Lines"): Boolean
