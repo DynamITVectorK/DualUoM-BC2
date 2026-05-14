@@ -874,9 +874,9 @@
              PENDING: Codeunit hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
              ═══════════════════════════════════════════════════════════════════ -->
         <trans-unit id="Codeunit 3801234600 - NamedType 3801234601" translate="yes" xml:space="preserve">
-          <source>The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the purchase line.\\Document: %1\\Line No.: %2\\Purchase Line DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4</source>
-          <target state="final">The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the purchase line.\\Document: %1\\Line No.: %2\\Purchase Line DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4</target>
-          <note from="Developer" annotates="general" priority="2">%1 = Document No., %2 = Line No., %3 = Purchase Line DUoM Second Qty, %4 = Second UoM Code, %5 = Total Tracking DUoM Qty, %6 = Difference</note>
+          <source>The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the %7.\\Document: %1\\Line No.: %2\\%7 DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4</source>
+          <target state="final">The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the %7.\\Document: %1\\Line No.: %2\\%7 DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4</target>
+          <note from="Developer" annotates="general" priority="2">%1 = Document No., %2 = Line No., %3 = Source Line DUoM Second Qty (abs), %4 = Second UoM Code, %5 = Total Tracking DUoM Qty (abs), %6 = Difference, %7 = Source line caption (purchase line / sales line)</note>
           <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType TrackingTotalMismatchErr</note>
         </trans-unit>
         <trans-unit id="Codeunit 3801234600 - NamedType 3801234602" translate="yes" xml:space="preserve">
@@ -896,6 +896,18 @@
           <target state="final">Lot %1 uses a DUoM ratio (%2) that differs from the fixed ratio configured for item %3 (%4).</target>
           <note from="Developer" annotates="general" priority="2">%1 = Lot No., %2 = Actual Ratio, %3 = Item No., %4 = Fixed Ratio</note>
           <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType FixedRatioMismatchErr</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 3801234600 - NamedType 3801234605" translate="yes" xml:space="preserve">
+          <source>purchase line</source>
+          <target state="final">purchase line</target>
+          <note from="Developer" annotates="general" priority="2">Caption used in DUoM coherence total mismatch errors for purchase source lines; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType PurchLineTxt</note>
+        </trans-unit>
+        <trans-unit id="Codeunit 3801234600 - NamedType 3801234606" translate="yes" xml:space="preserve">
+          <source>sales line</source>
+          <target state="final">sales line</target>
+          <note from="Developer" annotates="general" priority="2">Caption used in DUoM coherence total mismatch errors for sales source lines; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">Codeunit DUoM Tracking Coherence Mgt - NamedType SalesLineTxt</note>
         </trans-unit>
 
         <!-- ═══════════════════════════════════════════════════════════════════

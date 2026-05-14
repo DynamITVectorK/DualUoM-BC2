@@ -57,6 +57,26 @@ codeunit 50103 "DUoM Sales Subscribers"
         RecalculateSalesLineDUoM(Rec, true);
     end;
 
+    /// <summary>
+    /// Server-side DUoM coherence validation before posting.
+    ///
+    /// Publisher:  Codeunit "Sales-Post" (80), event OnPostItemJnlLineOnAfterCopyDocumentFields.
+    /// Motivo:     Se ejecuta durante posting cuando Reservation Entry de tracking ya existe
+    ///             y antes de crear ILE/Value Entry, permitiendo bloquear incoherencias.
+    /// Firma BC 27 verificada: (var ItemJournalLine: Record "Item Journal Line";
+    ///                          SalesLine: Record "Sales Line").
+    /// </summary>
+    [EventSubscriber(ObjectType::Codeunit, Codeunit::"Sales-Post",
+        'OnPostItemJnlLineOnAfterCopyDocumentFields', '', false, false)]
+    local procedure OnSalesPostValidateDUoMTrackingCoherence(
+        var ItemJournalLine: Record "Item Journal Line";
+        SalesLine: Record "Sales Line")
+    var
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+    begin
+        DUoMCoherenceMgt.ValidateSalesLineTrackingCoherence(SalesLine);
+    end;
+
     local procedure RecalculateSalesLineDUoM(var SalesLine: Record "Sales Line"; ResetCurrentDUoM: Boolean)
     var
         DUoMCalcEngine: Codeunit "DUoM Calc Engine";

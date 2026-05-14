@@ -124,7 +124,80 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
             Error(TrackingTotalMismatchErr,
                 PurchLine."Document No.", PurchLine."Line No.",
                 PurchLine."DUoM Second Qty", SecondUoMCode,
-                TotalSecondQty, Difference);
+                TotalSecondQty, Difference, PurchLineTxt);
+    end;
+
+    /// <summary>
+    /// Validates that the sum of DUoM Second Qty across all Tracking Specification buffer
+    /// records for the same Sales Line source matches SalesLine."DUoM Second Qty".
+    ///
+    /// Uses absolute quantities because Sales tracking persistence may use technical signs
+    /// in intermediate buffers while users always edit/display positive DUoM values.
+    /// </summary>
+    procedure ValidateTrackingSpecBufferForSalesLine(TrackingSpec: Record "Tracking Specification")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        LocalTrackingSpec: Record "Tracking Specification" temporary;
+        SalesLine: Record "Sales Line";
+        SalesDocType: Enum "Sales Document Type";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        TotalSecondQty: Decimal;
+        RoundingPrecision: Decimal;
+        Difference: Decimal;
+        ItemNo: Code[20];
+        VariantCode: Code[10];
+        SourceSubtype: Integer;
+        SourceID: Code[20];
+        SourceRefNo: Integer;
+        LineSecondQty: Decimal;
+    begin
+        if TrackingSpec."Source Type" <> Database::"Sales Line" then
+            exit;
+
+        ItemNo := TrackingSpec."Item No.";
+        VariantCode := TrackingSpec."Variant Code";
+        SourceSubtype := TrackingSpec."Source Subtype";
+        SourceID := TrackingSpec."Source ID";
+        SourceRefNo := TrackingSpec."Source Ref. No.";
+
+        if ItemNo = '' then
+            exit;
+
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 ItemNo, VariantCode, SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        SalesDocType := Enum::"Sales Document Type".FromInteger(SourceSubtype);
+        if not SalesLine.Get(SalesDocType, SourceID, SourceRefNo) then
+            exit;
+
+        LineSecondQty := Abs(SalesLine."DUoM Second Qty");
+        if LineSecondQty <= 0 then
+            exit;
+
+        // Use shared temp-table data with an independent cursor to avoid mutating
+        // the caller cursor while still validating the same in-memory buffer.
+        LocalTrackingSpec.Copy(TrackingSpec, true);
+        LocalTrackingSpec.Reset();
+        LocalTrackingSpec.SetSourceFilter(
+            Database::"Sales Line", SourceSubtype, SourceID, SourceRefNo, true);
+
+        TotalSecondQty := 0;
+        if LocalTrackingSpec.FindSet() then
+            repeat
+                if IsFunctionalTrackingLine(LocalTrackingSpec) then
+                    TotalSecondQty += Abs(LocalTrackingSpec."DUoM Second Qty");
+            until LocalTrackingSpec.Next() = 0;
+
+        RoundingPrecision := GetDUoMRoundingPrecision(ItemNo, SecondUoMCode);
+        Difference := Abs(TotalSecondQty - LineSecondQty);
+        if Difference > RoundingPrecision then
+            Error(TrackingTotalMismatchErr,
+                SalesLine."Document No.", SalesLine."Line No.",
+                LineSecondQty, SecondUoMCode,
+                TotalSecondQty, Difference, SalesLineTxt);
     end;
 
     /// <summary>
@@ -144,7 +217,6 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     procedure ValidatePurchLineTrackingCoherence(PurchLine: Record "Purchase Line")
     var
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
-        DUoMUoMHelper: Codeunit "DUoM UoM Helper";
         ReservEntry: Record "Reservation Entry";
         SecondUoMCode: Code[10];
         ConversionMode: Enum "DUoM Conversion Mode";
@@ -183,7 +255,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 Error(TrackingTotalMismatchErr,
                     PurchLine."Document No.", PurchLine."Line No.",
                     PurchLine."DUoM Second Qty", SecondUoMCode,
-                    TotalSecondQty, Difference);
+                    TotalSecondQty, Difference, PurchLineTxt);
         end;
 
         // Per-entry validation: ratio coherence and mode-specific rules.
@@ -193,6 +265,58 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 ValidateReservEntryCoherence(
                     ReservEntry, ConversionMode, FixedRatio,
                     RoundingPrecision, PurchLine."No.");
+            until ReservEntry.Next() = 0;
+    end;
+
+    /// <summary>
+    /// Validates DUoM coherence for a Sales Line against all its Reservation Entries.
+    /// Uses absolute totals and signs to compare the functional user quantity.
+    ///
+    /// Called from: DUoM Sales Subscribers (50103) during sales posting.
+    /// </summary>
+    procedure ValidateSalesLineTrackingCoherence(SalesLine: Record "Sales Line")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        ReservEntry: Record "Reservation Entry";
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        TotalSecondQty: Decimal;
+        TotalBaseQty: Decimal;
+        RoundingPrecision: Decimal;
+        Difference: Decimal;
+        LineSecondQty: Decimal;
+    begin
+        if SalesLine.Type <> SalesLine.Type::Item then
+            exit;
+        if SalesLine."No." = '' then
+            exit;
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 SalesLine."No.", SalesLine."Variant Code",
+                 SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        CalcTrackingDUoMTotalsForSalesLine(SalesLine, TotalSecondQty, TotalBaseQty);
+        if (TotalBaseQty = 0) and (TotalSecondQty = 0) then
+            exit;
+
+        RoundingPrecision := GetDUoMRoundingPrecision(SalesLine."No.", SecondUoMCode);
+        LineSecondQty := Abs(SalesLine."DUoM Second Qty");
+        if LineSecondQty > 0 then begin
+            Difference := Abs(TotalSecondQty - LineSecondQty);
+            if Difference > RoundingPrecision then
+                Error(TrackingTotalMismatchErr,
+                    SalesLine."Document No.", SalesLine."Line No.",
+                    LineSecondQty, SecondUoMCode,
+                    TotalSecondQty, Difference, SalesLineTxt);
+        end;
+
+        FilterReservEntriesForSalesLine(SalesLine, ReservEntry);
+        if ReservEntry.FindSet() then
+            repeat
+                ValidateSalesReservEntryCoherence(
+                    ReservEntry, ConversionMode, FixedRatio,
+                    RoundingPrecision, SalesLine."No.");
             until ReservEntry.Next() = 0;
     end;
 
@@ -532,6 +656,20 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         ReservEntry.SetRange(Positive, true);
     end;
 
+    local procedure FilterReservEntriesForSalesLine(
+        SalesLine: Record "Sales Line";
+        var ReservEntry: Record "Reservation Entry")
+    begin
+        ReservEntry.Reset();
+        ReservEntry.SetSourceFilter(
+            Database::"Sales Line",
+            SalesLine."Document Type".AsInteger(),
+            SalesLine."Document No.",
+            SalesLine."Line No.",
+            true);
+        ReservEntry.SetRange(Positive, false);
+    end;
+
     local procedure ValidateReservEntryCoherence(
         ReservEntry: Record "Reservation Entry";
         ConversionMode: Enum "DUoM Conversion Mode";
@@ -563,6 +701,51 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 ReservEntry."Lot No.");
     end;
 
+    local procedure ValidateSalesReservEntryCoherence(
+        ReservEntry: Record "Reservation Entry";
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        RoundingPrecision: Decimal;
+        ItemNo: Code[20])
+    begin
+        if ReservEntry."DUoM Ratio" = 0 then begin
+            if ConversionMode = ConversionMode::AlwaysVariable then
+                if ReservEntry."Quantity (Base)" <> 0 then
+                    Error(AlwaysVariableMissingRatioErr, ItemNo, ReservEntry."Lot No.");
+            exit;
+        end;
+
+        if ConversionMode = ConversionMode::Fixed then
+            if Abs(ReservEntry."DUoM Ratio" - FixedRatio) > 0.00001 then
+                Error(FixedRatioMismatchErr,
+                    ReservEntry."Lot No.", ReservEntry."DUoM Ratio", ItemNo, FixedRatio);
+
+        if (ReservEntry."Quantity (Base)" <> 0) and (ReservEntry."DUoM Second Qty" <> 0) then
+            AssertRatioCoherence(
+                Abs(ReservEntry."Quantity (Base)"),
+                Abs(ReservEntry."DUoM Second Qty"),
+                ReservEntry."DUoM Ratio",
+                RoundingPrecision,
+                ReservEntry."Lot No.");
+    end;
+
+    local procedure CalcTrackingDUoMTotalsForSalesLine(
+        SalesLine: Record "Sales Line";
+        var TotalSecondQty: Decimal;
+        var TotalBaseQty: Decimal)
+    var
+        ReservEntry: Record "Reservation Entry";
+    begin
+        TotalSecondQty := 0;
+        TotalBaseQty := 0;
+        FilterReservEntriesForSalesLine(SalesLine, ReservEntry);
+        if ReservEntry.FindSet() then
+            repeat
+                TotalSecondQty += Abs(ReservEntry."DUoM Second Qty");
+                TotalBaseQty += Abs(ReservEntry."Quantity (Base)");
+            until ReservEntry.Next() = 0;
+    end;
+
     /// <summary>
     /// Returns true when the Tracking Specification line has at least one meaningful
     /// value (Lot No., Serial No., Package No., Quantity (Base), DUoM Second Qty, or
@@ -581,12 +764,16 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     end;
 
     var
-        TrackingTotalMismatchErr: Label 'The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the purchase line.\\Document: %1\\Line No.: %2\\Purchase Line DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4',
-            Comment = '%1 = Document No., %2 = Line No., %3 = Purchase Line DUoM Second Qty, %4 = Second UoM Code, %5 = Total Tracking DUoM Qty, %6 = Difference';
+        TrackingTotalMismatchErr: Label 'The DUoM secondary quantity assigned in the tracking lines does not match the DUoM quantity on the %7.\\Document: %1\\Line No.: %2\\%7 DUoM Qty: %3 %4\\Tracking DUoM Qty: %5 %4\\Difference: %6 %4',
+            Comment = '%1 = Document No., %2 = Line No., %3 = Source Line DUoM Second Qty (abs), %4 = Second UoM Code, %5 = Total Tracking DUoM Qty (abs), %6 = Difference, %7 = Source line caption (purchase line / sales line)';
         RatioIncoherenceErr: Label 'Lot %1 has an inconsistent DUoM ratio.\\Base Qty: %2\\Secondary Qty: %3\\Stated Ratio: %4\\Expected Ratio: %5',
             Comment = '%1 = Lot No., %2 = Base Qty, %3 = Secondary Qty, %4 = Stated Ratio, %5 = Expected Ratio';
         AlwaysVariableMissingRatioErr: Label 'Item %1 requires a variable DUoM ratio per lot, but lot %2 does not have a valid ratio.',
             Comment = '%1 = Item No., %2 = Lot No.';
         FixedRatioMismatchErr: Label 'Lot %1 uses a DUoM ratio (%2) that differs from the fixed ratio configured for item %3 (%4).',
             Comment = '%1 = Lot No., %2 = Actual Ratio, %3 = Item No., %4 = Fixed Ratio';
+        PurchLineTxt: Label 'purchase line',
+            Comment = 'Caption used in DUoM coherence total mismatch errors for purchase source lines; no placeholders.';
+        SalesLineTxt: Label 'sales line',
+            Comment = 'Caption used in DUoM coherence total mismatch errors for sales source lines; no placeholders.';
 }
