@@ -34,7 +34,10 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
     local procedure OnAfterMoveFields(
         var TrkgSpec: Record "Tracking Specification";
         var ReservEntry: Record "Reservation Entry")
+    var
+        DUoMTrackingCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
     begin
+        DUoMTrackingCoherenceMgt.ValidateTrackingSpecBufferForSalesLine(TrkgSpec);
         CopyTrackingSpecToReservEntry(TrkgSpec, ReservEntry);
     end;
 
