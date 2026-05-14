@@ -437,35 +437,49 @@ siempre es positiva, independientemente de si el documento es una compra o una v
 | ILE (posted) | +5 | −5 |
 
 En ventas, BC almacena internamente `RE."DUoM Second Qty" = −5` (signo técnico negativo).
-Cuando BC reconstruye el buffer de visualización desde las Reservation Entries, puede trasladar
-ese valor con signo al buffer de TrackingSpec sin pasar por los subscribers de normalización.
-Por eso, **todos los subscribers de copia TrackingSpec→TrackingSpec deben aplicar `Abs()`**
-para garantizar que el buffer de visualización siempre quede con valores positivos.
+En la reapertura real de `Item Tracking Lines` para documentos vivos (`Sales Order`,
+`Purchase Order`), BC no reconstruye ese buffer con `CopyTrackingFromTrackingSpec()`.
+El path real es:
+
+```text
+Page 6510 "Item Tracking Lines".SetSourceSpec()
+→ AddReservEntriesToTempRecSet(...)
+→ TempTrackingSpecification.TransferFields(ReservEntry)
+→ OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields   [50125]
+→ Insert del buffer temporal visible
+```
+
+Ese `TransferFields(ReservEntry)` copia `RE."DUoM Second Qty"` con su signo técnico.
+En ventas, eso significa que `-5` entra literalmente al `Tracking Specification` visible.
+Por tanto, **el punto correcto de normalización para la reapertura real es el evento de página
+`OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields`**, no
+`OnAfterCopyTrackingFromTrackingSpec`.
 
 ### Regla de implementación
 
 ```al
-// ✅ CORRECTO — subscriber OnAfterCopyTrackingFromTrackingSpec (codeunit 50110)
-// Abs() garantiza valor positivo en el buffer de visualización, tanto para compras (+)
-// como para ventas (−). El signo de posting se aplica más adelante en IJLCopyTrackingFromSpec.
-TrackingSpecification."DUoM Ratio" := Abs(FromTrackingSpecification."DUoM Ratio");
-TrackingSpecification."DUoM Second Qty" := Abs(FromTrackingSpecification."DUoM Second Qty");
+// ✅ CORRECTO — reapertura real de Item Tracking Lines (page 6510, codeunit 50125)
+// TransferFields ya ha copiado los campos estándar desde Reservation Entry.
+// Aquí se normaliza explícitamente el bloque DUoM para mantener el patrón piezas en pantalla.
+CopyReservEntryToTrackingSpec(ReservEntry, TempTrackingSpecification);
 
-// ❌ PROHIBIDO — copia directa sin Abs() en el subscriber de buffer TrackingSpec→TrackingSpec
-// (ventas mostraría −5 en pantalla en lugar de +5)
-TrackingSpecification."DUoM Second Qty" := FromTrackingSpecification."DUoM Second Qty";
+// ❌ INCORRECTO — asumir que el reopen real pasa por CopyTrackingFromTrackingSpec()
+// Ese evento cubre copias TrackingSpec→TrackingSpec, pero no el path real de reopen.
+TrackingSpecification."DUoM Second Qty" := Abs(FromTrackingSpecification."DUoM Second Qty");
 ```
 
 ### Coherencia entre subscribers de copia TrackingSpec
 
-Todos los puntos de copia que afectan al buffer de visualización aplican `Abs()`:
+Todos los puntos de copia que afectan al buffer de visualización deben aplicar normalización
+positiva, pero no todos pertenecen al mismo path:
 
 | Evento | Subscriber | Abs() |
 |--------|-----------|-------|
+| `OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields` (Page 6510) | `OnAfterTransferFieldsToTempTrackingSpec` (50125) | Sí, vía `CopyReservEntryToTrackingSpec` **(reopen real de documentos vivos)** |
 | `OnAfterCopyTrackingFromReservEntry` (Table TrackSpec) | `TrackingSpecCopyTrackingFromReservEntry` (50110) | Sí, vía `CopyReservEntryToTrackingSpec` |
-| `OnAfterCopyTrackingFromTrackingSpec` (Table TrackSpec) | `TrackingSpecCopyFromTrackingSpec` (50110) | Sí |
+| `OnAfterCopyTrackingFromTrackingSpec` (Table TrackSpec) | `TrackingSpecCopyFromTrackingSpec` (50110) | Sí, pero solo en copias internas TrackingSpec→TrackingSpec |
 | `OnAfterCopyTrackingSpec` (Page 6510) | `CopyTrackingSpecToTrackingSpec` (50125) | Sí |
-| `OnAfterFillTrackingSpecBufferFromReservEntry` (Codeunit 6503) | `OnAfterFillTrackingSpecBufferFromReservEntry` (50125) | Sí, vía `CopyReservEntryToTrackingSpec` |
+| `OnAfterFillTrackingSpecBufferFromReservEntry` (Codeunit 6503) | `OnAfterFillTrackingSpecBufferFromReservEntry` (50125) | Sí, vía `CopyReservEntryToTrackingSpec` **(otros flujos de Doc. Management, no el reopen live)** |
 
 ---
 

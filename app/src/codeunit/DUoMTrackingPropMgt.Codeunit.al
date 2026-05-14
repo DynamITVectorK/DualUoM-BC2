@@ -80,6 +80,24 @@ codeunit 50125 "DUoM Tracking Prop. Mgt"
             TempTrackingSpecification.Modify(false);
     end;
 
+    // Publisher: Page "Item Tracking Lines" (6510), Event:
+    // OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields.
+    // Motivo: el reopen real de Sales/Purchase Order llena el buffer visible con
+    // TempTrackingSpecification.TransferFields(ReservEntry). En ventas, ese TransferFields
+    // copia RE."DUoM Second Qty" = -5 al buffer temporal; este es el punto exacto donde
+    // debe normalizarse al patrón piezas (+5 en pantalla) sin tocar Reservation Entry.
+    // Firma validada contra BC 27 BaseApp: Page 6510 "Item Tracking Lines",
+    // local procedure OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields(
+    //     var TempTrackingSpecification: Record "Tracking Specification" temporary;
+    //     var ReservEntry: Record "Reservation Entry")
+    [EventSubscriber(ObjectType::Page, Page::"Item Tracking Lines", 'OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields', '', false, false)]
+    local procedure OnAfterTransferFieldsToTempTrackingSpec(
+        var TempTrackingSpecification: Record "Tracking Specification" temporary;
+        var ReservEntry: Record "Reservation Entry")
+    begin
+        CopyReservEntryToTrackingSpec(ReservEntry, TempTrackingSpecification);
+    end;
+
     // Publisher: Codeunit "Item Tracking Doc. Management" (6503), Event:
     // OnAfterFillTrackingSpecBufferFromTrackingEntries.
     // Motivo: preservar DUoM cuando BC rellena el buffer desde otros tracking entries.

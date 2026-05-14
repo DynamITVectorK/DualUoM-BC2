@@ -264,15 +264,11 @@ codeunit 50110 "DUoM Tracking Copy Subscribers"
     // Patrón: Package Management — TrackingSpecificationCopyTrackingFromTrackingSpec
     // Motivo: BC llama a CopyTrackingFromTrackingSpec al copiar líneas de tracking
     //         entre buffers. Sin este subscriber, DUoM Ratio no viaja entre buffers.
-    // Normalización: DUoM sigue el patrón Piezas — el buffer de tracking siempre
-    //   muestra valores positivos. Abs() normaliza cualquier valor con signo técnico
-    //   que pueda llegar de flujos internos de BC (p.ej. ventas, donde BC puede almacenar
-    //   el valor con signo negativo en la Reservation Entry y trasladarlo al buffer
-    //   de TrackingSpec sin pasar por los subscribers de normalización). En compras,
-    //   el valor ya es positivo (+) y Abs() no tiene efecto. En ventas, el valor
-    //   puede llegar negativo (−) y Abs() lo normaliza a positivo para la pantalla.
-    //   El signo técnico de posting se aplica más adelante en IJLCopyTrackingFromSpec
-    //   (vía DUoMSignMgt.ApplyMovementSign), no aquí.
+    // Importante: este evento NO cubre la reapertura real de Sales/Purchase Order.
+    // Esa reapertura usa Page 6510 AddReservEntriesToTempRecSet +
+    // TempTrackingSpecification.TransferFields(ReservEntry), y la normalización efectiva
+    // ocurre en 50125 OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields.
+    // Este subscriber sigue siendo correcto para copias internas TrackingSpec→TrackingSpec.
     // Firma BC 27 verificada:
     //   (var TrackingSpecification: Record "Tracking Specification";
     //    FromTrackingSpecification: Record "Tracking Specification")

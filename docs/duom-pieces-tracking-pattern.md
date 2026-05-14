@@ -55,6 +55,7 @@ ese punto del patrón Piezas existe y qué test lo protege.
 | `OnAfterMoveFields` | Page `"Item Tracking Lines"` | Copiar DUoM de TrackingSpec a ReservEntry con signo correcto |
 | `OnCreateReservEntryExtraFields` | Codeunit `"Create Reserv. Entry"` | Garantizar DUoM en INSERT final de ReservEntry |
 | `OnAfterCopyTrackingSpec` | Page `"Item Tracking Lines"` | Preservar DUoM al copiar buffers internos |
+| `OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields` | Page `"Item Tracking Lines"` | Normalizar el reopen real tras `TransferFields(ReservEntry)` del buffer visible |
 | `OnAfterFillTrackingSpecBufferFromReservEntry` | Codeunit `"Item Tracking Doc. Management"` | Reconstruir buffer visible desde ReservEntry al reabrir |
 | `OnAfterFillTrackingSpecBufferFromTrackingEntries` | Codeunit `"Item Tracking Doc. Management"` | Preservar DUoM desde tracking entries existentes |
 | `OnAfterCopyTrackingFromReservEntry` | Table `"Tracking Specification"` | Copiar DUoM de ReservEntry al buffer de tracking |
@@ -111,15 +112,20 @@ sección "Norma: ILE ← IJL siempre").
 
 Al reabrir `Item Tracking Lines`:
 
-1. BC llama `"Item Tracking Doc. Management".FillTrackingSpecBuffer(...)`.
-2. El subscriber `OnAfterFillTrackingSpecBufferFromReservEntry` copia `DUoM Ratio` y
-   `DUoM Second Qty` desde `Reservation Entry` al buffer temporal.
-3. El subscriber `OnAfterCopyTrackingFromReservEntry` en `Table "Tracking Specification"`
-   copia los campos DUoM cuando BC hace `CopyTrackingFromReservEntry`.
-4. La página muestra los valores reales persistidos, sin cálculo ni reconstrucción.
+1. BC llama `Page "Item Tracking Lines".SetSourceSpec()`.
+2. La página ejecuta `AddReservEntriesToTempRecSet(...)`.
+3. Dentro de ese método hace `TempTrackingSpecification.TransferFields(ReservEntry)`.
+4. El subscriber `OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields`
+   normaliza el bloque DUoM (`CopyReservEntryToTrackingSpec`) para que la pantalla siga
+   mostrando patrón piezas (`+5`) aunque `Reservation Entry` de ventas guarde `-5`.
+5. La página inserta ese buffer temporal ya normalizado y lo muestra al usuario.
 
 **Resultado:** cerrar → reabrir → ver los mismos `DUoM Second Qty` / `DUoM Ratio` reales.
 Sin duplicados. Sin líneas fantasma. Sin valores antiguos. Sin ceros indebidos.
+
+**Importante:** el fix previo en `OnAfterCopyTrackingFromTrackingSpec` no actuaba en este
+path porque el reopen real de documentos vivos no llama `CopyTrackingFromTrackingSpec()`;
+llama `TransferFields(ReservEntry)`.
 
 ---
 
