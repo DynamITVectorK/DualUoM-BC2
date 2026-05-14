@@ -451,7 +451,6 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
-        LibraryAssert: Codeunit "Library Assert";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
     begin
         // [GIVEN] Artículo con DUoM Variable
@@ -483,7 +482,6 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         // [WHEN] Se valida coherencia DUoM en ventas
         // [THEN] Sin error — ratios diferentes permitidos si la suma cuadra
         DUoMCoherenceMgt.ValidateSalesLineTrackingCoherence(SalesLine);
-        LibraryAssert.IsTrue(true, 'T-SALES-TRACKING-TOTAL-04: ratios por lote distintos con suma correcta deben permitirse.');
     end;
 
     // -------------------------------------------------------------------------
@@ -539,7 +537,6 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         DUoMTestHelpers: Codeunit "DUoM Test Helpers";
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
-        LibraryAssert: Codeunit "Library Assert";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
     begin
         // [GIVEN] Sales Line: 20 KG / 25 PCS
@@ -563,7 +560,6 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
 
         // [WHEN] / [THEN] Sin error con suma correcta (ratios por lote distintos permitidos)
         DUoMCoherenceMgt.ValidateTrackingSpecBufferForSalesLine(TrackingSpec);
-        LibraryAssert.IsTrue(true, 'T-SALES-TRACKING-TOTAL-02: la validación de buffer debe permitir suma DUoM exacta.');
     end;
 
     // ── Helpers privados ─────────────────────────────────────────────────────
@@ -609,7 +605,8 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         ReservEntry.SetRange("Lot No.", LotNo);
         ReservEntry.SetRange(Positive, false);
         if ReservEntry.FindLast() then begin
-            ReservEntry."DUoM Second Qty" := -Abs(SecondQty);
+            // En ventas la Reservation Entry persistida usa signo técnico negativo.
+            ReservEntry."DUoM Second Qty" := 0 - Abs(SecondQty);
             ReservEntry.Modify(false);
         end;
     end;

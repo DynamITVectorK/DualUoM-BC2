@@ -134,7 +134,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     /// Uses absolute quantities because Sales tracking persistence may use technical signs
     /// in intermediate buffers while users always edit/display positive DUoM values.
     /// </summary>
-    procedure ValidateTrackingSpecBufferForSalesLine(var TrackingSpec: Record "Tracking Specification")
+    procedure ValidateTrackingSpecBufferForSalesLine(TrackingSpec: Record "Tracking Specification")
     var
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
         LocalTrackingSpec: Record "Tracking Specification" temporary;
