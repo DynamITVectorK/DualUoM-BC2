@@ -1401,22 +1401,18 @@ codeunit 50218 "DUoM Item Tracking Tests"
                         SelectedLotNo,
                         StrSubstNo(
                             'T27 Step 4: la línea seleccionada no coincide. %1',
-                            BuildT27Step4Diag(
+                            BuildT27Step4BeforeEditDiag(
                                 SelectedLotNo,
                                 QtyBaseBeforeEdit,
-                                SecondQtyBeforeEdit,
-                                RatioBeforeEdit,
                                 SecondQtyBeforeEdit,
                                 RatioBeforeEdit)));
                     LibraryAssert.IsTrue(
                         QtyBaseBeforeEdit <> 0,
                         StrSubstNo(
                             'T27 Step 4: Quantity (Base) = 0 antes de editar; NormalizeTrackingDUoMSecondQty puede salir por guard clause. %1',
-                            BuildT27Step4Diag(
+                            BuildT27Step4BeforeEditDiag(
                                 SelectedLotNo,
                                 QtyBaseBeforeEdit,
-                                SecondQtyBeforeEdit,
-                                RatioBeforeEdit,
                                 SecondQtyBeforeEdit,
                                 RatioBeforeEdit)));
                     ItemTrackingLines."DUoM Second Qty".SetValue(4);
@@ -1538,6 +1534,17 @@ codeunit 50218 "DUoM Item Tracking Tests"
             (ItemTrackingLines."Quantity (Base)".AsDecimal() <> 0) or
             (ItemTrackingLines."DUoM Ratio".AsDecimal() <> 0) or
             (ItemTrackingLines."DUoM Second Qty".AsDecimal() <> 0));
+    end;
+
+    local procedure BuildT27Step4BeforeEditDiag(LotNo: Text; QtyBase: Decimal; SecondQtyBeforeEdit: Decimal; RatioBeforeEdit: Decimal): Text
+    begin
+        exit(
+            StrSubstNo(
+                'Lot No.=%1; Quantity (Base)=%2; DUoM Second Qty antes=%3; DUoM Ratio antes=%4; DUoM Second Qty después=N/D; DUoM Ratio después=N/D.',
+                LotNo,
+                QtyBase,
+                SecondQtyBeforeEdit,
+                RatioBeforeEdit));
     end;
 
     local procedure BuildT27Step4Diag(LotNo: Text; QtyBase: Decimal; SecondQtyBeforeEdit: Decimal; RatioBeforeEdit: Decimal; SecondQtyAfterEdit: Decimal; RatioAfterEdit: Decimal): Text
