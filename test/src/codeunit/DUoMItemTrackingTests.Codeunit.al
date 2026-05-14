@@ -1514,11 +1514,21 @@ codeunit 50218 "DUoM Item Tracking Tests"
     var
         LibraryAssert: Codeunit "Library Assert";
         Found: Boolean;
+        HasNext: Boolean;
     begin
+        // Nota: AL no hace short-circuit en 'or'/'and'. Si se usa
+        // "until Found or (not Next())", Next() se evalúa aunque Found=true,
+        // avanzando el cursor más allá de la fila encontrada.
+        // Solución: separar la llamada a Next() en una variable para que solo
+        // se ejecute cuando realmente no se ha encontrado la fila.
+        HasNext := true;
         ItemTrackingLines.First();
         repeat
-            Found := ItemTrackingLines."Lot No.".Value = ExpectedLotNo;
-        until Found or (not ItemTrackingLines.Next());
+            if ItemTrackingLines."Lot No.".Value = ExpectedLotNo then
+                Found := true
+            else
+                HasNext := ItemTrackingLines.Next();
+        until Found or not HasNext;
 
         LibraryAssert.IsTrue(
             Found,
