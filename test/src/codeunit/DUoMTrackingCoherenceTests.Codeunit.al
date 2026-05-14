@@ -517,7 +517,6 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 4, 'BUF-H-04', 4, 5);
         AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 5, 'BUF-H-05', 3, 4);
         AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 6, 'BUF-H-06', 3, 4);
-        TrackingSpec.FindFirst();
 
         // [WHEN] / [THEN] Debe bloquear por mismatch de suma en buffer
         asserterror DUoMCoherenceMgt.ValidateTrackingSpecBufferForSalesLine(TrackingSpec);
@@ -556,7 +555,6 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 4, 'BUF-O-04', 4, 5);
         AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 5, 'BUF-O-05', 3, 4);
         AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 6, 'BUF-O-06', 3, 4);
-        TrackingSpec.FindFirst();
 
         // [WHEN] / [THEN] Sin error con suma correcta (ratios por lote distintos permitidos)
         DUoMCoherenceMgt.ValidateTrackingSpecBufferForSalesLine(TrackingSpec);

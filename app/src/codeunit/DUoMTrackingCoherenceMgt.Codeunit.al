@@ -169,7 +169,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                  ItemNo, VariantCode, SecondUoMCode, ConversionMode, FixedRatio) then
             exit;
 
-        SalesDocType := "Sales Document Type".FromInteger(SourceSubtype);
+        SalesDocType := Enum::"Sales Document Type".FromInteger(SourceSubtype);
         if not SalesLine.Get(SalesDocType, SourceID, SourceRefNo) then
             exit;
 
@@ -177,6 +177,8 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         if LineSecondQty <= 0 then
             exit;
 
+        // Use shared temp-table data with an independent cursor to avoid mutating
+        // the caller cursor while still validating the same in-memory buffer.
         LocalTrackingSpec.Copy(TrackingSpec, true);
         LocalTrackingSpec.Reset();
         LocalTrackingSpec.SetSourceFilter(
