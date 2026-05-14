@@ -1458,6 +1458,7 @@ codeunit 50218 "DUoM Item Tracking Tests"
                         4,
                         1,
                         'T27');
+                    SelectTrackLineByLot(ItemTrackingLines, 'LOT-S-MOD-T27', 'T27');
                     LibraryAssert.AreNearlyEqual(
                         1,
                         ItemTrackingLines."DUoM Ratio".AsDecimal(),
