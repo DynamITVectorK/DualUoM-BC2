@@ -416,6 +416,59 @@ if ItemJournalLine."DUoM Ratio" <> 0 then
 
 ---
 
+## Norma: signo DUoM en el buffer de visualización (Tracking Specification)
+
+### Principio rector
+
+El buffer de `Tracking Specification` visible al usuario (página Item Tracking Lines) siempre
+almacena `DUoM Second Qty` **con valor positivo**. El signo técnico (negativo para salidas,
+positivo para entradas) solo se aplica en la capa de posting, nunca antes.
+
+Este patrón se denomina "patrón piezas": la cantidad de piezas que ve el usuario en pantalla
+siempre es positiva, independientemente de si el documento es una compra o una venta.
+
+### Comportamiento en compras vs. ventas
+
+| Capa | Compras | Ventas |
+|------|---------|--------|
+| Buffer TrackingSpec (pantalla) | +5 | +5 |
+| Reservation Entry (BD) | +5 | −5 |
+| IJL split por lote (posting) | +5 | −5 |
+| ILE (posted) | +5 | −5 |
+
+En ventas, BC almacena internamente `RE."DUoM Second Qty" = −5` (signo técnico negativo).
+Cuando BC reconstruye el buffer de visualización desde las Reservation Entries, puede trasladar
+ese valor con signo al buffer de TrackingSpec sin pasar por los subscribers de normalización.
+Por eso, **todos los subscribers de copia TrackingSpec→TrackingSpec deben aplicar `Abs()`**
+para garantizar que el buffer de visualización siempre quede con valores positivos.
+
+### Regla de implementación
+
+```al
+// ✅ CORRECTO — subscriber OnAfterCopyTrackingFromTrackingSpec (codeunit 50110)
+// Abs() garantiza valor positivo en el buffer de visualización, tanto para compras (+)
+// como para ventas (−). El signo de posting se aplica más adelante en IJLCopyTrackingFromSpec.
+TrackingSpecification."DUoM Ratio" := Abs(FromTrackingSpecification."DUoM Ratio");
+TrackingSpecification."DUoM Second Qty" := Abs(FromTrackingSpecification."DUoM Second Qty");
+
+// ❌ PROHIBIDO — copia directa sin Abs() en el subscriber de buffer TrackingSpec→TrackingSpec
+// (ventas mostraría −5 en pantalla en lugar de +5)
+TrackingSpecification."DUoM Second Qty" := FromTrackingSpecification."DUoM Second Qty";
+```
+
+### Coherencia entre subscribers de copia TrackingSpec
+
+Todos los puntos de copia que afectan al buffer de visualización aplican `Abs()`:
+
+| Evento | Subscriber | Abs() |
+|--------|-----------|-------|
+| `OnAfterCopyTrackingFromReservEntry` (Table TrackSpec) | `TrackingSpecCopyTrackingFromReservEntry` (50110) | Sí, vía `CopyReservEntryToTrackingSpec` |
+| `OnAfterCopyTrackingFromTrackingSpec` (Table TrackSpec) | `TrackingSpecCopyFromTrackingSpec` (50110) | Sí |
+| `OnAfterCopyTrackingSpec` (Page 6510) | `CopyTrackingSpecToTrackingSpec` (50125) | Sí |
+| `OnAfterFillTrackingSpecBufferFromReservEntry` (Codeunit 6503) | `OnAfterFillTrackingSpecBufferFromReservEntry` (50125) | Sí, vía `CopyReservEntryToTrackingSpec` |
+
+---
+
 ## Anti-patrones prohibidos
 
 Los siguientes patrones **no están permitidos** salvo que estén explícitamente justificados
