@@ -1354,6 +1354,12 @@ codeunit 50218 "DUoM Item Tracking Tests"
     procedure SalesItemTracking_MPH(var ItemTrackingLines: TestPage "Item Tracking Lines")
     var
         LibraryAssert: Codeunit "Library Assert";
+        QtyBaseBeforeEdit: Decimal;
+        RatioAfterEdit: Decimal;
+        RatioBeforeEdit: Decimal;
+        SecondQtyAfterEdit: Decimal;
+        SecondQtyBeforeEdit: Decimal;
+        SelectedLotNo: Text;
     begin
         case SalesTrackStep of
             1:
@@ -1386,7 +1392,56 @@ codeunit 50218 "DUoM Item Tracking Tests"
             4:
                 begin
                     SelectTrackLineByLot(ItemTrackingLines, 'LOT-S-MOD-T27', 'T27');
+                    SelectedLotNo := ItemTrackingLines."Lot No.".Value;
+                    QtyBaseBeforeEdit := ItemTrackingLines."Quantity (Base)".AsDecimal();
+                    SecondQtyBeforeEdit := ItemTrackingLines."DUoM Second Qty".AsDecimal();
+                    RatioBeforeEdit := ItemTrackingLines."DUoM Ratio".AsDecimal();
+                    LibraryAssert.AreEqual(
+                        'LOT-S-MOD-T27',
+                        SelectedLotNo,
+                        StrSubstNo(
+                            'T27 Step 4: la línea seleccionada no coincide. %1',
+                            BuildT27Step4BeforeEditDiag(
+                                SelectedLotNo,
+                                QtyBaseBeforeEdit,
+                                SecondQtyBeforeEdit,
+                                RatioBeforeEdit)));
+                    LibraryAssert.IsTrue(
+                        QtyBaseBeforeEdit <> 0,
+                        StrSubstNo(
+                            'T27 Step 4: Quantity (Base) = 0 antes de editar; NormalizeTrackingDUoMSecondQty puede salir por guard clause. %1',
+                            BuildT27Step4BeforeEditDiag(
+                                SelectedLotNo,
+                                QtyBaseBeforeEdit,
+                                SecondQtyBeforeEdit,
+                                RatioBeforeEdit)));
                     ItemTrackingLines."DUoM Second Qty".SetValue(4);
+                    SecondQtyAfterEdit := ItemTrackingLines."DUoM Second Qty".AsDecimal();
+                    RatioAfterEdit := ItemTrackingLines."DUoM Ratio".AsDecimal();
+                    LibraryAssert.AreNearlyEqual(
+                        4,
+                        SecondQtyAfterEdit,
+                        0.001,
+                        StrSubstNo(
+                            'T27 Step 4: la edición de DUoM Second Qty no se reflejó en la línea seleccionada. %1',
+                            BuildT27Step4Diag(
+                                SelectedLotNo,
+                                QtyBaseBeforeEdit,
+                                SecondQtyBeforeEdit,
+                                RatioBeforeEdit,
+                                SecondQtyAfterEdit,
+                                RatioAfterEdit)));
+                    LibraryAssert.IsTrue(
+                        RatioAfterEdit <> 0,
+                        StrSubstNo(
+                            'T27 Step 4: DUoM Ratio sigue a 0 tras editar; si Quantity (Base) no es 0, revisar Item No./setup en el buffer. %1',
+                            BuildT27Step4Diag(
+                                SelectedLotNo,
+                                QtyBaseBeforeEdit,
+                                SecondQtyBeforeEdit,
+                                RatioBeforeEdit,
+                                SecondQtyAfterEdit,
+                                RatioAfterEdit)));
                     LibraryAssert.AreNearlyEqual(
                         1,
                         ItemTrackingLines."DUoM Ratio".AsDecimal(),
@@ -1479,6 +1534,30 @@ codeunit 50218 "DUoM Item Tracking Tests"
             (ItemTrackingLines."Quantity (Base)".AsDecimal() <> 0) or
             (ItemTrackingLines."DUoM Ratio".AsDecimal() <> 0) or
             (ItemTrackingLines."DUoM Second Qty".AsDecimal() <> 0));
+    end;
+
+    local procedure BuildT27Step4BeforeEditDiag(LotNo: Text; QtyBase: Decimal; SecondQtyBeforeEdit: Decimal; RatioBeforeEdit: Decimal): Text
+    begin
+        exit(
+            StrSubstNo(
+                'Lot No.=%1; Quantity (Base)=%2; DUoM Second Qty antes=%3; DUoM Ratio antes=%4; DUoM Second Qty después=N/D; DUoM Ratio después=N/D.',
+                LotNo,
+                QtyBase,
+                SecondQtyBeforeEdit,
+                RatioBeforeEdit));
+    end;
+
+    local procedure BuildT27Step4Diag(LotNo: Text; QtyBase: Decimal; SecondQtyBeforeEdit: Decimal; RatioBeforeEdit: Decimal; SecondQtyAfterEdit: Decimal; RatioAfterEdit: Decimal): Text
+    begin
+        exit(
+            StrSubstNo(
+                'Lot No.=%1; Quantity (Base)=%2; DUoM Second Qty antes=%3; DUoM Ratio antes=%4; DUoM Second Qty después=%5; DUoM Ratio después=%6.',
+                LotNo,
+                QtyBase,
+                SecondQtyBeforeEdit,
+                RatioBeforeEdit,
+                SecondQtyAfterEdit,
+                RatioAfterEdit));
     end;
 
     local procedure CreateAvailableLotInventoryForSales(var Item: Record Item; LotNo: Code[50]; Qty: Decimal)
