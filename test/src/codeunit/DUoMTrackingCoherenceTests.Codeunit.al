@@ -394,7 +394,7 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
     // Reservation Entries: 2+6+2+4+3+3 KG y 3+8+3+5+4+4 PCS = 27 PCS ≠ 25 PCS
     // -------------------------------------------------------------------------
     [Test]
-    procedure ValidateSalesLine_TrackingTotalHigh_Error()
+    procedure ValidateSalesLine_Fixed_TrackingTotalHigh_Error()
     var
         Item: Record Item;
         Customer: Record Customer;
@@ -405,9 +405,9 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         LibrarySales: Codeunit "Library - Sales";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
     begin
-        // [GIVEN] Artículo con DUoM Variable
+        // [GIVEN] Artículo con DUoM Fixed
         LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 1.25);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1.25);
 
         // [GIVEN] Sales Line: 20 KG / 25 PCS
         LibrarySales.CreateCustomer(Customer);
@@ -488,7 +488,7 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
     // T-SALES-TRACKING-TOTAL-01 — Buffer TrackingSpec incoherente bloquea cierre
     // -------------------------------------------------------------------------
     [Test]
-    procedure ValidateTrackingSpecBufferForSalesLine_TotalHigh_Error()
+    procedure ValidateTrackingSpecBufferForSalesLine_Fixed_TotalHigh_Error()
     var
         Item: Record Item;
         Customer: Record Customer;
@@ -500,9 +500,9 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         LibrarySales: Codeunit "Library - Sales";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
     begin
-        // [GIVEN] Sales Line: 20 KG / 25 PCS
+        // [GIVEN] Sales Line Fixed: 20 KG / 25 PCS
         LibraryInventory.CreateItem(Item);
-        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 1.25);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Fixed, 1.25);
         LibrarySales.CreateCustomer(Customer);
         LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
         LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
@@ -523,10 +523,10 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
     end;
 
     // -------------------------------------------------------------------------
-    // T-SALES-TRACKING-TOTAL-02 — Buffer TrackingSpec coherente permite cierre
+    // T-SALES-TRACKING-TOTAL-02 — Variable: tracking real sincroniza Sales Line
     // -------------------------------------------------------------------------
     [Test]
-    procedure ValidateTrackingSpecBufferForSalesLine_TotalMatch_NoError()
+    procedure ValidateTrackingSpecBufferForSalesLine_Variable_TotalSyncsSalesLine()
     var
         Item: Record Item;
         Customer: Record Customer;
@@ -537,8 +537,9 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+        LibraryAssert: Codeunit "Library Assert";
     begin
-        // [GIVEN] Sales Line: 20 KG / 25 PCS
+        // [GIVEN] Sales Line Variable: 20 KG / 25 PCS
         LibraryInventory.CreateItem(Item);
         DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 1.25);
         LibrarySales.CreateCustomer(Customer);
@@ -548,16 +549,120 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         SalesLine."DUoM Second Qty" := 25;
         SalesLine.Modify(false);
 
-        // [GIVEN] Buffer TrackingSpec con ratios reales distintos y suma DUoM = 25
-        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 1, 'BUF-O-01', 2, 3);
-        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 2, 'BUF-O-02', 6, 7);
-        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 3, 'BUF-O-03', 2, 2);
-        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 4, 'BUF-O-04', 4, 5);
-        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 5, 'BUF-O-05', 3, 4);
-        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 6, 'BUF-O-06', 3, 4);
+        // [GIVEN] Buffer TrackingSpec con suma real DUoM = 26 (10/13 + 4/5 + 3/4 + 3/4)
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 1, 'BUF-V-01', 10, 13);
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 2, 'BUF-V-02', 4, 5);
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 3, 'BUF-V-03', 3, 4);
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 4, 'BUF-V-04', 3, 4);
 
-        // [WHEN] / [THEN] Sin error con suma correcta (ratios por lote distintos permitidos)
+        // [WHEN] Se cierra/valida el buffer de tracking
         DUoMCoherenceMgt.ValidateTrackingSpecBufferForSalesLine(TrackingSpec);
+
+        // [THEN] Sales Line se sincroniza con el total real de tracking
+        SalesLine.Get(SalesHeader."Document Type", SalesHeader."No.", SalesLine."Line No.");
+        LibraryAssert.AreNearlyEqual(
+            26, SalesLine."DUoM Second Qty", 0.001,
+            'Variable: Sales Line.DUoM Second Qty debe sincronizarse al total real del tracking (26).');
+        LibraryAssert.AreNearlyEqual(
+            1.3, SalesLine."DUoM Ratio", 0.001,
+            'Variable: Sales Line.DUoM Ratio debe recalcularse a 26/20 = 1,30.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T-SALES-TRACKING-TOTAL-05 — AlwaysVariable: tracking real sincroniza Sales Line
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure ValidateTrackingSpecBufferForSalesLine_AlwaysVar_TotalSyncsSalesLine()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        TrackingSpec: Record "Tracking Specification" temporary;
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Sales Line AlwaysVariable con ratio/qty iniciales
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::AlwaysVariable, 0);
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 20);
+        SalesLine."DUoM Ratio" := 1.25;
+        SalesLine."DUoM Second Qty" := 25;
+        SalesLine.Modify(false);
+
+        // [GIVEN] Buffer TrackingSpec con suma real DUoM = 26
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 1, 'BUF-A-01', 10, 13);
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 2, 'BUF-A-02', 4, 5);
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 3, 'BUF-A-03', 3, 4);
+        AddSalesTrackingSpecLine(TrackingSpec, SalesLine, 4, 'BUF-A-04', 3, 4);
+
+        // [WHEN] Se cierra/valida el buffer de tracking
+        DUoMCoherenceMgt.ValidateTrackingSpecBufferForSalesLine(TrackingSpec);
+
+        // [THEN] Sales Line se sincroniza con el total real de tracking
+        SalesLine.Get(SalesHeader."Document Type", SalesHeader."No.", SalesLine."Line No.");
+        LibraryAssert.AreNearlyEqual(
+            26, SalesLine."DUoM Second Qty", 0.001,
+            'AlwaysVariable: Sales Line.DUoM Second Qty debe sincronizarse al total real del tracking (26).');
+        LibraryAssert.AreNearlyEqual(
+            1.3, SalesLine."DUoM Ratio", 0.001,
+            'AlwaysVariable: Sales Line.DUoM Ratio debe recalcularse a 26/20 = 1,30.');
+    end;
+
+    // -------------------------------------------------------------------------
+    // T-SALES-TRACKING-TOTAL-06 — Posting guard Variable no bloquea por mismatch de total
+    // -------------------------------------------------------------------------
+    [Test]
+    procedure ValidateSalesLine_Variable_TrackingTotalHigh_NoError()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+        LotRatioA: Decimal;
+        LotRatioB: Decimal;
+    begin
+        // [GIVEN] Artículo con DUoM Variable
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS', "DUoM Conversion Mode"::Variable, 1.25);
+
+        // [GIVEN] Sales Line: 20 KG / 25 PCS
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 20);
+        SalesLine."DUoM Second Qty" := 25;
+        SalesLine.Modify(false);
+
+        LotRatioA := 8 / 6;
+        LotRatioB := 4 / 3;
+
+        // [GIVEN] Tracking en RE con suma DUoM = 27
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-01', 2, 1.5);
+        SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-01', 3);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-02', 6, LotRatioA);
+        SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-02', 8);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-03', 2, 1.5);
+        SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-03', 3);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-04', 4, 1.25);
+        SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-04', 5);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-05', 3, LotRatioB);
+        SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-05', 4);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-06', 3, LotRatioB);
+        SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-06', 4);
+
+        // [WHEN] / [THEN] En Variable no se bloquea por diferencia de total con la línea
+        DUoMCoherenceMgt.ValidateSalesLineTrackingCoherence(SalesLine);
     end;
 
     // ── Helpers privados ─────────────────────────────────────────────────────

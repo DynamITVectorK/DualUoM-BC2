@@ -144,6 +144,9 @@ El modelo correcto de Business Central es:
 - En compras, `Purchase Line."DUoM Second Qty"` es el **total DUoM de la línea**.
   El desglose operativo real por lotes se almacena en `Reservation Entry` (fuente de verdad por lote),
   sin sincronización manual de vuelta a la línea.
+- En ventas, al cerrar `Item Tracking Lines`, la realidad por lote sincroniza el agregado de
+  `Sales Line` en modos `Variable` y `AlwaysVariable` (`DUoM Second Qty` y `DUoM Ratio`).
+  En modo `Fixed`, si la suma del tracking no coincide con la línea, se bloquea.
 - Cada **ILE por lote** contiene la segunda cantidad y el ratio **específicos de ese lote**.
 - El **total DUoM de la línea** debe ser coherente con la suma de las cantidades DUoM
   de todos los ILEs generados para esa línea.
