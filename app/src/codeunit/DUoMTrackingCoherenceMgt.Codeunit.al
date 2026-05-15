@@ -764,20 +764,27 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
     var
         NewLineSecondQty: Decimal;
         NewLineRatio: Decimal;
+        LineBaseQty: Decimal;
         RatioBaseQty: Decimal;
+        BaseQtyMatches: Boolean;
     begin
         NewLineSecondQty := Round(Abs(TotalSecondQty), RoundingPrecision);
-        RatioBaseQty := Abs(SalesLine.Quantity);
-        if RatioBaseQty = 0 then
-            RatioBaseQty := Abs(TotalBaseQty);
+        LineBaseQty := Abs(SalesLine.Quantity);
+        // Si la base de la línea coincide con el agregado del tracking, usar el total
+        // de tracking para evitar pequeñas derivas de precisión en el ratio agregado.
+        BaseQtyMatches := (LineBaseQty > 0) and (Abs(LineBaseQty - TotalBaseQty) <= RoundingPrecision);
+        if BaseQtyMatches then
+            RatioBaseQty := TotalBaseQty
+        else
+            RatioBaseQty := LineBaseQty;
 
         NewLineRatio := GetExpectedRatio(RatioBaseQty, NewLineSecondQty);
-        if (Abs(SalesLine."DUoM Second Qty" - NewLineSecondQty) <= RoundingPrecision) and
-           (Abs(SalesLine."DUoM Ratio" - NewLineRatio) <= 0.00001) then
+        if (SalesLine."DUoM Second Qty" = NewLineSecondQty) and
+           (SalesLine."DUoM Ratio" = NewLineRatio) then
             exit;
 
         SalesLine."DUoM Second Qty" := NewLineSecondQty;
-        SalesLine."DUoM Ratio" := Abs(NewLineRatio);
+        SalesLine."DUoM Ratio" := NewLineRatio;
         SalesLine.Modify(false);
     end;
 

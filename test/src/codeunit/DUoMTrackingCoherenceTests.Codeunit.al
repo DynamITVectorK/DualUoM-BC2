@@ -629,6 +629,8 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         LibraryInventory: Codeunit "Library - Inventory";
         LibrarySales: Codeunit "Library - Sales";
         DUoMCoherenceMgt: Codeunit "DUoM Tracking Coherence Mgt";
+        LotRatioA: Decimal;
+        LotRatioB: Decimal;
     begin
         // [GIVEN] Artículo con DUoM Variable
         LibraryInventory.CreateItem(Item);
@@ -642,18 +644,21 @@ codeunit 50220 "DUoM Tracking Coherence Tests"
         SalesLine."DUoM Second Qty" := 25;
         SalesLine.Modify(false);
 
+        LotRatioA := 8 / 6;
+        LotRatioB := 4 / 3;
+
         // [GIVEN] Tracking en RE con suma DUoM = 27
         DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-01', 2, 1.5);
         SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-01', 3);
-        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-02', 6, 8 / 6);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-02', 6, LotRatioA);
         SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-02', 8);
         DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-03', 2, 1.5);
         SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-03', 3);
         DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-04', 4, 1.25);
         SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-04', 5);
-        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-05', 3, 4 / 3);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-05', 3, LotRatioB);
         SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-05', 4);
-        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-06', 3, 4 / 3);
+        DUoMTestHelpers.AssignLotWithDUoMRatioToSalesLine(SalesLine, 'S-VAR-06', 3, LotRatioB);
         SetDUoMSecondQtyOnLastSalesReservEntry(Item."No.", 'S-VAR-06', 4);
 
         // [WHEN] / [THEN] En Variable no se bloquea por diferencia de total con la línea
