@@ -152,6 +152,7 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         SourceID: Code[20];
         SourceRefNo: Integer;
         LineSecondQty: Decimal;
+        TotalBaseQty: Decimal;
     begin
         if TrackingSpec."Source Type" <> Database::"Sales Line" then
             exit;
@@ -173,10 +174,6 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
         if not SalesLine.Get(SalesDocType, SourceID, SourceRefNo) then
             exit;
 
-        LineSecondQty := Abs(SalesLine."DUoM Second Qty");
-        if LineSecondQty <= 0 then
-            exit;
-
         // Use shared temp-table data with an independent cursor to avoid mutating
         // the caller cursor while still validating the same in-memory buffer.
         LocalTrackingSpec.Copy(TrackingSpec, true);
@@ -185,19 +182,32 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
             Database::"Sales Line", SourceSubtype, SourceID, SourceRefNo, true);
 
         TotalSecondQty := 0;
+        TotalBaseQty := 0;
         if LocalTrackingSpec.FindSet() then
             repeat
-                if IsFunctionalTrackingLine(LocalTrackingSpec) then
+                if IsFunctionalTrackingLine(LocalTrackingSpec) then begin
                     TotalSecondQty += Abs(LocalTrackingSpec."DUoM Second Qty");
+                    TotalBaseQty += Abs(LocalTrackingSpec."Quantity (Base)");
+                end;
             until LocalTrackingSpec.Next() = 0;
 
         RoundingPrecision := GetDUoMRoundingPrecision(ItemNo, SecondUoMCode);
-        Difference := Abs(TotalSecondQty - LineSecondQty);
-        if Difference > RoundingPrecision then
-            Error(TrackingTotalMismatchErr,
-                SalesLine."Document No.", SalesLine."Line No.",
-                LineSecondQty, SecondUoMCode,
-                TotalSecondQty, Difference, SalesLineTxt);
+        if ConversionMode = ConversionMode::Fixed then begin
+            LineSecondQty := Abs(SalesLine."DUoM Second Qty");
+            Difference := Abs(TotalSecondQty - LineSecondQty);
+            if Difference > RoundingPrecision then
+                Error(TrackingTotalMismatchErr,
+                    SalesLine."Document No.", SalesLine."Line No.",
+                    LineSecondQty, SecondUoMCode,
+                    TotalSecondQty, Difference, SalesLineTxt);
+            exit;
+        end;
+
+        SyncSalesLineFromTrackingTotals(
+            SalesLine,
+            TotalSecondQty,
+            TotalBaseQty,
+            RoundingPrecision);
     end;
 
     /// <summary>
@@ -301,8 +311,8 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
             exit;
 
         RoundingPrecision := GetDUoMRoundingPrecision(SalesLine."No.", SecondUoMCode);
-        LineSecondQty := Abs(SalesLine."DUoM Second Qty");
-        if LineSecondQty > 0 then begin
+        if ConversionMode = ConversionMode::Fixed then begin
+            LineSecondQty := Abs(SalesLine."DUoM Second Qty");
             Difference := Abs(TotalSecondQty - LineSecondQty);
             if Difference > RoundingPrecision then
                 Error(TrackingTotalMismatchErr,
@@ -744,6 +754,31 @@ codeunit 50111 "DUoM Tracking Coherence Mgt"
                 TotalSecondQty += Abs(ReservEntry."DUoM Second Qty");
                 TotalBaseQty += Abs(ReservEntry."Quantity (Base)");
             until ReservEntry.Next() = 0;
+    end;
+
+    local procedure SyncSalesLineFromTrackingTotals(
+        var SalesLine: Record "Sales Line";
+        TotalSecondQty: Decimal;
+        TotalBaseQty: Decimal;
+        RoundingPrecision: Decimal)
+    var
+        NewLineSecondQty: Decimal;
+        NewLineRatio: Decimal;
+        RatioBaseQty: Decimal;
+    begin
+        NewLineSecondQty := Round(Abs(TotalSecondQty), RoundingPrecision);
+        RatioBaseQty := Abs(SalesLine.Quantity);
+        if RatioBaseQty = 0 then
+            RatioBaseQty := Abs(TotalBaseQty);
+
+        NewLineRatio := GetExpectedRatio(RatioBaseQty, NewLineSecondQty);
+        if (Abs(SalesLine."DUoM Second Qty" - NewLineSecondQty) <= RoundingPrecision) and
+           (Abs(SalesLine."DUoM Ratio" - NewLineRatio) <= 0.00001) then
+            exit;
+
+        SalesLine."DUoM Second Qty" := NewLineSecondQty;
+        SalesLine."DUoM Ratio" := Abs(NewLineRatio);
+        SalesLine.Modify(false);
     end;
 
     /// <summary>
