@@ -98,7 +98,10 @@ codeunit 50131 "DUoM Entry Sum Subscribers"
 
         RoundingPrecision := GetEffectiveRoundingPrecision(ItemNo, SecondUoMCode);
 
-        // En modo Fixed, garantizar coherencia del ratio antes de recalcular.
+        // En modo Fixed, asegurar que DUoM Ratio refleja el ratio fijo configurado
+        // antes de recalcular Second Qty. Esto es necesario porque el usuario puede
+        // cambiar Selected Quantity sin haber validado Lot No./Serial No. previamente,
+        // dejando DUoM Ratio con un valor anterior que no refleja el setup Fixed.
         if ConversionMode = ConversionMode::Fixed then
             EntrySummary."DUoM Ratio" := FixedRatio;
 

@@ -307,9 +307,14 @@ codeunit 50208 "DUoM Test Helpers"
     /// pueda resolver el contexto de artículo/variante sin necesidad de pasar por el
     /// flujo de contabilización completo.
     ///
+    /// Insert(false) se usa para eludir el trigger OnInsert de Item Ledger Entry,
+    /// que en el flujo estándar actualiza contadores en Inventory Setup ("Last Item
+    /// Ledg. Entry No."), valida relaciones de posting setup y puede provocar errores
+    /// de missing setup (p.ej. Inventory Posting Group, General Posting Setup) que
+    /// no son relevantes para el test de resolución de contexto de artículo.
+    /// La transacción queda aislada al test y se descarta con el rollback automático.
+    ///
     /// Importante: solo usar en codeunits de test con TestPermissions = Disabled.
-    /// El registro se crea con Insert(false) para eludir triggers que requerirían
-    /// setup adicional. La transacción se descarta con el rollback del test.
     ///
     /// Parámetros:
     ///   ItemNo      — Número de artículo que debe quedar en el ILE.
