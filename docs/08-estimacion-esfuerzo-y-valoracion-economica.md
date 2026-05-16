@@ -41,9 +41,9 @@ El caso de negocio más frecuente es el del sector alimentario, químico, agríc
 
 ### Estado actual del proyecto
 
-El proyecto ha completado **la Fase 1 (MVP) íntegra** más los Issues 11b, 12 y 13 de la Fase 2, junto con la Auditoría TDD y la corrección BUG-01. Existe código AL funcional, una suite de tests automatizados con **114 procedimientos `[Test]`** distribuidos en 16 codeunits de test, y documentación técnica y funcional completa.
+El proyecto ha completado **la Fase 1 (MVP) íntegra** más los Issues 11b, 12, 13, 22 y 34 de la Fase 2, junto con la Auditoría TDD, correcciones BUG y un conjunto completo de tracking y sign management. Existe código AL funcional, una suite de tests automatizados con **269 procedimientos `[Test]`** distribuidos en 29 codeunits de test, y documentación técnica y funcional completa.
 
-La extensión está actualmente en un **estado demostrable y maduro** para la funcionalidad base (compras, ventas, inventario, propagación a históricos, coste/precio en doble UoM y ratio real por lote). Las funcionalidades de almacén avanzado, devoluciones, inventario físico e informes están diseñadas en el backlog pero no implementadas.
+La extensión está actualmente en un **estado demostrable y maduro** para la funcionalidad base (compras, ventas, inventario, propagación a históricos, coste/precio en doble UoM, ratio real por lote, tracking por lote, gestión de signo DUoM y copia de artículo). Las funcionalidades de almacén avanzado, devoluciones, inventario físico e informes están diseñadas en el backlog pero no implementadas.
 
 ### Grado de madurez
 
@@ -58,8 +58,11 @@ La extensión está actualmente en un **estado demostrable y maduro** para la fu
 | Precisión de redondeo por UoM | 🟢 Producción |
 | Coste/precio en doble UoM (Unit Cost / Unit Price) | 🟢 Producción |
 | Ratio real por lote (`DUoM Lot Ratio`) | 🟢 Producción |
+| Item Tracking por lote (DUoM en tracking lines) | 🟢 Producción |
+| Gestión centralizada de signo DUoM | 🟢 Producción |
+| Copia de artículo con configuración DUoM | 🟢 Producción |
 | Localización en-US / es-ES | 🟢 Producción |
-| Suite de tests automatizados | 🟢 114 tests (16 codeunits) |
+| Suite de tests automatizados | 🟢 269 tests (29 codeunits) |
 | Almacén básico (Warehouse Receipt/Shipment) | 🔴 Pendiente (Phase 2) |
 | Almacén dirigido (Put-Away & Pick) | 🔴 Pendiente (Phase 2) |
 | Devoluciones (Purchase/Sales Returns) | 🔴 Pendiente (Phase 2) |
@@ -88,6 +91,7 @@ La extensión está actualmente en un **estado demostrable y maduro** para la fu
 - **Precisión de redondeo:** `DUoM Second Qty` se redondea al paso mínimo de la UoM secundaria.
 - **Localización completa** en inglés y español (todos los textos de UI traducidos).
 - **Subformulario UoM editable:** `Qty. Rounding Precision` editable en `Item Units of Measure` cuando no existen movimientos para esa UoM concreta del artículo.
+- **Copia de artículo:** al usar la función estándar *Copiar artículo* de BC, la configuración DUoM (setup por artículo y overrides por variante) se propaga automáticamente al artículo destino. Los ratios reales por lote no se copian (son datos transaccionales del artículo origen).
 
 ### 2.2 Qué cubrirá con la siguiente fase (Phase 2 pendiente)
 
@@ -114,36 +118,42 @@ La extensión está actualmente en un **estado demostrable y maduro** para la fu
 | Área | Objetos AL | Tests |
 |------|-----------|-------|
 | Enum `DUoM Conversion Mode` (50100) | `DUoMConversionMode.Enum.al` | — |
-| Tabla `DUoM Item Setup` (50100) | `DUoMItemSetup.Table.al` (160 líneas) | `DUoMItemSetupTests` (9 tests), `DUoMItemCardOpeningTests` (4 tests), `DUoMItemDeleteTests` (2 tests) |
-| Tabla `DUoM Item Variant Setup` (50101) | `DUoMItemVariantSetup.Table.al` (106 líneas) | `DUoMVariantTests` (15 tests), `DUoMVariantDelTests` (3 tests) |
-| Tabla `DUoM Lot Ratio` (50102) | `DUoMLotRatio.Table.al` (58 líneas) | `DUoMLotRatioTests` (8 tests) |
-| Motor de cálculo `DUoM Calc Engine` (50101) | `DUoMCalcEngine.Codeunit.al` (83 líneas) | `DUoMCalcEngineTests` (16 tests) |
-| Helper de UoM `DUoM UoM Helper` (50106) | `DUoMUoMHelper.Codeunit.al` (54 líneas) | `DUoMUoMHelperTests` (7 tests) |
-| Resolver jerárquico `DUoM Setup Resolver` (50107) | `DUoMSetupResolver.Codeunit.al` (64 líneas) | Cubierto en Variant Tests y posting tests |
-| Extensión `Purchase Line` (50110) | `DUoMPurchaseLine.TableExt.al` (93 líneas) | `DUoMPurchaseTests` (9 tests), `DUoMVarModePostTests` (4 tests) |
-| Extensión `Sales Line` (50111) | `DUoMSalesLine.TableExt.al` (92 líneas) | `DUoMSalesTests` (8 tests), `DUoMVarModePostTests` |
-| Extensión `Item Journal Line` (50112) | `DUoMItemJournalLine.TableExt.al` (57 líneas) | `DUoMInventoryTests` (6 tests) |
-| Extensión `Item Ledger Entry` (50113) | `DUoMItemLedgerEntry.TableExt.al` (24 líneas) | `DUoMILEIntegrationTests` (6 tests E2E) |
-| Extensión `Value Entry` (50121) | `DUoMValueEntry.TableExt.al` (19 líneas) | `DUoMCostPriceTests` (8 tests) |
+| Tabla `DUoM Item Setup` (50100) | `DUoMItemSetup.Table.al` | `DUoMItemSetupTests` (9 tests), `DUoMItemCardOpeningTests` (4 tests), `DUoMItemDeleteTests` (2 tests) |
+| Tabla `DUoM Item Variant Setup` (50101) | `DUoMItemVariantSetup.Table.al` | `DUoMVariantTests` (15 tests), `DUoMVariantDelTests` (3 tests) |
+| Tabla `DUoM Lot Ratio` (50102) | `DUoMLotRatio.Table.al` | `DUoMLotRatioTests` (13 tests), `DUoMPurchLotRatioTests` (9 tests) |
+| Motor de cálculo `DUoM Calc Engine` (50101) | `DUoMCalcEngine.Codeunit.al` | `DUoMCalcEngineTests` (16 tests) |
+| Helper de UoM `DUoM UoM Helper` (50106) | `DUoMUoMHelper.Codeunit.al` | `DUoMUoMHelperTests` (7 tests) |
+| Resolver jerárquico `DUoM Setup Resolver` (50107) | `DUoMSetupResolver.Codeunit.al` | Cubierto en Variant Tests y posting tests |
+| Extensión `Purchase Line` (50110) | `DUoMPurchaseLine.TableExt.al` | `DUoMPurchaseTests` (11 tests), `DUoMVarModePostTests` (4 tests) |
+| Extensión `Sales Line` (50111) | `DUoMSalesLine.TableExt.al` | `DUoMSalesTests` (10 tests), `DUoMVarModePostTests` |
+| Extensión `Item Journal Line` (50112) | `DUoMItemJournalLine.TableExt.al` | `DUoMInventoryTests` (6 tests) |
+| Extensión `Item Ledger Entry` (50113) | `DUoMItemLedgerEntry.TableExt.al` | `DUoMILEIntegrationTests` (23 tests E2E) |
+| Extensión `Value Entry` (50121) | `DUoMValueEntry.TableExt.al` | `DUoMCostPriceTests` (8 tests) |
+| Extensión `Tracking Specification` (50122) | `DUoMTrackingSpecExt.TableExt.al` | `DUoMItemTrackingTests` (27 tests) |
+| Extensión `Reservation Entry` (50123) | `DUoMReservationEntryExt.TableExt.al` | `DUoMPurchTrackingPersist` (16 tests E2E) |
 | Extensiones históricos compra (50114, 50116, 50117) | 3 table extensions | `DUoMILEIntegrationTests`, `DUoMInvCrMemoPostTests` |
 | Extensiones históricos venta (50115, 50118, 50119) | 3 table extensions | `DUoMILEIntegrationTests`, `DUoMInvCrMemoPostTests` (5 tests E2E) |
-| Ext. cascada `Item Variant` (50120) | `DUoMItemVariant.TableExt.al` (14 líneas) | `DUoMVariantDelTests` (3 tests) |
-| Suscriptores compra (50102) | `DUoMPurchaseSubscribers.Codeunit.al` (100 líneas) | Cubierto en DUoMPurchaseTests |
-| Suscriptores venta (50103) | `DUoMSalesSubscribers.Codeunit.al` (100 líneas) | Cubierto en DUoMSalesTests |
-| Suscriptores inventario/ILE/Value Entry (50104) | `DUoMInventorySubscribers.Codeunit.al` (281 líneas) | Cubierto en múltiples codeunits de test |
-| Suscriptores lote/IJL (50108) | `DUoMLotSubscribers.Codeunit.al` (101 líneas) | `DUoMLotRatioTests` |
-| Helper de copia entre líneas (50105) | `DUoMDocTransferHelper.Codeunit.al` (107 líneas) | Cubierto en tests E2E |
+| Ext. cascada `Item Variant` (50120) | `DUoMItemVariant.TableExt.al` | `DUoMVariantDelTests` (3 tests) |
+| Suscriptores compra (50102) | `DUoMPurchaseSubscribers.Codeunit.al` | Cubierto en DUoMPurchaseTests |
+| Suscriptores venta (50103) | `DUoMSalesSubscribers.Codeunit.al` | Cubierto en DUoMSalesTests |
+| Suscriptores inventario/ILE/Value Entry (50104) | `DUoMInventorySubscribers.Codeunit.al` | Cubierto en múltiples codeunits de test |
+| Suscriptores lote/IJL (50108) | `DUoMLotSubscribers.Codeunit.al` | `DUoMLotRatioTests` |
+| Helper de copia entre líneas (50105) | `DUoMDocTransferHelper.Codeunit.al` | Cubierto en tests E2E |
+| Suscriptores tracking (50109) | `DUoMTrackingSubscribers.Codeunit.al` | `DUoMItemTrackingTests` (27 tests) |
+| Suscriptores copia tracking (50110) | `DUoMTrackingCopySubscribers.Codeunit.al` | `DUoMItemTrackingTests`, `DUoMILEIntegrationTests` |
+| Gestión de coherencia tracking (50111) | `DUoMTrackingCoherenceMgt.Codeunit.al` | `DUoMTrackingCoherenceTests` (17 tests) |
+| Gestión de propagación tracking (50125) | `DUoMTrackingPropMgt.Codeunit.al` | Cubierto en tracking tests E2E |
+| Gestión de signo DUoM (50126) | `DUoMSignMgt.Codeunit.al` | `DUoMSignMgtTests` (23 tests), `DUoMUndoRcptShptTests` (5 tests) |
+| Copia de artículo DUoM (50128) | `DUoMCopyItemMgt.Codeunit.al` | `DUoMCopyItemTests` (6 tests) |
 | Pages (3: setup artículo, variantes, lotes) | IDs 50100–50102 | — |
-| Page extensions (12 extensiones de página) | IDs 50100–50111 | `DUoMItemUoMRoundTests` (4 tests) |
+| Page extensions (15 extensiones de página) | IDs 50100–50111, 50113–50115 | `DUoMItemUoMRoundTests` (4 tests) |
 | Permission sets app y test | `DUoMAll.PermissionSet.al`, `DUoMTestAll.PermissionSet.al` | — |
-| Localización completa | 109 `trans-unit` en en-US y es-ES XLF | — |
+| Localización completa | `DualUoM-BC.en-US.xlf`, `DualUoM-BC.es-ES.xlf` | — |
 | Manual de usuario | `docs/manual-usuario.md` | — |
 
-**Total objetos AL de producción:** 1 enum, 3 tablas, 13 table extensions, 8 codeunits, 3 páginas, 12 page extensions, 1 permission set = **41 objetos**  
-**Total objetos AL de test:** 16 codeunits de test + 1 helper + 1 permission set = **18 objetos**  
-**Total líneas AL (producción):** ~2.577 líneas  
-**Total líneas AL (test):** ~4.425 líneas  
-**Total tests `[Test]`:** 114 procedimientos de test
+**Total objetos AL de producción:** 1 enum, 3 tablas, 15 table extensions, 14 codeunits, 3 páginas, 15 page extensions, 1 permission set = **52 objetos**  
+**Total objetos AL de test:** 29 codeunits de test + 1 helper + 1 permission set = **31 objetos**  
+**Total tests `[Test]`:** 269 procedimientos de test
 
 ### 3.2 Deuda técnica y consolidación pendiente
 
@@ -196,7 +206,9 @@ La estimación es **bottom-up** por bloques funcionales. Una jornada equivale a 
 | Localización en-US / es-ES | 109 `trans-unit` en dos XLF, captions, tooltips, labels con Comment | 2,0 |
 | Manual de usuario | Documento funcional completo para usuario de negocio | 1,5 |
 | Hardening SaaS y auditoría | Correcciones de firma de eventos BC 27, permisos IndirectInsert, CI cost decisions | 2,5 |
-| **TOTAL YA REALIZADO** | | **48,0 jornadas** |
+| Issue 22 — Item Tracking DUoM | DUoM en Item Tracking Lines, tracking por lote, coherencia buffer↔RE, sign management, undo, 27 tests | 8,0 |
+| Issue 34 — Copia de artículo | `DUoM Copy Item Mgt.` (50128): suscriptor `OnAfterCopyItem`, copia DUoM Item Setup + Variant Setup, 6 tests | 1,0 |
+| **TOTAL YA REALIZADO** | | **57,0 jornadas** |
 
 ### 4.2 Trabajo pendiente para cerrar una versión vendible (Phase 2 continuación)
 
@@ -230,10 +242,10 @@ La estimación es **bottom-up** por bloques funcionales. Una jornada equivale a 
 
 | Bloque | Jornadas | Importe |
 |--------|----------|---------|
-| A. Trabajo ya realizado | 48,0 | 24.000 EUR |
+| A. Trabajo ya realizado | 57,0 | 28.500 EUR |
 | B. Cierre de versión vendible | 9,0 | 4.500 EUR |
 | C. Opcionales / fases futuras | 22,5 | 11.250 EUR |
-| **TOTAL GLOBAL** | **79,5** | **39.750 EUR** |
+| **TOTAL GLOBAL** | **88,5** | **44.250 EUR** |
 
 ### 5.2 Desglose detallado
 
@@ -257,20 +269,22 @@ La estimación es **bottom-up** por bloques funcionales. Una jornada equivale a 
 | 16 | Localización en-US / es-ES | 2,0 | 500 | 1.000 EUR |
 | 17 | Manual de usuario | 1,5 | 500 | 750 EUR |
 | 18 | Hardening SaaS y auditoría | 2,5 | 500 | 1.250 EUR |
-| **Subtotal — Realizado** | | **48,0** | | **24.000 EUR** |
-| 19 | Almacén básico (Issue 14) | 5,0 | 500 | 2.500 EUR |
-| 20 | Inventario físico (Issue 17) | 2,0 | 500 | 1.000 EUR |
-| 21 | Soporte deploy y release | 2,0 | 500 | 1.000 EUR |
+| 19 | Item Tracking DUoM (Issue 22) | 8,0 | 500 | 4.000 EUR |
+| 20 | Copia de artículo DUoM (Issue 34) | 1,0 | 500 | 500 EUR |
+| **Subtotal — Realizado** | | **57,0** | | **28.500 EUR** |
+| 21 | Almacén básico (Issue 14) | 5,0 | 500 | 2.500 EUR |
+| 22 | Inventario físico (Issue 17) | 2,0 | 500 | 1.000 EUR |
+| 23 | Soporte deploy y release | 2,0 | 500 | 1.000 EUR |
 | **Subtotal — Cierre vendible** | | **9,0** | | **4.500 EUR** |
-| 22 | WMS Directed Put-Away & Pick | 6,0 | 500 | 3.000 EUR |
-| 23 | Devoluciones purchase/sales | 4,0 | 500 | 2.000 EUR |
-| 24 | Informes (report extensions) | 3,0 | 500 | 1.500 EUR |
-| 25 | Item Tracking avanzado | 4,0 | 500 | 2.000 EUR |
-| 26 | Mejoras UX | 2,0 | 500 | 1.000 EUR |
-| 27 | Performance & hardening | 2,0 | 500 | 1.000 EUR |
-| 28 | Documentación avanzada (ISV) | 1,5 | 500 | 750 EUR |
+| 24 | WMS Directed Put-Away & Pick | 6,0 | 500 | 3.000 EUR |
+| 25 | Devoluciones purchase/sales | 4,0 | 500 | 2.000 EUR |
+| 26 | Informes (report extensions) | 3,0 | 500 | 1.500 EUR |
+| 27 | Item Tracking avanzado | 4,0 | 500 | 2.000 EUR |
+| 28 | Mejoras UX | 2,0 | 500 | 1.000 EUR |
+| 29 | Performance & hardening | 2,0 | 500 | 1.000 EUR |
+| 30 | Documentación avanzada (ISV) | 1,5 | 500 | 750 EUR |
 | **Subtotal — Opcionales** | | **22,5** | | **11.250 EUR** |
-| **TOTAL GLOBAL** | | **79,5** | | **39.750 EUR** |
+| **TOTAL GLOBAL** | | **88,5** | | **44.250 EUR** |
 
 ---
 
@@ -279,19 +293,19 @@ La estimación es **bottom-up** por bloques funcionales. Una jornada equivale a 
 ### Escenario A — Base actual + cierre mínimo vendible
 
 **Incluye:**
-- Todo lo ya construido (Issues 1–13 + 11b completados): motor de cálculo, setup por artículo y variante, compras, ventas, inventario, históricos completos, precisión de redondeo, coste/precio en doble UoM, ratio por lote, localización.
+- Todo lo ya construido (Issues 1–13, 11b, 22, 34 y complementarios completados): motor de cálculo, setup por artículo y variante, compras, ventas, inventario, históricos completos, precisión de redondeo, coste/precio en doble UoM, ratio por lote, tracking por lote, sign management, copia de artículo y localización.
 - Soporte de deploy y entrega del `.app` al cliente.
 
 **Excluye:** almacén, devoluciones, informes, WMS avanzado.
 
 | Concepto | Jornadas | Importe |
 |----------|----------|---------|
-| Trabajo ya realizado | 48,0 j | *(inversión ya materializada)* |
+| Trabajo ya realizado | 57,0 j | *(inversión ya materializada)* |
 | Cierre mínimo vendible (deploy + hardening) | 2,0 j | **1.000 EUR** |
 | **Total a contratar** | **2,0 j** | **1.000 EUR** |
 
 **Para qué tipo de cliente encaja:**
-Empresas que compran y venden artículos con doble UoM sin procesos de almacén avanzado. Ideal como primera implantación para validar el valor y el fit funcional antes de comprometer una inversión mayor. Con Issues 12 y 13 ya completados, este escenario incluye trazabilidad de ratio por lote y coste/precio en segunda UoM.
+Empresas que compran y venden artículos con doble UoM sin procesos de almacén avanzado. Ideal como primera implantación para validar el valor y el fit funcional antes de comprometer una inversión mayor. Con Issues 12, 13 y 22 ya completados, este escenario incluye trazabilidad de ratio por lote, coste/precio en segunda UoM y seguimiento de lotes con DUoM operativo.
 
 ---
 
@@ -307,7 +321,7 @@ Empresas que compran y venden artículos con doble UoM sin procesos de almacén 
 
 | Concepto | Jornadas | Importe |
 |----------|----------|---------|
-| Trabajo ya realizado | 48,0 j | *(inversión ya materializada)* |
+| Trabajo ya realizado | 57,0 j | *(inversión ya materializada)* |
 | Cierre vendible mínimo (Escenario A) | 2,0 j | 1.000 EUR |
 | Almacén básico (Issue 14) | 5,0 j | 2.500 EUR |
 | Inventario físico (Issue 17) | 2,0 j | 1.000 EUR |
@@ -331,7 +345,7 @@ Empresas con almacén básico y necesidad de trazabilidad por lote. Sectores tí
 
 | Concepto | Jornadas | Importe |
 |----------|----------|---------|
-| Trabajo ya realizado | 48,0 j | *(inversión ya materializada)* |
+| Trabajo ya realizado | 57,0 j | *(inversión ya materializada)* |
 | Escenario B (a contratar) | 12,0 j | 6.000 EUR |
 | WMS Directed (Issue 15) | 6,0 j | 3.000 EUR |
 | Devoluciones (Issue 16) | 4,0 j | 2.000 EUR |
@@ -349,7 +363,7 @@ Empresas con WMS avanzado (Directed Put-Away & Pick activo en BC), alto volumen 
 
 1. **Una jornada = 8 horas** de trabajo efectivo de un consultor/desarrollador BC Senior.
 2. **BC 27 / runtime 15 SaaS** como plataforma de destino. Si el cliente usa una versión anterior, los eventos y firmas deben re-verificarse.
-3. **El trabajo ya realizado** (48,0 j) representa el valor acumulado en el repositorio. No se incluye en ninguna facturación futura salvo que se contemple en el modelo comercial del partner.
+3. **El trabajo ya realizado** (57,0 j) representa el valor acumulado en el repositorio. No se incluye en ninguna facturación futura salvo que se contemple en el modelo comercial del partner.
 4. **Entorno de desarrollo y test** disponible para el developer (tenant BC sandbox o Business Central container Windows 2022). Si el cliente no lo provee, añadir ~1 j para configuración.
 5. **No se incluye** consultoría funcional de fit-gap con el cliente, formación a usuarios, ni implantación en producción más allá del packaging y publicación del `.app`.
 6. **Localización:** el alcance actual cubre en-US y es-ES. Idiomas adicionales requieren ~0,5 j por idioma.
@@ -425,6 +439,8 @@ El proyecto tiene una base técnica excepcionalmente sólida. La Fase 1 completa
 | TableExt | 50119 | `DUoM Sales Cr.Memo Line Ext` | Histórico abonos de venta (+ Unit Price) |
 | TableExt | 50120 | `DUoM Item Variant Ext` | Cascade delete variant setup al borrar variante |
 | TableExt | 50121 | `DUoM Value Entry Ext` | Segunda Qty en Value Entry (trazabilidad contable) |
+| TableExt | 50122 | `DUoM Tracking Spec Ext` | DUoM Ratio y Second Qty en Tracking Specification |
+| TableExt | 50123 | `DUoM Reservation Entry Ext` | DUoM Ratio y Second Qty en Reservation Entry |
 | Codeunit | 50101 | `DUoM Calc Engine` | Motor de cálculo (Fixed/Variable/AlwaysVar + Rounding) |
 | Codeunit | 50102 | `DUoM Purchase Subscribers` | Suscriptores del flujo de compras (Qty + Variant) |
 | Codeunit | 50103 | `DUoM Sales Subscribers` | Suscriptores del flujo de ventas (Qty + Variant) |
@@ -433,6 +449,12 @@ El proyecto tiene una base técnica excepcionalmente sólida. La Fase 1 completa
 | Codeunit | 50106 | `DUoM UoM Helper` | Precisión de redondeo por artículo/UoM |
 | Codeunit | 50107 | `DUoM Setup Resolver` | Resolución jerárquica item → variante |
 | Codeunit | 50108 | `DUoM Lot Subscribers` | Helper de ratio por lote conservado para tests de bajo nivel |
+| Codeunit | 50109 | `DUoM Tracking Subscribers` | Suscriptores de tracking: Lot No., Qty (Base) |
+| Codeunit | 50110 | `DUoM Tracking Copy Subscribers` | Propagación DUoM en copias internas de Tracking Specification y Reservation Entry |
+| Codeunit | 50111 | `DUoM Tracking Coherence Mgt` | Validación y coherencia DUoM en edición de tracking y posting |
+| Codeunit | 50125 | `DUoM Tracking Prop. Mgt` | Ciclo abrir/editar/cerrar/reabrir de Item Tracking Lines |
+| Codeunit | 50126 | `DUoM Sign Mgt` | Gestión centralizada del signo DUoM (5 métodos públicos) |
+| Codeunit | 50128 | `DUoM Copy Item Mgt.` | Copia de configuración DUoM al copiar artículo (`OnAfterCopyItem`) |
 | Page | 50100 | `DUoM Item Setup` | Tarjeta de configuración DUoM por artículo |
 | Page | 50101 | `DUoM Variant Setup List` | Lista de overrides DUoM por variante |
 | Page | 50102 | `DUoM Lot Ratio List` | Lista de ratios reales por lote |
@@ -443,11 +465,14 @@ El proyecto tiene una base técnica excepcionalmente sólida. La Fase 1 completa
 | PageExt | 50104 | `DUoM Posted Rcpt. Subform` | Recepciones registradas (solo lectura) |
 | PageExt | 50105 | `DUoM Posted Ship. Subform` | Albaranes registrados (solo lectura) |
 | PageExt | 50106 | `DUoM Pstd Purch Inv Subform` | Facturas de compra registradas (solo lectura) |
-| PageExt | 50107 | `DUoM Pstd Purch CrM Subform` | Abonos de compra registrados (solo lectura) |
+| PageExt | 50107 | `DUoM Pstd Purch CrM Subform` | Abonos de compra registradas (solo lectura) |
 | PageExt | 50108 | `DUoM Pstd Sales Inv Subform` | Facturas de venta registradas (solo lectura) |
-| PageExt | 50109 | `DUoM Pstd Sales CrM Subform` | Abonos de venta registrados (solo lectura) |
+| PageExt | 50109 | `DUoM Pstd Sales CrM Subform` | Abonos de venta registradas (solo lectura) |
 | PageExt | 50110 | `DUoM Item UoM Subform` | Subformulario UoM: `Qty. Rounding Precision` editable |
 | PageExt | 50111 | `DUoM Item Ledger Entry` | Movimientos de producto con Segunda Qty |
+| PageExt | 50113 | `DUoM Item List Ext` | Lista de artículos con DUoM Inventory |
+| PageExt | 50114 | `DUoM Item Tracking Lines` | Item Tracking Lines con DUoM Ratio y Second Qty |
+| PageExt | 50115 | `DUoM Posted Item Trk. Lines` | Líneas de tracking registradas (solo lectura) |
 | PermSet | 50100 | `DUoM - All` | Permisos completos para usuarios DUoM |
 
 ### Objetos de test implementados
@@ -458,21 +483,34 @@ El proyecto tiene una base técnica excepcionalmente sólida. La Fase 1 completa
 | 50202 | `DUoM Item Card Opening Tests` | 4 tests (apertura página desde Item Card) |
 | 50203 | `DUoM Item Delete Tests` | 2 tests (cascade delete artículo) |
 | 50204 | `DUoM Calc Engine Tests` | 16 tests (Fixed/Variable/AlwaysVar/Rounding/edge cases) |
-| 50205 | `DUoM Purchase Tests` | 9 tests (validate Qty, modos, rounding) |
-| 50206 | `DUoM Sales Tests` | 8 tests (validate Qty, modos, rounding) |
+| 50205 | `DUoM Purchase Tests` | 11 tests (validate Qty, modos, rounding) |
+| 50206 | `DUoM Sales Tests` | 10 tests (validate Qty, modos, rounding) |
 | 50207 | `DUoM Inventory Tests` | 6 tests (diario de productos) |
 | 50208 | `DUoM Test Helpers` | Helper compartido (sin `[Test]`) |
-| 50209 | `DUoM ILE Integration Tests` | 6 tests E2E (posting completo → ILE + rcpt/ship) |
+| 50209 | `DUoM ILE Integration Tests` | 23 tests E2E (posting completo → ILE + rcpt/ship) |
 | 50210 | `DUoM Inv CrMemo Post Tests` | 5 tests E2E (factura y abono compra/venta) |
 | 50211 | `DUoM Variant Tests` | 15 tests (jerarquía item→variante, override, resolver) |
 | 50212 | `DUoM Item UoM Round Tests` | 4 tests (editabilidad `Qty. Rounding Precision`) |
 | 50213 | `DUoM UoM Helper Tests` | 7 tests (GetSecondUoMRoundingPrecision, GetRoundingPrecisionByUoMCode) |
-| 50214 | `DUoM Var Mode Post Tests` | 4 tests E2E (posting Variable y AlwaysVariable) |
+| 50214 | `DUoM Variable Mode Post Tests` | 4 tests E2E (posting Variable y AlwaysVariable) |
 | 50215 | `DUoM Variant Del Tests` | 3 tests (cascade delete variante → setup DUoM) |
 | 50216 | `DUoM Cost Price Tests` | 8 tests (Unit Cost/Price DUoM, derivación, propagación) |
-| 50217 | `DUoM Lot Ratio Tests` | 8 tests (ratio por lote en IJL, ILE proporcional, multi-lote) |
+| 50217 | `DUoM Lot Ratio Tests` | 13 tests (ratio por lote en IJL, ILE proporcional, multi-lote) |
+| 50218 | `DUoM Item Tracking Tests` | 27 tests (tracking por lote, buffer, E2E, modelo 1:N) |
+| 50219 | `DUoM Purch Tracking Persist` | 16 tests E2E (persistencia TrackingSpec ↔ Reservation Entry) |
+| 50220 | `DUoM Tracking Coherence Tests` | 17 tests (validación coherencia DUoM en tracking) |
+| 50221 | `DUoM Purch Tracking Post Tests` | 5 tests E2E (posting con tracking por lote) |
+| 50222 | `DUoM Purch Track Close Tests` | 3 tests (cierre tracking lines) |
+| 50223 | `DUoM Purch Track Val Tests` | 4 tests (validación tracking) |
+| 50224 | `DUoM Pstd Item Trk. Tests` | 2 tests (líneas de tracking registradas) |
+| 50225 | `DUoM Purch Sync Tests` | 5 tests (sincronización línea compra con tracking) |
+| 50226 | `DUoM Purch Lot Ratio Tests` | 9 tests (ratio por lote desde Purchase Order) |
+| 50227 | `DUoM Undo Rcpt Shpt Tests` | 5 tests (undo recepción/albarán con DUoM) |
+| 50228 | `DUoM Sign Mgt Tests` | 23 tests (gestión de signo DUoM — NormalizeILESign, etc.) |
+| 50229 | `DUoM Doc Audit Tests` | 7 tests (T-AUDIT-01–07: propagación históricos y signo VE) |
+| 50230 | `DUoM Copy Item Tests` | 6 tests (T-COPYITEM-01–06: Fixed, Variable, variantes, idempotencia) |
 | 50200 | `DUoM - Test All` (PermSet) | Permisos para tests |
-| **TOTAL** | | **114 tests** |
+| **TOTAL** | | **269 tests** |
 
 ### Áreas pendientes principales
 
@@ -486,4 +524,4 @@ El proyecto tiene una base técnica excepcionalmente sólida. La Fase 1 completa
 
 ---
 
-*Documento elaborado en abril de 2026 a partir del análisis del repositorio `DynamITVectorK/DualUoM-BC2`. Las estimaciones son orientativas y están sujetas a revisión tras un análisis de fit-gap con el cliente final.*
+*Documento actualizado en mayo de 2026. Refleja el estado real del repositorio `DynamITVectorK/DualUoM-BC2` tras completar los Issues 22 (Item Tracking DUoM) y 34 (Copy Item DUoM). Las estimaciones son orientativas y están sujetas a revisión tras un análisis de fit-gap con el cliente final.*
