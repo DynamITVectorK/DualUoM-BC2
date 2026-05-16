@@ -660,6 +660,36 @@ BC construye ese buffer desde `Reservation Entry` — no hay que insertarlo desd
 - `docs/issues/issue-171-ILE-coverage-variable-multilot.md`
 - `docs/06-backlog.md`
 
+### Issue 34 — Copy Item debe copiar la configuración DUoM del artículo origen ✅ IMPLEMENTADO
+
+**Objetivo:** propagar la configuración maestra DUoM al artículo destino cuando se usa la
+funcionalidad estándar de Business Central para copiar artículos.
+
+**Solución:** nuevo codeunit `DUoM Copy Item Mgt.` (50128) con suscriptor al evento
+`OnAfterCopyItem` de `Codeunit::"Copy Item"` (BC 27 / runtime 15). El suscriptor llama
+a `CopyDUoMSetup(SourceItemNo, TargetItemNo)` que propaga:
+- `DUoM Item Setup` (50100): configuración completa (Enabled, Second UoM Code, Conversion Mode, Fixed Ratio).
+- `DUoM Item Variant Setup` (50101): anulaciones por variante (solo para variantes que ya
+  existen en el artículo destino; se omiten las variantes no copiadas).
+- `DUoM Lot Ratio` (50102): **no se copia** — son datos transaccionales/históricos del stock
+  real recibido, no configuración maestra del artículo.
+
+El procedimiento `CopyDUoMSetup` es público para facilitar tests unitarios directos. La
+lógica de inserción/actualización es idempotente: si el destino ya tiene configuración DUoM
+(p.ej. copia repetida), se actualiza sin generar duplicados.
+
+**Evento verificado:** `OnAfterCopyItem` en `Codeunit::"Copy Item"` confirmado en BC 27
+mediante `Apps/CZ/AdvancedLocalizationPack` (microsoft/ALAppExtensions, commit 234988e).
+Firma: `(var CopyItemBuffer: Record "Copy Item Buffer"; SourceItem: Record Item; var TargetItem: Record Item)`.
+
+**Deliverables:**
+- `app/src/codeunit/DUoMCopyItemMgt.Codeunit.al` (codeunit 50128)
+- `test/src/codeunit/DUoMCopyItemTests.Codeunit.al` (codeunit 50230): 6 tests
+  T-COPYITEM-01..06 cubriendo Fixed, Variable, variantes, omisión de variantes inexistentes,
+  idempotencia y artículo origen sin configuración DUoM.
+- `docs/development/object-id-registry.md`: IDs 50128 y 50230 registrados.
+- `docs/06-backlog.md`
+
 ### Issue 14 — Warehouse Basic Documents DUoM Fields
 
 **Blueprint técnico:** ver `docs/09-wms-advanced-design.md` — diseño completo de objetos,

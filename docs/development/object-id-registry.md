@@ -87,6 +87,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50111 | DUoM Tracking Coherence Mgt         | app/src/codeunit/DUoMTrackingCoherenceMgt.Codeunit.al    |
 | 50125 | DUoM Tracking Prop. Mgt            | app/src/codeunit/DUoMTrackingPropMgt.Codeunit.al         |
 | 50126 | DUoM Sign Mgt                       | app/src/codeunit/DUoMSignMgt.Codeunit.al                 |
+| 50128 | DUoM Copy Item Mgt.                 | app/src/codeunit/DUoMCopyItemMgt.Codeunit.al             |
 
 ### Enums
 
@@ -137,6 +138,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50227 | DUoM Undo Rcpt Shpt Tests         | test/src/codeunit/DUoMUndoRcptShptTests.Codeunit.al              |
 | 50228 | DUoM Sign Mgt Tests               | test/src/codeunit/DUoMSignMgtTests.Codeunit.al                   |
 | 50229 | DUoM Doc Audit Tests              | test/src/codeunit/DUoMDocAuditTests.Codeunit.al                  |
+| 50230 | DUoM Copy Item Tests              | test/src/codeunit/DUoMCopyItemTests.Codeunit.al                  |
 
 ### Permission Sets de test
 
@@ -150,5 +152,5 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 
 | App      | Tipo                           | Próximo ID libre |
 |----------|--------------------------------|-----------------|
-| app/     | Cualquier tipo de objeto       | 50128           |
-| test/    | Codeunit / permissionset       | 50230           |
+| app/     | Cualquier tipo de objeto       | 50129           |
+| test/    | Codeunit / permissionset       | 50231           |

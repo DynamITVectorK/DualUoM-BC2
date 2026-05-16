@@ -75,7 +75,18 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | 50216 | DUoM Cost Price Tests | DUoM Unit Cost / DUoM Unit Price, propagación a históricos, DUoM Second Qty en Value Entry |
 | 50217 | DUoM Lot Ratio Tests | DUoM Lot Ratio (table), DUoM Lot Subscribers (Issue 13) |
 | 50218 | DUoM Item Tracking Tests | DUoM Tracking Subscribers, DUoM Tracking Spec Ext, DUoM Item Tracking Lines (Issue 22) |
+| 50219 | DUoM Purch Tracking Persist | DUoM Reservation Entry Ext, TrackingSpec ↔ RE persistencia E2E |
+| 50220 | DUoM Tracking Coherence Tests | DUoM Tracking Coherence Mgt (validación coherencia buffer) |
+| 50221 | DUoM Purch Tracking Post Tests | Posting con tracking por lote → ILE |
+| 50222 | DUoM Purch Track Close Tests | Cierre Item Tracking Lines |
+| 50223 | DUoM Purch Track Val Tests | Validación DUoM en tracking |
+| 50224 | DUoM Pstd Item Trk. Tests | Líneas de tracking registradas (solo lectura) |
+| 50225 | DUoM Purch Sync Tests | Sincronización línea compra con tracking DUoM |
+| 50226 | DUoM Purch Lot Ratio Tests | Ratio por lote desde Purchase Order (T-PURCH-LOT-*) |
+| 50227 | DUoM Undo Rcpt Shpt Tests | Undo recepción/albarán con DUoM (signo correcto) |
+| 50228 | DUoM Sign Mgt Tests | DUoM Sign Mgt — NormalizeILESign, ApplyMovementSign, etc. |
 | 50229 | DUoM Doc Audit Tests | Auditoría propagación: DUoM Unit Cost/Price en históricos, signo ILE y VE en abonos |
+| 50230 | DUoM Copy Item Tests | DUoM Copy Item Mgt. — Fixed, Variable, variantes, idempotencia (Issue 34) |
 
 ---
 
@@ -111,6 +122,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 cubierta; aplicación de ratio durante posting cubierta (T04–T10) |
 | DUoM Lot Subscribers (cu 50108) | ✅ 50217 | — | **Completa** | Helper de ratio por lote cubierto en T04–T10/T12. `TryApplyLotRatioToILE` se conserva para tests de bajo nivel; el flujo productivo usa `Tracking Specification / Reservation Entry → IJL → ILE`. |
 | DUoM Tracking Subscribers (cu 50109) | ✅ 50218 | ✅ 50218 (T05, T06) | **Completa** | T01–T04 unitarios (Lot No./Qty (Base) subscribers), T05 E2E, T06 modelo 1:N, T07 sin DUoM activo (Issue 22) |
+| DUoM Copy Item Mgt. (cu 50128) | ✅ 50230 | — | **Completa** | T-COPYITEM-01..06: Fixed, Variable, variantes, omisión variante no existente, idempotencia, sin DUoM (Issue 34) |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
 | DUoM permissionset 50100 | — | — | **N/A** | Verificado implícitamente por tests E2E con TestPermissions |
@@ -206,25 +218,38 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 
 ## Estado Actual del Test Suite
 
-> **Última actualización:** auditoría propagación históricos y VE — 2026-05-10
+> **Última actualización:** Issue 34 — Copy Item DUoM — 2026-05-16
 
 | Codeunit | ID | Tests | Estado |
 |----------|----|-------|--------|
-| DUoM Item Setup Tests | 50201 | Múltiples | ✅ |
-| DUoM Item Card Opening Tests | 50202 | Múltiples | ✅ |
-| DUoM Item Delete Tests | 50203 | Múltiples | ✅ |
-| DUoM Calc Engine Tests | 50204 | Múltiples | ✅ |
-| DUoM Purchase Tests | 50205 | Múltiples | ✅ |
-| DUoM Sales Tests | 50206 | Múltiples | ✅ |
-| DUoM Inventory Tests | 50207 | Múltiples | ✅ |
+| DUoM Item Setup Tests | 50201 | 9 tests | ✅ |
+| DUoM Item Card Opening Tests | 50202 | 4 tests | ✅ |
+| DUoM Item Delete Tests | 50203 | 2 tests | ✅ |
+| DUoM Calc Engine Tests | 50204 | 16 tests | ✅ |
+| DUoM Purchase Tests | 50205 | 11 tests | ✅ |
+| DUoM Sales Tests | 50206 | 10 tests | ✅ |
+| DUoM Inventory Tests | 50207 | 6 tests | ✅ |
 | DUoM Test Helpers | 50208 | — (helper) | ✅ |
-| DUoM ILE Integration Tests | 50209 | 6 tests E2E | ✅ |
+| DUoM ILE Integration Tests | 50209 | 23 tests E2E | ✅ |
 | DUoM Inv CrMemo Post Tests | 50210 | 5 tests E2E | ✅ |
-| DUoM Variant Tests | 50211 | 8 tests | ✅ |
+| DUoM Variant Tests | 50211 | 15 tests | ✅ |
 | DUoM Item UoM Round Tests | 50212 | 4 tests | ✅ |
 | DUoM UoM Helper Tests | 50213 | 7 tests | ✅ |
 | DUoM Variable Mode Post Tests | 50214 | 4 tests | ✅ |
 | DUoM Variant Del Tests | 50215 | 3 tests | ✅ |
 | DUoM Cost Price Tests | 50216 | 8 tests (T01–T08) | ✅ |
-| DUoM Lot Ratio Tests | 50217 | 9 tests (T02–T10, T12) | ✅ |
+| DUoM Lot Ratio Tests | 50217 | 13 tests | ✅ |
+| DUoM Item Tracking Tests | 50218 | 27 tests | ✅ |
+| DUoM Purch Tracking Persist | 50219 | 16 tests E2E | ✅ |
+| DUoM Tracking Coherence Tests | 50220 | 17 tests | ✅ |
+| DUoM Purch Tracking Post Tests | 50221 | 5 tests E2E | ✅ |
+| DUoM Purch Track Close Tests | 50222 | 3 tests | ✅ |
+| DUoM Purch Track Val Tests | 50223 | 4 tests | ✅ |
+| DUoM Pstd Item Trk. Tests | 50224 | 2 tests | ✅ |
+| DUoM Purch Sync Tests | 50225 | 5 tests | ✅ |
+| DUoM Purch Lot Ratio Tests | 50226 | 9 tests | ✅ |
+| DUoM Undo Rcpt Shpt Tests | 50227 | 5 tests | ✅ |
+| DUoM Sign Mgt Tests | 50228 | 23 tests | ✅ |
 | DUoM Doc Audit Tests | 50229 | 7 tests (T-AUDIT-01–07) | ✅ |
+| DUoM Copy Item Tests | 50230 | 6 tests (T-COPYITEM-01–06) | ✅ |
+| **TOTAL** | | **269 tests** | |

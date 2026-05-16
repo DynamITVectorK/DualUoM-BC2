@@ -17,6 +17,7 @@
    - [2.3 Precisión de redondeo de la segunda UdM](#23-precisión-de-redondeo-de-la-segunda-udm)
    - [2.4 Configuración DUoM por variante (override opcional)](#24-configuración-duom-por-variante-override-opcional)
    - [2.5 DUoM Unit Cost (compras) y DUoM Unit Price (ventas)](#25-duom-unit-cost-compras-y-duom-unit-price-ventas)
+   - [2.6 Copiar un artículo con configuración DUoM](#26-copiar-un-artículo-con-configuración-duom)
 3. [Compras](#3-compras)
 4. [Ventas](#4-ventas)
 5. [Inventario — Diario de productos](#5-inventario--diario-de-productos)
@@ -335,6 +336,56 @@ Además de la segunda cantidad, DualUoM-BC añade un campo de **precio/coste en 
 | Albarán de venta registrado | **DUoM Unit Price** | ❌ No (inmutable) |
 | Factura de venta registrada | **DUoM Unit Price** | ❌ No (inmutable) |
 | Abono de venta registrado | **DUoM Unit Price** | ❌ No (inmutable) |
+
+---
+
+## 2.6 Copiar un artículo con configuración DUoM
+
+Business Central incluye una funcionalidad estándar (**Copiar artículo**) que permite duplicar un artículo existente junto con su configuración de datos maestros. DualUoM-BC se integra automáticamente con este proceso: al copiar un artículo, la configuración DUoM del artículo origen se propaga al artículo destino sin necesidad de ninguna acción adicional por parte del usuario.
+
+### ¿Qué se copia?
+
+Cuando se usa la función **Copiar artículo** en Business Central, DualUoM-BC copia automáticamente:
+
+| Datos copiados | Descripción |
+|----------------|-------------|
+| **Dual UoM Enabled** | El interruptor principal de activación DUoM |
+| **Second UoM Code** | El código de la segunda unidad de medida |
+| **Conversion Mode** | El modo de conversión (Fijo / Variable / Siempre Variable) |
+| **Fixed Ratio** | El ratio por defecto |
+| **Overrides DUoM por variante** | La configuración de segunda UdM por variante, para cada variante que se haya copiado al artículo destino |
+
+### ¿Qué **no** se copia?
+
+| Datos **no** copiados | Motivo |
+|-----------------------|--------|
+| **DUoM Lot Ratio** (ratios por lote) | Son datos operativos reales de cada lote recibido/producido del artículo origen. El artículo destino debe empezar sin lotes reales. |
+| Movimientos de producto (ILE) | Datos transaccionales: no forman parte del maestro del artículo |
+| Reservation Entries | Datos transaccionales: pertenecen al artículo origen |
+| Documentos abiertos o registrados | No se duplican pedidos, recepciones, albaranes ni facturas |
+
+> **Regla de negocio:** los ratios por lote reflejan el peso o cantidad real medida en el momento de la recepción o producción de cada lote concreto. No tienen sentido en un artículo nuevo que aún no ha recibido ningún lote.
+
+### ¿Cómo acceder a la función Copiar artículo?
+
+1. Abra la ficha del artículo que desea copiar.
+2. Haga clic en **Acciones → Funciones → Copiar artículo** (o busque *Copiar artículo* en la barra de búsqueda de BC).
+3. Rellene el número del nuevo artículo y seleccione qué elementos desea copiar (variantes, unidades de medida, dimensiones, etc.).
+4. Haga clic en **Aceptar**.
+
+> `[PENDIENTE CAPTURA]` *Diálogo de copia de artículo con la configuración DUoM propagándose automáticamente al nuevo artículo.*
+
+### Resultado esperado
+
+Una vez completada la copia:
+
+- El nuevo artículo tendrá exactamente la misma configuración DUoM que el origen.
+- Si el artículo origen tenía overrides DUoM por variante y se eligió copiar las variantes, esos overrides también estarán presentes en el artículo destino.
+- Si el artículo origen tenía ratios reales por lote registrados, esos ratios **no** estarán en el artículo destino — es el comportamiento esperado.
+
+### Idempotencia
+
+Si por cualquier razón el proceso de copia se ejecuta dos veces sobre el mismo artículo destino, la configuración DUoM se actualiza sin generar duplicados ni errores. El resultado final siempre es coherente con la configuración del artículo origen.
 
 ---
 
@@ -790,6 +841,19 @@ La configuración DUoM de esa variante se **elimina automáticamente** al borrar
 
 ---
 
+### ¿Qué ocurre con la configuración DUoM cuando copio un artículo?
+
+Cuando usa la función estándar **Copiar artículo** de Business Central, DualUoM-BC copia automáticamente toda la configuración maestra DUoM al artículo destino:
+
+- Configuración DUoM del artículo (modo, ratio, segunda UdM).
+- Overrides DUoM por variante (para las variantes que se hayan copiado).
+
+**No se copian** los ratios reales por lote (`DUoM Lot Ratio`) porque son datos operativos del artículo origen y no forman parte del maestro de artículo. El artículo destino comienza sin lotes reales.
+
+Consulte la [sección 2.6 — Copiar un artículo con configuración DUoM](#26-copiar-un-artículo-con-configuración-duom) para más detalle.
+
+---
+
 ## 9. Ratios específicos por lote
 
 ### 9.1 ¿Para qué sirven los ratios por lote?
@@ -949,7 +1013,7 @@ La segunda cantidad de la línea de documento (ej. línea del Diario de producto
 
 *Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, informes avanzados) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
 
-*Última actualización: v1.5 — Issue 177 — Política AlwaysVariable + lotes consolidada: tabla de decisión por cuatro escenarios (ratio de lote, ratio manual, sin ratio sin lote, sin ratio con lote). Sección 9.2b añadida. Referencias a T10 y T14.*
+*Última actualización: v1.6 — Issue 34 — Copia de artículo con configuración DUoM: sección 2.6 añadida, entrada FAQ añadida.*
 
 ## Apéndice: Resumen de campos DUoM por documento
 
@@ -1002,4 +1066,4 @@ La segunda cantidad de la línea de documento (ej. línea del Diario de producto
 
 *Este manual se actualizará en cada nueva fase del proyecto. Para la Fase 2 (almacén dirigido, informes avanzados) y la Fase 3 (órdenes de transferencia, devoluciones) se añadirán los capítulos correspondientes.*
 
-*Última actualización: v1.5 — Issue 177 — Política AlwaysVariable + lotes consolidada: tabla de decisión por cuatro escenarios (ratio de lote, ratio manual, sin ratio sin lote, sin ratio con lote). Sección 9.2b añadida. Referencias a T10 y T14.*
+*Última actualización: v1.6 — Issue 34 — Copia de artículo con configuración DUoM: sección 2.6 añadida, entrada FAQ añadida.*
