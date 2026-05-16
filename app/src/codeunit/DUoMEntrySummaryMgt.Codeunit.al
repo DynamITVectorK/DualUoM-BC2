@@ -8,10 +8,14 @@
 /// en BC 27. La información de artículo debe obtenerse desde el origen real:
 ///   - Table ID = 32 (Item Ledger Entry): Entry No. = ILE Entry No. → Get directo.
 ///   - Table ID = 337 (Reservation Entry): Entry No. filtra por RE → FindFirst.
+///
+/// PopulateDUoMForEntrySummary rellena DUoM Ratio y DUoM Second Qty durante la
+/// carga inicial del buffer de la página Item Tracking Summary, usando Total Available
+/// Quantity como base cuando Selected Quantity = 0.
 /// </summary>
 codeunit 50132 "DUoM Entry Summary Mgt."
 {
-    Access = Internal;
+    Access = Public;
 
     /// <summary>
     /// Intenta resolver el contexto de artículo/variante desde un Entry Summary.
@@ -59,5 +63,84 @@ codeunit 50132 "DUoM Entry Summary Mgt."
         end;
 
         exit(false);
+    end;
+
+    /// <summary>
+    /// Rellena DUoM Ratio y DUoM Second Qty para una línea de Entry Summary.
+    /// Diseñado para ser llamado durante la carga inicial de la página Item Tracking Summary.
+    ///
+    /// Comportamiento:
+    ///   - Resuelve Item No. y Variant Code mediante TryResolveItemContext.
+    ///   - Obtiene el setup efectivo (modo, ratio fijo) con DUoM Setup Resolver.
+    ///   - En modo Fixed: usa Fixed Ratio directamente.
+    ///   - En modo Variable / AlwaysVariable: busca DUoM Lot Ratio por lote.
+    ///   - Si Selected Quantity <> 0: calcula DUoM Second Qty desde Abs(Selected Quantity).
+    ///   - Si Selected Quantity = 0: calcula DUoM Second Qty desde Total Available Quantity.
+    ///   - No lanza error si no hay contexto, setup o ratio de lote.
+    ///   - Idempotente: llamar varias veces produce el mismo resultado.
+    /// </summary>
+    procedure PopulateDUoMForEntrySummary(var EntrySummary: Record "Entry Summary")
+    var
+        DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        DUoMLotRatio: Record "DUoM Lot Ratio";
+        ItemNo: Code[20];
+        VariantCode: Code[10];
+        SecondUoMCode: Code[10];
+        ConversionMode: Enum "DUoM Conversion Mode";
+        FixedRatio: Decimal;
+        RoundingPrecision: Decimal;
+        AppliedRatio: Decimal;
+    begin
+        if not TryResolveItemContext(EntrySummary, ItemNo, VariantCode) then
+            exit;
+        if not DUoMSetupResolver.GetEffectiveSetup(
+                 ItemNo, VariantCode,
+                 SecondUoMCode, ConversionMode, FixedRatio) then
+            exit;
+
+        RoundingPrecision := GetEffectiveRoundingPrecision(ItemNo, SecondUoMCode);
+
+        if ConversionMode = ConversionMode::Fixed then begin
+            AppliedRatio := FixedRatio;
+            EntrySummary."DUoM Ratio" := AppliedRatio;
+            EntrySummary."DUoM Second Qty" := Round(
+                GetBaseQtyForSecondCalc(EntrySummary) * AppliedRatio,
+                RoundingPrecision);
+            exit;
+        end;
+
+        if EntrySummary."Lot No." = '' then
+            exit;
+        if not DUoMLotRatio.Get(ItemNo, EntrySummary."Lot No.") then
+            exit;
+
+        AppliedRatio := DUoMLotRatio."Actual Ratio";
+        EntrySummary."DUoM Ratio" := AppliedRatio;
+        EntrySummary."DUoM Second Qty" := Round(
+            GetBaseQtyForSecondCalc(EntrySummary) * AppliedRatio,
+            RoundingPrecision);
+    end;
+
+    local procedure GetBaseQtyForSecondCalc(EntrySummary: Record "Entry Summary"): Decimal
+    begin
+        if EntrySummary."Selected Quantity" <> 0 then
+            exit(Abs(EntrySummary."Selected Quantity"));
+        exit(Abs(EntrySummary."Total Available Quantity"));
+    end;
+
+    local procedure GetEffectiveRoundingPrecision(ItemNo: Code[20]; SecondUoMCode: Code[10]): Decimal
+    var
+        DUoMUoMHelper: Codeunit "DUoM UoM Helper";
+        RoundingPrecision: Decimal;
+    begin
+        RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(ItemNo, SecondUoMCode);
+        if RoundingPrecision <= 0 then
+            exit(GetDefaultRoundingPrecision());
+        exit(RoundingPrecision);
+    end;
+
+    local procedure GetDefaultRoundingPrecision(): Decimal
+    begin
+        exit(0.00001);
     end;
 }
