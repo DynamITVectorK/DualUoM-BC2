@@ -551,10 +551,13 @@ codeunit 50231 "DUoM Entry Summary Tests"
         ItemTrackingSummary.First();
         repeat
             if ItemTrackingSummary."Lot No.".Value = ExpectedLotNo then
-                Found := true
+                begin
+                    Found := true;
+                    HasNext := false;
+                end
             else
                 HasNext := ItemTrackingSummary.Next();
-        until Found or not HasNext;
+        until not HasNext;
 
         LibraryAssert.IsTrue(
             Found,
