@@ -52,20 +52,28 @@ pageextension 50130 "DUoM Item Trk Summary" extends "Item Tracking Summary"
 
     local procedure UpdateSecondQtyCaption()
     var
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
         DUoMItemSetup: Record "DUoM Item Setup";
+        DUoMVariantSetup: Record "DUoM Item Variant Setup";
+        ItemNo: Code[20];
+        VariantCode: Code[10];
         SecondUoMCode: Code[10];
     begin
         DUoMSecondQtyCaption := '3,' + DUoMSecondQtyDefaultLbl;
         DUoMTotalSecondQtyCaption := '3,' + DUoMTotalSecondQtyDefaultLbl;
 
-        if Rec."Item No." = '' then
+        if not DUoMEntrySummaryMgt.TryResolveItemContext(Rec, ItemNo, VariantCode) then
             exit;
-        if not DUoMItemSetup.Get(Rec."Item No.") then
+        if not DUoMItemSetup.Get(ItemNo) then
             exit;
         if not DUoMItemSetup."Dual UoM Enabled" then
             exit;
 
-        SecondUoMCode := DUoMItemSetup."Second UoM Code";
+        if (VariantCode <> '') and DUoMVariantSetup.Get(ItemNo, VariantCode) then
+            SecondUoMCode := DUoMVariantSetup."Second UoM Code"
+        else
+            SecondUoMCode := DUoMItemSetup."Second UoM Code";
+
         if SecondUoMCode = '' then
             exit;
 

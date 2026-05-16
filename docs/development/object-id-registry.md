@@ -91,6 +91,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50126 | DUoM Sign Mgt                       | app/src/codeunit/DUoMSignMgt.Codeunit.al                 |
 | 50128 | DUoM Copy Item Mgt.                 | app/src/codeunit/DUoMCopyItemMgt.Codeunit.al             |
 | 50131 | DUoM Entry Sum Subscribers          | app/src/codeunit/DUoMEntrySumSubscribers.Codeunit.al     |
+| 50132 | DUoM Entry Summary Mgt.             | app/src/codeunit/DUoMEntrySummaryMgt.Codeunit.al         |
 
 ### Enums
 
@@ -156,5 +157,5 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 
 | App      | Tipo                           | Próximo ID libre |
 |----------|--------------------------------|-----------------|
-| app/     | Cualquier tipo de objeto       | 50132           |
+| app/     | Cualquier tipo de objeto       | 50133           |
 | test/    | Codeunit / permissionset       | 50232           |

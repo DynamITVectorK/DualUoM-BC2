@@ -298,6 +298,55 @@ codeunit 50208 "DUoM Test Helpers"
     /// Nota: esta codeunit pertenece a la test app, que no tiene TranslationFile habilitado
     /// en app.json; los mensajes de error son de ámbito de desarrollador y no requieren Label.
     /// </summary>
+    /// <summary>
+    /// Crea un registro mínimo de Item Ledger Entry directamente en la base de datos
+    /// para su uso exclusivo en tests de Entry Summary.
+    ///
+    /// Permite construir un Entry Summary con Table ID = Database::"Item Ledger Entry"
+    /// y Entry No. = ILE."Entry No.", de forma que TryResolveItemContext (codeunit 50132)
+    /// pueda resolver el contexto de artículo/variante sin necesidad de pasar por el
+    /// flujo de contabilización completo.
+    ///
+    /// Insert(false) se usa para eludir el trigger OnInsert de Item Ledger Entry,
+    /// que en el flujo estándar actualiza contadores en Inventory Setup ("Last Item
+    /// Ledg. Entry No."), valida relaciones de posting setup y puede provocar errores
+    /// de missing setup (p.ej. Inventory Posting Group, General Posting Setup) que
+    /// no son relevantes para el test de resolución de contexto de artículo.
+    /// La transacción queda aislada al test y se descarta con el rollback automático.
+    ///
+    /// Importante: solo usar en codeunits de test con TestPermissions = Disabled.
+    ///
+    /// Parámetros:
+    ///   ItemNo      — Número de artículo que debe quedar en el ILE.
+    ///   VariantCode — Código de variante (puede ser vacío).
+    ///   LotNo       — Número de lote (puede ser vacío).
+    ///   ILE         — Registro ILE creado, con Entry No. asignado automáticamente.
+    /// </summary>
+    procedure CreateMinimalILEForEntrySummaryTest(
+        ItemNo: Code[20];
+        VariantCode: Code[10];
+        LotNo: Code[50];
+        var ILE: Record "Item Ledger Entry")
+    var
+        LastILE: Record "Item Ledger Entry";
+    begin
+        ILE.Init();
+        if LastILE.FindLast() then
+            ILE."Entry No." := LastILE."Entry No." + 1
+        else
+            ILE."Entry No." := 1;
+        ILE."Item No." := ItemNo;
+        ILE."Variant Code" := VariantCode;
+        ILE."Lot No." := LotNo;
+        ILE."Posting Date" := WorkDate();
+        ILE."Entry Type" := ILE."Entry Type"::Purchase;
+        ILE."Document No." := 'TEST-ENTRYSUM';
+        ILE.Quantity := 10;
+        ILE."Remaining Quantity" := 10;
+        ILE."Open" := true;
+        ILE.Insert(false);
+    end;
+
     procedure EnsureInventoryPostingSetupForLocation(Item: Record Item; LocationCode: Code[10])
     var
         InventoryPostingSetup: Record "Inventory Posting Setup";
