@@ -1,6 +1,6 @@
 # Auditoría de Cobertura de Tests — DualUoM-BC
 
-> **Fecha de auditoría:** 2026-04-20 — Actualizado: 2026-05-16 (Issue 350 — Entry Summary / Item Tracking Summary)
+> **Fecha de auditoría:** 2026-04-20 — Actualizado: 2026-05-16 (Issue 349 / PR 350 — Entry Summary / Item Tracking Summary)
 > **Estado del repositorio auditado:** Phase 1 MVP completada
 
 ---
@@ -256,7 +256,7 @@ o a hardening todavía pendiente sobre funcionalidad ya disponible:
 
 ## Estado Actual del Test Suite
 
-> **Última actualización:** Issue 350 — auditoría Entry Summary / Item Tracking Summary — 2026-05-16
+> **Última actualización:** Issue 349 / PR 350 — auditoría Entry Summary / Item Tracking Summary — 2026-05-16
 
 | Codeunit | ID | Tests | Estado |
 |----------|----|-------|--------|
