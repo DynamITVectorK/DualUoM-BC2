@@ -684,9 +684,13 @@ Firma: `(var CopyItemBuffer: Record "Copy Item Buffer"; SourceItem: Record Item;
 
 **Deliverables:**
 - `app/src/codeunit/DUoMCopyItemMgt.Codeunit.al` (codeunit 50128)
-- `test/src/codeunit/DUoMCopyItemTests.Codeunit.al` (codeunit 50230): 6 tests
-  T-COPYITEM-01..06 cubriendo Fixed, Variable, variantes, omisión de variantes inexistentes,
-  idempotencia y artículo origen sin configuración DUoM.
+- `test/src/codeunit/DUoMCopyItemTests.Codeunit.al` (codeunit 50230): 9 tests
+  - T-COPYITEM-01..06: unitarios directos (Fixed, Variable, variantes, omisión de variantes inexistentes,
+    idempotencia y artículo origen sin configuración DUoM).
+  - T-COPYITEM-INT-01..03: integración con flujo estándar BC via `SetCopyItemBuffer` + `DoCopyItem`
+    (prueban que el suscriptor `OnAfterCopyItemHandler` se dispara correctamente, que DUoM Item Setup
+    se copia, que DUoM Variant Setup se copia cuando se copian variantes, y que DUoM Lot Ratios
+    no se copian).
 - `docs/development/object-id-registry.md`: IDs 50128 y 50230 registrados.
 - `docs/06-backlog.md`
 

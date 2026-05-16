@@ -86,7 +86,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | 50227 | DUoM Undo Rcpt Shpt Tests | Undo recepción/albarán con DUoM (signo correcto) |
 | 50228 | DUoM Sign Mgt Tests | DUoM Sign Mgt — NormalizeILESign, ApplyMovementSign, etc. |
 | 50229 | DUoM Doc Audit Tests | Auditoría propagación: DUoM Unit Cost/Price en históricos, signo ILE y VE en abonos |
-| 50230 | DUoM Copy Item Tests | DUoM Copy Item Mgt. — Fixed, Variable, variantes, idempotencia (Issue 34) |
+| 50230 | DUoM Copy Item Tests | DUoM Copy Item Mgt. — Fixed, Variable, variantes, idempotencia (Issue 34); integración flujo estándar Copy Item (Issue 35) |
 
 ---
 
@@ -122,7 +122,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Lot Ratio (table 50102) | ✅ 50217 | — | **Completa** | Validación Actual Ratio ≤ 0 cubierta; aplicación de ratio durante posting cubierta (T04–T10) |
 | DUoM Lot Subscribers (cu 50108) | ✅ 50217 | — | **Completa** | Helper de ratio por lote cubierto en T04–T10/T12. `TryApplyLotRatioToILE` se conserva para tests de bajo nivel; el flujo productivo usa `Tracking Specification / Reservation Entry → IJL → ILE`. |
 | DUoM Tracking Subscribers (cu 50109) | ✅ 50218 | ✅ 50218 (T05, T06) | **Completa** | T01–T04 unitarios (Lot No./Qty (Base) subscribers), T05 E2E, T06 modelo 1:N, T07 sin DUoM activo (Issue 22) |
-| DUoM Copy Item Mgt. (cu 50128) | ✅ 50230 | — | **Completa** | T-COPYITEM-01..06: Fixed, Variable, variantes, omisión variante no existente, idempotencia, sin DUoM (Issue 34) |
+| DUoM Copy Item Mgt. (cu 50128) | ✅ 50230 | ✅ 50230 | **Completa** | T-COPYITEM-01..06: Fixed, Variable, variantes, omisión variante no existente, idempotencia, sin DUoM (Issue 34); T-COPYITEM-INT-01..03: flujo estándar Copy Item vía SetCopyItemBuffer+DoCopyItem (Issue 35) |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
 | DUoM permissionset 50100 | — | — | **N/A** | Verificado implícitamente por tests E2E con TestPermissions |
@@ -218,7 +218,7 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 
 ## Estado Actual del Test Suite
 
-> **Última actualización:** Issue 34 — Copy Item DUoM — 2026-05-16
+> **Última actualización:** Issue 35 — Copy Item integration tests — 2026-05-16
 
 | Codeunit | ID | Tests | Estado |
 |----------|----|-------|--------|
@@ -251,5 +251,5 @@ Los siguientes tests corresponden a funcionalidad aún no implementada (Phase 2 
 | DUoM Undo Rcpt Shpt Tests | 50227 | 5 tests | ✅ |
 | DUoM Sign Mgt Tests | 50228 | 23 tests | ✅ |
 | DUoM Doc Audit Tests | 50229 | 7 tests (T-AUDIT-01–07) | ✅ |
-| DUoM Copy Item Tests | 50230 | 6 tests (T-COPYITEM-01–06) | ✅ |
-| **TOTAL** | | **269 tests** | |
+| DUoM Copy Item Tests | 50230 | 9 tests (T-COPYITEM-01–06 + INT-01–03) | ✅ |
+| **TOTAL** | | **272 tests** | |
