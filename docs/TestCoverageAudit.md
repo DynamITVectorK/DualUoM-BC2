@@ -86,7 +86,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | 50227 | DUoM Undo Rcpt Shpt Tests | Undo recepción/albarán con DUoM (signo correcto) |
 | 50228 | DUoM Sign Mgt Tests | DUoM Sign Mgt — NormalizeILESign, ApplyMovementSign, etc. |
 | 50229 | DUoM Doc Audit Tests | Auditoría propagación: DUoM Unit Cost/Price en históricos, signo ILE y VE en abonos |
-| DUoM Copy Item Tests | 50230 | DUoM Copy Item Mgt. — Fixed, Variable, variantes, idempotencia (Issue 34); integración flujo estándar Copy Item (Issue 35) |
+| 50230 | DUoM Copy Item Tests | DUoM Copy Item Mgt. — Fixed, Variable, variantes, idempotencia (Issue 34); integración flujo estándar Copy Item (Issue 35) |
 
 ---
 

@@ -311,8 +311,6 @@ codeunit 50230 "DUoM Copy Item Tests"
         CopyItemBuffer."Item Variants" := true;
 
         // [WHEN] Se ejecuta el flujo estándar de copia de artículo con variantes
-        // El estándar copia las variantes ANTES de disparar OnAfterCopyItem,
-        // por lo que el suscriptor puede encontrar las variantes del destino ya existentes.
         CopyItemCU.SetCopyItemBuffer(CopyItemBuffer);
         CopyItemCU.DoCopyItem();
 
