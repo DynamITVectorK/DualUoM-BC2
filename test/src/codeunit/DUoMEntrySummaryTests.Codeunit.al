@@ -6,6 +6,11 @@
 ///   T02 — Validate(Selected Quantity) recalcula DUoM Second Qty con el ratio actual.
 ///   T03 — Modo Fixed + Validate(Serial No.) aplica ratio fijo.
 ///   T04 — Sin contexto resoluble: no falla, no calcula.
+///   T05 — PopulateDUoMForEntrySummary en modo Fixed: ratio y segunda cantidad desde disponibilidad.
+///   T06 — PopulateDUoMForEntrySummary en modo Variable con ratio de lote: disponibilidad.
+///   T07 — PopulateDUoMForEntrySummary: Selected Quantity prevalece sobre disponibilidad.
+///   T08 — PopulateDUoMForEntrySummary sin contexto resoluble: no falla, campos en 0.
+///   T09 — PopulateDUoMForEntrySummary en modo Variable sin ratio de lote: no falla.
 ///
 /// Modelo real (BC 27):
 ///   Entry Summary no tiene campos "Item No." ni "Variant Code".
@@ -145,5 +150,176 @@ codeunit 50231 "DUoM Entry Summary Tests"
             'T04: Sin contexto resoluble DUoM Ratio debe quedar en 0.');
         LibraryAssert.AreEqual(0, EntrySummary."DUoM Second Qty",
             'T04: Sin contexto resoluble DUoM Second Qty debe quedar en 0.');
+    end;
+
+    [Test]
+    procedure EntrySummary_LoadInitialLine_FixedMode_PopulatesRatioAndAvailableSecondQty()
+    var
+        Item: Record Item;
+        ILE: Record "Item Ledger Entry";
+        EntrySummary: Record "Entry Summary";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Fixed con ratio 0.5
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Fixed, 0.5);
+
+        // [GIVEN] ILE mínimo para el artículo (contexto resoluble)
+        DUoMTestHelpers.CreateMinimalILEForEntrySummaryTest(Item."No.", '', '', ILE);
+
+        // [GIVEN] Entry Summary con cantidad disponible 100 y sin cantidad seleccionada
+        EntrySummary.Init();
+        EntrySummary."Entry No." := ILE."Entry No.";
+        EntrySummary."Table ID" := Database::"Item Ledger Entry";
+        EntrySummary."Total Available Quantity" := 100;
+        EntrySummary."Selected Quantity" := 0;
+
+        // [WHEN] Se puebla DUoM para la línea (carga inicial de página)
+        DUoMEntrySummaryMgt.PopulateDUoMForEntrySummary(EntrySummary);
+
+        // [THEN] Ratio fijo y segunda cantidad basada en disponibilidad
+        LibraryAssert.AreEqual(0.5, EntrySummary."DUoM Ratio",
+            'T05: DUoM Ratio debe ser el ratio fijo del setup.');
+        LibraryAssert.AreNearlyEqual(50, EntrySummary."DUoM Second Qty", 0.001,
+            'T05: DUoM Second Qty debe ser Total Available Quantity × Fixed Ratio.');
+    end;
+
+    [Test]
+    procedure EntrySummary_LoadInitialLine_VariableLotRatio_PopulatesRatioAndAvailableSecondQty()
+    var
+        Item: Record Item;
+        ILE: Record "Item Ledger Entry";
+        EntrySummary: Record "Entry Summary";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Variable con ratio de lote 1.3
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.CreateLotRatio(Item."No.", 'LOT-VAR-01', 1.3);
+
+        // [GIVEN] ILE mínimo para el artículo con el lote (contexto resoluble)
+        DUoMTestHelpers.CreateMinimalILEForEntrySummaryTest(Item."No.", '', 'LOT-VAR-01', ILE);
+
+        // [GIVEN] Entry Summary con cantidad disponible 80 y sin cantidad seleccionada
+        EntrySummary.Init();
+        EntrySummary."Entry No." := ILE."Entry No.";
+        EntrySummary."Table ID" := Database::"Item Ledger Entry";
+        EntrySummary."Lot No." := 'LOT-VAR-01';
+        EntrySummary."Total Available Quantity" := 80;
+        EntrySummary."Selected Quantity" := 0;
+
+        // [WHEN] Se puebla DUoM para la línea (carga inicial de página)
+        DUoMEntrySummaryMgt.PopulateDUoMForEntrySummary(EntrySummary);
+
+        // [THEN] Ratio de lote y segunda cantidad basada en disponibilidad
+        LibraryAssert.AreEqual(1.3, EntrySummary."DUoM Ratio",
+            'T06: DUoM Ratio debe ser el ratio del lote.');
+        LibraryAssert.AreNearlyEqual(104, EntrySummary."DUoM Second Qty", 0.001,
+            'T06: DUoM Second Qty debe ser Total Available Quantity × Lot Ratio.');
+    end;
+
+    [Test]
+    procedure EntrySummary_SelectedQty_WinsOverAvailableQty_ForSecondQty()
+    var
+        Item: Record Item;
+        ILE: Record "Item Ledger Entry";
+        EntrySummary: Record "Entry Summary";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Fixed con ratio 2
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Fixed, 2);
+
+        // [GIVEN] ILE mínimo para el artículo (contexto resoluble)
+        DUoMTestHelpers.CreateMinimalILEForEntrySummaryTest(Item."No.", '', '', ILE);
+
+        // [GIVEN] Entry Summary con cantidad disponible 200 y cantidad seleccionada 30
+        EntrySummary.Init();
+        EntrySummary."Entry No." := ILE."Entry No.";
+        EntrySummary."Table ID" := Database::"Item Ledger Entry";
+        EntrySummary."Total Available Quantity" := 200;
+        EntrySummary."Selected Quantity" := 30;
+
+        // [WHEN] Se puebla DUoM para la línea
+        DUoMEntrySummaryMgt.PopulateDUoMForEntrySummary(EntrySummary);
+
+        // [THEN] DUoM Second Qty se calcula sobre la cantidad seleccionada, no la disponible
+        LibraryAssert.AreEqual(2, EntrySummary."DUoM Ratio",
+            'T07: DUoM Ratio debe ser el ratio fijo del setup.');
+        LibraryAssert.AreNearlyEqual(60, EntrySummary."DUoM Second Qty", 0.001,
+            'T07: DUoM Second Qty debe ser Selected Quantity × Ratio, no Total Available.');
+    end;
+
+    [Test]
+    procedure EntrySummary_NoResolvableContext_PopulateDUoM_NoError_FieldsRemainZero()
+    var
+        EntrySummary: Record "Entry Summary";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Entry Summary sin contexto resoluble
+        EntrySummary.Init();
+        EntrySummary."Entry No." := 0;
+        EntrySummary."Table ID" := 0;
+        EntrySummary."Total Available Quantity" := 50;
+        EntrySummary."Selected Quantity" := 0;
+
+        // [WHEN] Se puebla DUoM para la línea — no debe lanzar error
+        DUoMEntrySummaryMgt.PopulateDUoMForEntrySummary(EntrySummary);
+
+        // [THEN] DUoM Ratio y DUoM Second Qty permanecen en 0
+        LibraryAssert.AreEqual(0, EntrySummary."DUoM Ratio",
+            'T08: Sin contexto resoluble DUoM Ratio debe quedar en 0.');
+        LibraryAssert.AreEqual(0, EntrySummary."DUoM Second Qty",
+            'T08: Sin contexto resoluble DUoM Second Qty debe quedar en 0.');
+    end;
+
+    [Test]
+    procedure EntrySummary_NoLotRatioInVariableMode_NoError_FieldsRemainZero()
+    var
+        Item: Record Item;
+        ILE: Record "Item Ledger Entry";
+        EntrySummary: Record "Entry Summary";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+    begin
+        // [GIVEN] Artículo DUoM Variable SIN ratio de lote registrado
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'KG',
+            "DUoM Conversion Mode"::Variable, 0);
+
+        // [GIVEN] ILE mínimo para el artículo con un lote (contexto resoluble)
+        DUoMTestHelpers.CreateMinimalILEForEntrySummaryTest(Item."No.", '', 'LOT-SINRATIO', ILE);
+
+        // [GIVEN] Entry Summary con lote pero sin ratio de lote registrado
+        EntrySummary.Init();
+        EntrySummary."Entry No." := ILE."Entry No.";
+        EntrySummary."Table ID" := Database::"Item Ledger Entry";
+        EntrySummary."Lot No." := 'LOT-SINRATIO';
+        EntrySummary."Total Available Quantity" := 60;
+        EntrySummary."Selected Quantity" := 0;
+
+        // [WHEN] Se puebla DUoM para la línea — no debe lanzar error
+        DUoMEntrySummaryMgt.PopulateDUoMForEntrySummary(EntrySummary);
+
+        // [THEN] DUoM Ratio y DUoM Second Qty permanecen en 0 (no hay ratio que aplicar)
+        LibraryAssert.AreEqual(0, EntrySummary."DUoM Ratio",
+            'T09: En modo Variable sin ratio de lote DUoM Ratio debe quedar en 0.');
+        LibraryAssert.AreEqual(0, EntrySummary."DUoM Second Qty",
+            'T09: En modo Variable sin ratio de lote DUoM Second Qty debe quedar en 0.');
     end;
 }
