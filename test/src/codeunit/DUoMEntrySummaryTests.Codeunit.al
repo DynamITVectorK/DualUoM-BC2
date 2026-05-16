@@ -551,8 +551,9 @@ codeunit 50231 "DUoM Entry Summary Tests"
                 exit;
         until not ItemTrackingSummary.Next();
 
-        LibraryAssert.IsTrue(
-            false,
+        LibraryAssert.AreEqual(
+            ExpectedLotNo,
+            ItemTrackingSummary."Lot No.".Value,
             StrSubstNo('%1: No se encontró la línea del lote %2 en Item Tracking Summary.', TestId, ExpectedLotNo));
     end;
 
