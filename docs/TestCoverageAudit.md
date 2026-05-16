@@ -1,6 +1,6 @@
 # Auditoría de Cobertura de Tests — DualUoM-BC
 
-> **Fecha de auditoría:** 2026-04-20 — Actualizado: 2026-05-16 (Issue 349 / PR 350 — Entry Summary / Item Tracking Summary)
+> **Fecha de auditoría:** 2026-04-20 — Actualizado: 2026-05-16 (Issue 351 / PR 352 — hardening UI Item Tracking Summary)
 > **Estado del repositorio auditado:** Phase 1 MVP completada
 
 ---
@@ -133,7 +133,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Entry Summary Mgt. (cu 50132) | ✅ 50231 (T05–T09) | ✅ 50231 (T10) | **Completa** | `TryResolveItemContext` y `PopulateDUoMForEntrySummary` cubiertos con disponibilidad, prioridad de `Selected Quantity`, ausencia de ratio de lote y stock real posteado |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
-| DUoM Item Trk Summary (pageext 50130) | — | ✅ 50231 (parcial) | **Parcial** | Cobertura actual de método/buffer e integración con ILE real en `Entry Summary`; **pendiente: cobertura UI real de Item Tracking Summary / Seg. productos - Selec. movs.** con `TestPage "Item Tracking Summary"`, `ModalPageHandler` o flujo estándar equivalente que dispare `Select Entries` desde `Item Tracking Lines` |
+| DUoM Item Trk Summary (pageext 50130) | — | ✅ 50231 (T11 UI real) | **Completa** | Cobertura UI real validada con flujo estándar `Sales Order -> Item Tracking Lines -> Select Entries -> Item Tracking Summary` y verificación de `DUoM Ratio`/`DUoM Second Qty` en página |
 | DUoM permissionset 50100 | — | — | **N/A** | Verificado implícitamente por tests E2E con TestPermissions |
 
 ---
@@ -150,13 +150,9 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 - **T08:** carga inicial sin contexto resoluble: no error y campos a cero.
 - **T09:** Variable sin ratio de lote: no inventa ratio ni segunda cantidad.
 - **T10:** integración con ILE real generado por posting para poblar `Item Tracking Summary`.
+- **T11:** cobertura UI real: apertura de `Item Tracking Summary` desde `Item Tracking Lines` con acción estándar `Select Entries`, validando render poblado de `DUoM Ratio` y `DUoM Second Qty`.
 
-> **Deuda técnica explícita:** **Pendiente: cobertura UI real de Item Tracking Summary / Seg. productos - Selec. movs.**
-> La cobertura actual de `50231` valida correctamente la capa de método/buffer y la integración
-> con `Item Ledger Entry` real, pero todavía no existe un test que abra la página real mediante
-> `TestPage "Item Tracking Summary"`, `ModalPageHandler` o un flujo estándar equivalente desde
-> `Item Tracking Lines` que ejecute `Select Entries`. Se considera **hardening recomendado**,
-> no bloqueo funcional mientras la CI permanezca verde.
+> **Deuda técnica resuelta:** la cobertura UI real de `Item Tracking Summary / Seg. productos - Selec. movs.` queda cubierta en `50231` (T11).
 
 > **Nota de mantenimiento:** La PR `DynamITVectorK/DualUoM-BC2#194` quedó cerrada sin mergear
 > por estar **superseded** por la arquitectura actual. No debe reintroducirse documentación ni
@@ -168,8 +164,8 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 
 > Los gaps P0 y P1-01 han sido **cerrados** en PRs anteriores. Se documentan aquí
 > para referencia histórica y como verificación de que los codeunits de test existen
-> en el repositorio. Permanecen abiertos como hardening P2 el gap de tests unitarios
-> aislados para `DUoM Doc Transfer Helper` y la cobertura UI real de `Item Tracking Summary`.
+> en el repositorio. Permanece abierto como hardening P2 el gap de tests unitarios
+> aislados para `DUoM Doc Transfer Helper`.
 
 ### P0 — MVP Crítico (CERRADOS)
 
@@ -242,7 +238,6 @@ o a hardening todavía pendiente sobre funcionalidad ya disponible:
 | DualUoMWhseShipmentTest | WMS — Shipment | Funcionalidad no implementada (Phase 2, Issue 14) |
 | DualUoMWhseRegisterTest | WMS — Warehouse Entry | Funcionalidad no implementada (Phase 2) |
 | DUoM Doc Transfer Helper unit tests | Doc Transfer Helper (aislado) | GAP P1-02 reclasificado a P2 |
-| DUoM Item Tracking Summary UI test | Item Tracking Summary / Seg. productos - Selec. movs. | Hardening recomendado: falta test UI real con `TestPage`, `ModalPageHandler` o flujo estándar `Select Entries`; la cobertura actual es de método/buffer e integración con ILE real |
 
 > **Nota:** Los tests de coste/precio en doble UoM (DualUoMPurchInvoiceCostTest,
 > DualUoMSalesPriceTest) y el test de Value Entry (DualUoMValueEntryTest) han sido
@@ -256,7 +251,7 @@ o a hardening todavía pendiente sobre funcionalidad ya disponible:
 
 ## Estado Actual del Test Suite
 
-> **Última actualización:** Issue 349 / PR 350 — auditoría Entry Summary / Item Tracking Summary — 2026-05-16
+> **Última actualización:** Issue 351 / PR 352 — hardening UI Item Tracking Summary — 2026-05-16
 
 | Codeunit | ID | Tests | Estado |
 |----------|----|-------|--------|
@@ -290,7 +285,7 @@ o a hardening todavía pendiente sobre funcionalidad ya disponible:
 | DUoM Sign Mgt Tests | 50228 | 23 tests | ✅ |
 | DUoM Doc Audit Tests | 50229 | 7 tests (T-AUDIT-01–07) | ✅ |
 | DUoM Copy Item Tests | 50230 | 9 tests (T-COPYITEM-01–06 + INT-01–03) | ✅ |
-| DUoM Entry Summary Tests | 50231 | 10 tests (T01–T10) | ✅ |
-| **TOTAL** | | **282 tests** | |
+| DUoM Entry Summary Tests | 50231 | 11 tests (T01–T11) | ✅ |
+| **TOTAL** | | **283 tests** | |
 
-> Total recalculado a partir de los codeunits actuales en `test/src/codeunit/` (`282` atributos `[Test]`).
+> Total recalculado a partir de los codeunits actuales en `test/src/codeunit/` (`283` atributos `[Test]`).
