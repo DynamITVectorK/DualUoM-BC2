@@ -78,6 +78,10 @@ codeunit 50231 "DUoM Entry Summary Tests"
         EntrySummary."DUoM Ratio" := 1.5;
         EntrySummary."Selected Quantity" := 2;
         EntrySummary."DUoM Second Qty" := 3;
+        // Entry Summary."Selected Quantity" ejecuta validación estándar y no permite seleccionar
+        // más cantidad que la disponible. El test debe preparar el buffer estándar antes de
+        // validar el campo para que también se dispare el subscriber DUoM real.
+        EntrySummary."Total Available Quantity" := 10;
 
         // [WHEN] Se cambia la cantidad seleccionada
         EntrySummary.Validate("Selected Quantity", 7);
