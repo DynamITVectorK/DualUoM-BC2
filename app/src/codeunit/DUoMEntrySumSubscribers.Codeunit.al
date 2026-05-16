@@ -35,22 +35,25 @@ codeunit 50131 "DUoM Entry Sum Subscribers"
 
     local procedure ApplyRatioToEntrySummary(var EntrySummary: Record "Entry Summary")
     var
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
         DUoMLotRatio: Record "DUoM Lot Ratio";
+        ItemNo: Code[20];
+        VariantCode: Code[10];
         SecondUoMCode: Code[10];
         ConversionMode: Enum "DUoM Conversion Mode";
         FixedRatio: Decimal;
         RoundingPrecision: Decimal;
         AppliedRatio: Decimal;
     begin
-        if EntrySummary."Item No." = '' then
+        if not DUoMEntrySummaryMgt.TryResolveItemContext(EntrySummary, ItemNo, VariantCode) then
             exit;
         if not DUoMSetupResolver.GetEffectiveSetup(
-                 EntrySummary."Item No.", EntrySummary."Variant Code",
+                 ItemNo, VariantCode,
                  SecondUoMCode, ConversionMode, FixedRatio) then
             exit;
 
-        RoundingPrecision := GetEffectiveRoundingPrecision(EntrySummary."Item No.", SecondUoMCode);
+        RoundingPrecision := GetEffectiveRoundingPrecision(ItemNo, SecondUoMCode);
 
         if ConversionMode = ConversionMode::Fixed then begin
             AppliedRatio := FixedRatio;
@@ -63,7 +66,7 @@ codeunit 50131 "DUoM Entry Sum Subscribers"
 
         if EntrySummary."Lot No." = '' then
             exit;
-        if not DUoMLotRatio.Get(EntrySummary."Item No.", EntrySummary."Lot No.") then
+        if not DUoMLotRatio.Get(ItemNo, EntrySummary."Lot No.") then
             exit;
 
         AppliedRatio := DUoMLotRatio."Actual Ratio";
@@ -75,22 +78,29 @@ codeunit 50131 "DUoM Entry Sum Subscribers"
 
     local procedure RecalcEntrySummarySecondQty(var EntrySummary: Record "Entry Summary")
     var
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
         DUoMSetupResolver: Codeunit "DUoM Setup Resolver";
+        ItemNo: Code[20];
+        VariantCode: Code[10];
         SecondUoMCode: Code[10];
         ConversionMode: Enum "DUoM Conversion Mode";
         FixedRatio: Decimal;
         RoundingPrecision: Decimal;
     begin
-        if EntrySummary."Item No." = '' then
+        if not DUoMEntrySummaryMgt.TryResolveItemContext(EntrySummary, ItemNo, VariantCode) then
             exit;
         if EntrySummary."DUoM Ratio" = 0 then
             exit;
         if not DUoMSetupResolver.GetEffectiveSetup(
-                 EntrySummary."Item No.", EntrySummary."Variant Code",
+                 ItemNo, VariantCode,
                  SecondUoMCode, ConversionMode, FixedRatio) then
             exit;
 
-        RoundingPrecision := GetEffectiveRoundingPrecision(EntrySummary."Item No.", SecondUoMCode);
+        RoundingPrecision := GetEffectiveRoundingPrecision(ItemNo, SecondUoMCode);
+
+        // En modo Fixed, garantizar coherencia del ratio antes de recalcular.
+        if ConversionMode = ConversionMode::Fixed then
+            EntrySummary."DUoM Ratio" := FixedRatio;
 
         EntrySummary."DUoM Second Qty" := Round(
             GetSelectedQtyMagnitude(EntrySummary) * EntrySummary."DUoM Ratio",
