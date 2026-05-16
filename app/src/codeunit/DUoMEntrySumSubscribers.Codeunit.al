@@ -54,7 +54,7 @@ codeunit 50131 "DUoM Entry Sum Subscribers"
         RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(
             EntrySummary."Item No.", SecondUoMCode);
         if RoundingPrecision <= 0 then
-            RoundingPrecision := 0.00001;
+            RoundingPrecision := GetDefaultRoundingPrecision();
 
         if ConversionMode = ConversionMode::Fixed then begin
             AppliedRatio := FixedRatio;
@@ -98,10 +98,15 @@ codeunit 50131 "DUoM Entry Sum Subscribers"
         RoundingPrecision := DUoMUoMHelper.GetRoundingPrecisionByUoMCode(
             EntrySummary."Item No.", SecondUoMCode);
         if RoundingPrecision <= 0 then
-            RoundingPrecision := 0.00001;
+            RoundingPrecision := GetDefaultRoundingPrecision();
 
         EntrySummary."DUoM Second Qty" := Round(
             Abs(EntrySummary."Selected Quantity") * EntrySummary."DUoM Ratio",
             RoundingPrecision);
+    end;
+
+    local procedure GetDefaultRoundingPrecision(): Decimal
+    begin
+        exit(0.00001);
     end;
 }

@@ -39,11 +39,6 @@ pageextension 50130 "DUoM Item Trk Summary" extends "Item Tracking Summary"
         }
     }
 
-    trigger OnAfterGetRecord()
-    begin
-        RefreshCaptionsAndTotals();
-    end;
-
     trigger OnAfterGetCurrRecord()
     begin
         RefreshCaptionsAndTotals();

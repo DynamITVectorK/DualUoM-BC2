@@ -37,7 +37,7 @@ Workflow for every new feature:
 - Added whenever a bug is fixed
 - Named to reference the issue that caused the bug
 - Must stay in the test suite permanently
-- Example: `DUoM Entry Summary Tests` validates ratio prefill and DUoM recálculo en `Item Tracking Summary` (`Entry Summary`).
+- Example: `DUoM Entry Summary Tests` validates ratio prefill and recálculo de DUoM en `Item Tracking Summary` (`Entry Summary`).
 
 ---
 
