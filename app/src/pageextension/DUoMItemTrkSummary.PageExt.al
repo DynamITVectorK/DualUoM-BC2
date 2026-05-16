@@ -85,6 +85,8 @@ pageextension 50130 "DUoM Item Trk Summary" extends "Item Tracking Summary"
 
         repeat
             if EntrySummary."Selected Quantity" <> 0 then
+                // En UI el total seleccionado se muestra como magnitud funcional,
+                // independientemente del signo técnico interno del buffer.
                 DUoMTotalSelectedSecondQty += Abs(EntrySummary."DUoM Second Qty");
         until EntrySummary.Next() = 0;
     end;
