@@ -11,12 +11,23 @@
 ///   T07 — PopulateDUoMForEntrySummary: Selected Quantity prevalece sobre disponibilidad.
 ///   T08 — PopulateDUoMForEntrySummary sin contexto resoluble: no falla, campos en 0.
 ///   T09 — PopulateDUoMForEntrySummary en modo Variable sin ratio de lote: no falla.
+///   T10 — Integración con ILE real de posting: poblamiento DUoM desde stock registrado.
 ///
 /// Modelo real (BC 27):
 ///   Entry Summary no tiene campos "Item No." ni "Variant Code".
 ///   El contexto de artículo se resuelve mediante DUoM Entry Summary Mgt. (50132),
 ///   que usa Table ID + Entry No. para buscar en Item Ledger Entry o Reservation Entry.
 ///   Los tests usan CreateMinimalILEForEntrySummaryTest para crear el ILE necesario.
+///
+/// Nota TestPage:
+///   TestPage "Item Tracking Summary" es accesible en tests como ModalPageHandler,
+///   pero la página se abre mediante RunModal desde Codeunit "Item Tracking Management"
+///   (objeto interno de BC) cuando el usuario pulsa la acción "Select Entries" en
+///   "Item Tracking Lines" (página 6510). El nombre AL de esa acción en BC 27 no ha
+///   sido verificado contra los símbolos BC 27 (limitación conocida; pendiente de
+///   verificar con Symbol Reference para implementar el TestPage completo).
+///   Los tests de integración validan el mecanismo en la capa de datos usando el mismo
+///   formato de buffer (Table ID = 32, Entry No. = ILE Entry No.) que BC construye.
 /// </summary>
 codeunit 50231 "DUoM Entry Summary Tests"
 {
@@ -321,5 +332,91 @@ codeunit 50231 "DUoM Entry Summary Tests"
             'T09: En modo Variable sin ratio de lote DUoM Ratio debe quedar en 0.');
         LibraryAssert.AreEqual(0, EntrySummary."DUoM Second Qty",
             'T09: En modo Variable sin ratio de lote DUoM Second Qty debe quedar en 0.');
+    end;
+
+    [Test]
+    procedure EntrySummary_Integration_PostedStock_PopulatesDUoM()
+    var
+        Item: Record Item;
+        ILE: Record "Item Ledger Entry";
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        EntrySummary: Record "Entry Summary";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+        PostedQty: Decimal;
+    begin
+        // T10 — Integración con ILE real de posting.
+        //
+        // Valida el camino completo del mecanismo de población DUoM para la carga
+        // inicial de Item Tracking Summary:
+        //   1. Artículo DUoM Variable + seguimiento de lote habilitado.
+        //   2. Stock creado vía diario de artículos (ILE real, Entry Type = Positive Adjmt.).
+        //   3. Entry Summary construido con Table ID = 32 y Entry No. = ILE."Entry No.",
+        //      que es el mismo formato que Codeunit "Item Tracking Management" usa cuando
+        //      construye el buffer para la página "Item Tracking Summary".
+        //   4. PopulateDUoMForEntrySummary (invocado por OnAfterGetRecord) popula
+        //      DUoM Ratio y DUoM Second Qty correctamente.
+        //
+        // Ver codeunit header para la nota sobre la limitación de TestPage.
+
+        // [GIVEN] Artículo DUoM Variable con seguimiento de lote y ratio de lote registrado
+        LotNo := 'LOT-INTG-T10';
+        PostedQty := 100;
+
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, 1.5);
+
+        // [GIVEN] Stock del artículo con el lote, creado mediante posting real de diario
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine,
+            ItemJnlBatch."Journal Template Name",
+            ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::"Positive Adjmt.",
+            Item."No.",
+            PostedQty);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, PostedQty);
+        LibraryInventory.PostItemJournalLine(
+            ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
+
+        // [GIVEN] ILE real creado por el posting
+        ILE.SetRange("Item No.", Item."No.");
+        ILE.SetRange("Lot No.", LotNo);
+        ILE.SetRange("Entry Type", ILE."Entry Type"::"Positive Adjmt.");
+        LibraryAssert.IsTrue(
+            ILE.FindFirst(),
+            'T10: Debe existir un ILE para el stock registrado.');
+
+        // [GIVEN] Entry Summary con Table ID = 32 y Entry No. = ILE."Entry No."
+        // Este es el formato que usa el buffer estándar de "Item Tracking Summary":
+        //   Table ID = Database::"Item Ledger Entry"  (= 32)
+        //   Entry No. = Entry No. del ILE representativo del lote
+        // (Ver codeunit header para la nota sobre TestPage y la limitación de símbolo.)
+        EntrySummary.Init();
+        EntrySummary."Table ID" := Database::"Item Ledger Entry";
+        EntrySummary."Entry No." := ILE."Entry No.";
+        EntrySummary."Lot No." := LotNo;
+        EntrySummary."Total Available Quantity" := PostedQty;
+        EntrySummary."Selected Quantity" := 0;
+
+        // [WHEN] Se ejecuta la lógica de OnAfterGetRecord (carga inicial de página)
+        DUoMEntrySummaryMgt.PopulateDUoMForEntrySummary(EntrySummary);
+
+        // [THEN] DUoM Ratio y DUoM Second Qty quedan poblados desde el ILE real
+        LibraryAssert.AreNearlyEqual(
+            1.5, EntrySummary."DUoM Ratio", 0.001,
+            'T10: DUoM Ratio debe ser el ratio del lote registrado (1.5).');
+        LibraryAssert.AreNearlyEqual(
+            150, EntrySummary."DUoM Second Qty", 0.001,
+            'T10: DUoM Second Qty debe ser Total Available Quantity × DUoM Ratio (100 × 1.5 = 150).');
     end;
 }
