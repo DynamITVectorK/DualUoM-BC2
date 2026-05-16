@@ -41,6 +41,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50121 | DUoM Value Entry Ext           | Value Entry               |
 | 50122 | DUoM Tracking Spec Ext         | Tracking Specification    |
 | 50123 | DUoM Reservation Entry Ext     | Reservation Entry         |
+| 50129 | DUoM Entry Summary Ext         | Entry Summary             |
 
 ### Páginas
 
@@ -69,6 +70,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50112 | DUoM Item Tracking Lines       | Item Tracking Lines               |
 | 50124 | DUoM Posted Item Trk. Lines    | Posted Item Tracking Lines        |
 | 50127 | DUoM Item List Ext             | Item List                         |
+| 50130 | DUoM Item Trk Summary          | Item Tracking Summary             |
 
 ### Codeunits
 
@@ -88,6 +90,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50125 | DUoM Tracking Prop. Mgt            | app/src/codeunit/DUoMTrackingPropMgt.Codeunit.al         |
 | 50126 | DUoM Sign Mgt                       | app/src/codeunit/DUoMSignMgt.Codeunit.al                 |
 | 50128 | DUoM Copy Item Mgt.                 | app/src/codeunit/DUoMCopyItemMgt.Codeunit.al             |
+| 50131 | DUoM Entry Sum Subscribers          | app/src/codeunit/DUoMEntrySumSubscribers.Codeunit.al     |
 
 ### Enums
 
@@ -139,6 +142,7 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 | 50228 | DUoM Sign Mgt Tests               | test/src/codeunit/DUoMSignMgtTests.Codeunit.al                   |
 | 50229 | DUoM Doc Audit Tests              | test/src/codeunit/DUoMDocAuditTests.Codeunit.al                  |
 | 50230 | DUoM Copy Item Tests              | test/src/codeunit/DUoMCopyItemTests.Codeunit.al                  |
+| 50231 | DUoM Entry Summary Tests          | test/src/codeunit/DUoMEntrySummaryTests.Codeunit.al              |
 
 ### Permission Sets de test
 
@@ -152,5 +156,5 @@ Este documento registra los IDs de objetos AL asignados en el proyecto DualUoM-B
 
 | App      | Tipo                           | Próximo ID libre |
 |----------|--------------------------------|-----------------|
-| app/     | Cualquier tipo de objeto       | 50129           |
-| test/    | Codeunit / permissionset       | 50231           |
+| app/     | Cualquier tipo de objeto       | 50132           |
+| test/    | Codeunit / permissionset       | 50232           |

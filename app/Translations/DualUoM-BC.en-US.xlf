@@ -946,6 +946,65 @@
           <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Item TableExt - Field DUoM Inventory - Property ToolTip</note>
         </trans-unit>
 
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             TableExtension 50129  DUoM Entry Summary Ext (Issue)
+             PENDING: TableExtension hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="TableExtension 501290001 - Field 2893551758 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Ratio</source>
+          <target state="final">DUoM Ratio</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Ratio field in Entry Summary; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Entry Summary Ext - Field DUoM Ratio - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="TableExtension 501290001 - Field 3077125241 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM Second Qty field in Entry Summary; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">TableExtension DUoM Entry Summary Ext - Field DUoM Second Qty - Property Caption</note>
+        </trans-unit>
+
+        <!-- ═══════════════════════════════════════════════════════════════════
+             PageExtension 50130  DUoM Item Trk Summary (Issue)
+             PENDING: PageExtension hash ID to be verified against DualUoM-BC.g.xlf after first CI compilation.
+             ═══════════════════════════════════════════════════════════════════ -->
+        <trans-unit id="PageExtension 501300001 - Control 2893551758 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the conversion ratio for this selected lot/serial movement line.</source>
+          <target state="final">Specifies the conversion ratio for this selected lot/serial movement line.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Ratio field in Item Tracking Summary; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Trk Summary - Control DUoM Ratio - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 501300001 - Control 3077125241 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the secondary quantity for this selected lot/serial movement line.</source>
+          <target state="final">Specifies the secondary quantity for this selected lot/serial movement line.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM Second Qty field in Item Tracking Summary; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Trk Summary - Control DUoM Second Qty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 501300001 - Control 501300101 - Property 2879900210" translate="yes" xml:space="preserve">
+          <source>Dual UoM</source>
+          <target state="final">Dual UoM</target>
+          <note from="Developer" annotates="general" priority="2">Caption for DUoM summary group in Item Tracking Summary; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Trk Summary - Control DUoMSummary - Property Caption</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 501300001 - Control 501300102 - Property 1295455071" translate="yes" xml:space="preserve">
+          <source>Specifies the total secondary quantity currently selected across all movement lines.</source>
+          <target state="final">Specifies the total secondary quantity currently selected across all movement lines.</target>
+          <note from="Developer" annotates="general" priority="2">ToolTip for DUoM selected total field in Item Tracking Summary; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Trk Summary - Control DUoMTotalSelectedSecondQty - Property ToolTip</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 501300001 - NamedType 501300201" translate="yes" xml:space="preserve">
+          <source>DUoM Second Qty</source>
+          <target state="final">DUoM Second Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default caption for DUoM Second Qty in Item Tracking Summary when second UoM code is unavailable; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Trk Summary - NamedType DUoMSecondQtyDefaultLbl</note>
+        </trans-unit>
+        <trans-unit id="PageExtension 501300001 - NamedType 501300202" translate="yes" xml:space="preserve">
+          <source>DUoM Total Selected Qty</source>
+          <target state="final">DUoM Total Selected Qty</target>
+          <note from="Developer" annotates="general" priority="2">Default caption for DUoM selected total in Item Tracking Summary; no placeholders.</note>
+          <note from="Xliff Generator" annotates="general" priority="3">PageExtension DUoM Item Trk Summary - NamedType DUoMTotalSecondQtyDefaultLbl</note>
+        </trans-unit>
+
       </group>
     </body>
   </file>

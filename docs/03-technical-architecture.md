@@ -79,6 +79,7 @@ already covers the need:
 | `DUoM Value Entry Ext` | 50121 | `Value Entry` | DUoM Second Qty para trazabilidad contable completa (Issue 12) |
 | `DUoM Tracking Spec Ext` | 50122 | `Tracking Specification` | Campos DUoM Second Qty y Ratio en el buffer de Item Tracking Lines; pre-relleno al validar Lot No. (Issue 22) |
 | `DUoM Reservation Entry Ext` | 50123 | `Reservation Entry` | Campos DUoM Second Qty y Ratio. Mientras el documento está vivo, `Reservation Entry` es la fuente de verdad per-lote. La persistencia y la recarga se endurecen mediante `DUoM Tracking Prop. Mgt` (50125) y `DUoM Tracking Copy Subs` (50110), con signo técnico solo en persistencia y valores positivos en la página. |
+| `DUoM Entry Summary Ext` | 50129 | `Entry Summary` | Campos DUoM Ratio y DUoM Second Qty en el buffer de selección de movimientos (`Item Tracking Summary`). |
 
 ### Page Extensions
 
@@ -97,6 +98,7 @@ already covers the need:
 | `DUoM Pstd Sales CrM Subform` | 50109 | `Posted Sales Cr. Memo Subform` | Muestra Second Qty, Ratio y Unit Price en líneas de abono de venta registrado (solo lectura) |
 | `DUoM Item UoM Subform` | 50110 | `Item Units of Measure` | Añade `Qty. Rounding Precision` al repeater; editable solo si no existen ILE ni Warehouse Entry para esa UdM |
 | `DUoM Item Tracking Lines` | 50112 | `Item Tracking Lines` | Muestra DUoM Ratio y DUoM Second Qty en el repeater de seguimiento de lotes. `DUoM Second Qty.OnValidate`: llama a `NormalizeTrackingDUoMSecondQty` (recalcula DUoM Ratio en modos Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLine` para feedback inmediato. `Quantity (Base).OnAfterValidate`: llama a `NormalizeTrackingQuantityBase` (recalcula DUoM Ratio = DUoM Second Qty / Abs(Qty Base) en Variable/AlwaysVariable) y luego a `ValidateTrackingSpecLineForFieldEdit` (validación ligera de edición). `DUoM Ratio.OnValidate`: llama directamente a `ValidateTrackingSpecLine`. **No contiene lógica DUoM de persistencia/validación en cierre de página**; la persistencia sigue el flujo estándar `Tracking Specification → Reservation Entry → posting`. |
+| `DUoM Item Trk Summary` | 50130 | `Item Tracking Summary` | Muestra DUoM Ratio y DUoM Second Qty en `Seg. productos - Selec. movs.` y expone el total DUoM secundario seleccionado en la sesión. |
 
 ### Codeunits
 
@@ -116,6 +118,7 @@ already covers the need:
 | `DUoM Tracking Prop. Mgt` | 50125 | Capa centralizada del ciclo `abrir → editar → cerrar → reabrir` en `Item Tracking Lines`. Compara `Reservation Entry` con DUoM (`OnAfterEntriesAreIdentical`), normaliza signo/persistencia (`OnAfterMoveFields`, `OnCreateReservEntryExtraFields`), preserva DUoM en copias internas de `Tracking Specification` y normaliza el reopen real de documentos vivos en `Page 6510` vía `OnAddReservEntriesToTempRecSetOnAfterTempTrackingSpecificationTransferFields` tras `TransferFields(ReservEntry)`. |
 | `DUoM Sign Mgt` | 50126 | Gestión centralizada del signo DUoM. Métodos públicos: `NormalizeILESign`, `ApplyMovementSign`, `ApplyUndoPurchReceiptSign`, `ApplyUndoSalesShptSign`, `ApplyCorrectionILESign`. Ningún otro codeunit decide el signo de `DUoM Second Qty`. |
 | `DUoM Copy Item Mgt.` | 50128 | Propaga la configuración maestra DUoM al artículo destino durante la copia de artículo estándar. Suscriptor de `OnAfterCopyItem` en `Codeunit::"Copy Item"`. Copia `DUoM Item Setup` y `DUoM Item Variant Setup` (solo variantes existentes en destino). No copia `DUoM Lot Ratio` (datos transaccionales). Procedimiento público `CopyDUoMSetup(SourceItemNo, TargetItemNo)` — idempotente. |
+| `DUoM Entry Sum Subscribers` | 50131 | Suscriptores `OnAfterValidateEvent` en `Entry Summary` para `Lot No.`, `Serial No.` y `Selected Quantity`. Aplica ratio DUoM por lote/serie y recalcula `DUoM Second Qty` en la selección de movimientos. |
 
 ---
 
