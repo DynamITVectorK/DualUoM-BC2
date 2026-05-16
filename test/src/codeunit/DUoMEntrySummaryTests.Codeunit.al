@@ -544,20 +544,15 @@ codeunit 50231 "DUoM Entry Summary Tests"
     local procedure SelectSummaryLineByLot(var ItemTrackingSummary: TestPage "Item Tracking Summary"; ExpectedLotNo: Code[50]; TestId: Text)
     var
         LibraryAssert: Codeunit "Library Assert";
-        Found: Boolean;
-        HasNext: Boolean;
     begin
-        HasNext := true;
         ItemTrackingSummary.First();
         repeat
             if ItemTrackingSummary."Lot No.".Value = ExpectedLotNo then
-                Found := true
-            else
-                HasNext := ItemTrackingSummary.Next();
-        until Found or not HasNext;
+                exit;
+        until not ItemTrackingSummary.Next();
 
         LibraryAssert.IsTrue(
-            Found,
+            false,
             StrSubstNo('%1: No se encontró la línea del lote %2 en Item Tracking Summary.', TestId, ExpectedLotNo));
     end;
 
