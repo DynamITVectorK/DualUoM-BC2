@@ -125,7 +125,7 @@ codeunit 50132 "DUoM Entry Summary Mgt."
     begin
         if EntrySummary."Selected Quantity" <> 0 then
             exit(Abs(EntrySummary."Selected Quantity"));
-        exit(EntrySummary."Total Available Quantity");
+        exit(Abs(EntrySummary."Total Available Quantity"));
     end;
 
     local procedure GetEffectiveRoundingPrecision(ItemNo: Code[20]; SecondUoMCode: Code[10]): Decimal
