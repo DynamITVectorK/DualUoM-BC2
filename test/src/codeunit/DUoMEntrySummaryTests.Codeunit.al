@@ -12,6 +12,7 @@
 ///   T08 — PopulateDUoMForEntrySummary sin contexto resoluble: no falla, campos en 0.
 ///   T09 — PopulateDUoMForEntrySummary en modo Variable sin ratio de lote: no falla.
 ///   T10 — Integración con ILE real de posting: poblamiento DUoM desde stock registrado.
+///   T11 — UI real: apertura de Item Tracking Summary desde Item Tracking Lines (Select Entries).
 ///
 /// Modelo real (BC 27):
 ///   Entry Summary no tiene campos "Item No." ni "Variant Code".
@@ -20,14 +21,11 @@
 ///   Los tests usan CreateMinimalILEForEntrySummaryTest para crear el ILE necesario.
 ///
 /// Nota TestPage:
-///   TestPage "Item Tracking Summary" es accesible en tests como ModalPageHandler,
-///   pero la página se abre mediante RunModal desde Codeunit "Item Tracking Management"
-///   (objeto interno de BC) cuando el usuario pulsa la acción "Select Entries" en
-///   "Item Tracking Lines" (página 6510). El nombre AL de esa acción en BC 27 no ha
-///   sido verificado contra los símbolos BC 27 (limitación conocida; pendiente de
-///   verificar con Symbol Reference para implementar el TestPage completo).
-///   Los tests de integración validan el mecanismo en la capa de datos usando el mismo
-///   formato de buffer (Table ID = 32, Entry No. = ILE Entry No.) que BC construye.
+///   El flujo UI estándar BC 27 queda validado en T11:
+///   "Sales Order" -> "Item Tracking Lines" -> acción "Select Entries" -> modal
+///   "Item Tracking Summary" (TestPage + ModalPageHandler).
+///   Además de la cobertura de buffer, el codeunit cubre el render real de DUoM Ratio
+///   y DUoM Second Qty en la página de selección de movimientos.
 /// </summary>
 codeunit 50231 "DUoM Entry Summary Tests"
 {
@@ -419,4 +417,152 @@ codeunit 50231 "DUoM Entry Summary Tests"
             150, EntrySummary."DUoM Second Qty", 0.001,
             'T10: DUoM Second Qty debe ser Total Available Quantity × DUoM Ratio (100 × 1.5 = 150).');
     end;
+
+    [Test]
+    [HandlerFunctions('ItemTrackingLines_OpenSelectEntries_MPH,ItemTrackingSummary_VerifyDUoM_MPH')]
+    procedure ItemTrackingSummary_PageOpen_ShowsDUoMFieldsPopulated()
+    var
+        Item: Record Item;
+        Customer: Record Customer;
+        SalesHeader: Record "Sales Header";
+        SalesLine: Record "Sales Line";
+        SalesOrder: TestPage "Sales Order";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibrarySales: Codeunit "Library - Sales";
+        LibraryAssert: Codeunit "Library Assert";
+        LotNo: Code[50];
+        PostedQty: Decimal;
+        ExpectedRatio: Decimal;
+    begin
+        // [GIVEN] Artículo DUoM Variable con tracking por lote y ratio de lote real
+        LotNo := 'LOT-UI-T11';
+        PostedQty := 100;
+        ExpectedRatio := 1.5;
+
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemSetup(Item."No.", true, 'PCS',
+            "DUoM Conversion Mode"::Variable, 0);
+        DUoMTestHelpers.EnableLotTrackingOnItem(Item);
+        DUoMTestHelpers.CreateLotRatio(Item."No.", LotNo, ExpectedRatio);
+        CreateAvailableLotInventoryForSales(Item, LotNo, PostedQty);
+
+        // [GIVEN] Pedido de venta para abrir el flujo estándar de Select Entries
+        LibrarySales.CreateCustomer(Customer);
+        LibrarySales.CreateSalesHeader(
+            SalesHeader, SalesHeader."Document Type"::Order, Customer."No.");
+        LibrarySales.CreateSalesLine(
+            SalesLine, SalesHeader, SalesLine.Type::Item, Item."No.", 0);
+        SalesLine.Validate(Quantity, 10);
+        SalesLine.Modify(true);
+
+        UITestExpectedLotNo := LotNo;
+        UITestExpectedRatio := ExpectedRatio;
+        UITestSummaryWasOpened := false;
+
+        // [WHEN] Se abre Item Tracking Lines y se invoca Select Entries (modal summary real)
+        SalesOrder.OpenEdit();
+        SalesOrder.GotoRecord(SalesHeader);
+        SalesOrder.SalesLines.First();
+        SalesOrder.SalesLines.ItemTrackingLines.Invoke();
+        SalesOrder.Close();
+
+        // [THEN] El modal Item Tracking Summary se abrió y se validó en su handler
+        LibraryAssert.IsTrue(
+            UITestSummaryWasOpened,
+            'T11: Debe abrirse Item Tracking Summary al invocar Select Entries.');
+    end;
+
+    local procedure CreateAvailableLotInventoryForSales(var Item: Record Item; LotNo: Code[50]; Qty: Decimal)
+    var
+        ItemJnlTemplate: Record "Item Journal Template";
+        ItemJnlBatch: Record "Item Journal Batch";
+        ItemJnlLine: Record "Item Journal Line";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+    begin
+        LibraryInventory.CreateItemJournalTemplate(ItemJnlTemplate);
+        LibraryInventory.CreateItemJournalBatch(ItemJnlBatch, ItemJnlTemplate.Name);
+        LibraryInventory.CreateItemJournalLine(
+            ItemJnlLine,
+            ItemJnlBatch."Journal Template Name",
+            ItemJnlBatch.Name,
+            "Item Ledger Entry Type"::"Positive Adjmt.",
+            Item."No.",
+            Qty);
+        DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, Qty);
+        LibraryInventory.PostItemJournalLine(
+            ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
+    end;
+
+    [ModalPageHandler]
+    procedure ItemTrackingLines_OpenSelectEntries_MPH(
+        var ItemTrackingLines: TestPage "Item Tracking Lines")
+    begin
+        ItemTrackingLines."Select Entries".Invoke();
+        ItemTrackingLines.Cancel().Invoke();
+    end;
+
+    [ModalPageHandler]
+    procedure ItemTrackingSummary_VerifyDUoM_MPH(
+        var ItemTrackingSummary: TestPage "Item Tracking Summary")
+    var
+        LibraryAssert: Codeunit "Library Assert";
+        SelectedQty: Decimal;
+        AvailableQty: Decimal;
+        Ratio: Decimal;
+        SecondQty: Decimal;
+    begin
+        UITestSummaryWasOpened := true;
+        SelectSummaryLineByLot(ItemTrackingSummary, UITestExpectedLotNo, 'T11');
+
+        SelectedQty := ItemTrackingSummary."Selected Quantity".AsDecimal();
+        AvailableQty := ItemTrackingSummary."Total Available Quantity".AsDecimal();
+        Ratio := ItemTrackingSummary."DUoM Ratio".AsDecimal();
+        SecondQty := ItemTrackingSummary."DUoM Second Qty".AsDecimal();
+
+        LibraryAssert.AreEqual(
+            UITestExpectedLotNo,
+            ItemTrackingSummary."Lot No.".Value,
+            'T11: Debe existir la línea del lote esperado en Item Tracking Summary.');
+        LibraryAssert.AreNearlyEqual(
+            0, SelectedQty, 0.001,
+            'T11: El escenario valida el estado inicial con Selected Quantity = 0.');
+        LibraryAssert.IsTrue(
+            Ratio > 0,
+            'T11: DUoM Ratio debe mostrarse poblado (> 0) en la UI.');
+        LibraryAssert.AreNearlyEqual(
+            UITestExpectedRatio, Ratio, 0.001,
+            'T11: DUoM Ratio debe coincidir con el ratio de lote configurado.');
+        LibraryAssert.AreNearlyEqual(
+            AvailableQty * Ratio, SecondQty, 0.001,
+            'T11: Con Selected Quantity = 0, DUoM Second Qty debe calcularse sobre Total Available Quantity.');
+
+        ItemTrackingSummary.Cancel().Invoke();
+    end;
+
+    local procedure SelectSummaryLineByLot(var ItemTrackingSummary: TestPage "Item Tracking Summary"; ExpectedLotNo: Code[50]; TestId: Text)
+    var
+        LibraryAssert: Codeunit "Library Assert";
+        Found: Boolean;
+        HasNext: Boolean;
+    begin
+        HasNext := true;
+        ItemTrackingSummary.First();
+        repeat
+            if ItemTrackingSummary."Lot No.".Value = ExpectedLotNo then
+                Found := true
+            else
+                HasNext := ItemTrackingSummary.Next();
+        until Found or not HasNext;
+
+        LibraryAssert.IsTrue(
+            Found,
+            StrSubstNo('%1: No se encontró la línea del lote %2 en Item Tracking Summary.', TestId, ExpectedLotNo));
+    end;
+
+    var
+        UITestExpectedLotNo: Code[50];
+        UITestExpectedRatio: Decimal;
+        UITestSummaryWasOpened: Boolean;
 }
