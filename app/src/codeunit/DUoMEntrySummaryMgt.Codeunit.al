@@ -34,10 +34,10 @@ codeunit 50132 "DUoM Entry Summary Mgt."
         var ItemNo: Code[20];
         var VariantCode: Code[10]
     ): Boolean
-        var
-            ItemLedgerEntry: Record "Item Ledger Entry";
-            ReservationEntry: Record "Reservation Entry";
-            TrackingSpecification: Record "Tracking Specification";
+    var
+        ItemLedgerEntry: Record "Item Ledger Entry";
+        ReservationEntry: Record "Reservation Entry";
+        TrackingSpecification: Record "Tracking Specification";
     begin
         ItemNo := '';
         VariantCode := '';

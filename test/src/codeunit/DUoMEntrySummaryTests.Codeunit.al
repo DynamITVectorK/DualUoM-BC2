@@ -543,7 +543,11 @@ codeunit 50231 "DUoM Entry Summary Tests"
         ContextResolved := DUoMEntrySummaryMgt.TryResolveItemContext(
             EntrySummary, ResolvedItemNo, ResolvedVariantCode);
         DiagnosticMessage := StrSubstNo(
-            'T11 diagnóstico Entry Summary: Lot=%1; Serial=%2; Table ID=%3; Entry No.=%4; Selected Quantity=%5; Total Available Quantity=%6; Total Quantity=%7; DUoM Ratio=%8; DUoM Second Qty=%9; TryResolveItemContext=%10; Item No.=%11; Variant Code=%12.',
+            'T11 diagnóstico Entry Summary: ' +
+            'Lot=%1; Serial=%2; Table ID=%3; Entry No.=%4; ' +
+            'Selected Quantity=%5; Total Available Quantity=%6; Total Quantity=%7; ' +
+            'DUoM Ratio=%8; DUoM Second Qty=%9; ' +
+            'TryResolveItemContext=%10; Item No.=%11; Variant Code=%12.',
             ItemTrackingSummary."Lot No.".Value, SerialNo, TableId, EntryNo, SelectedQty, AvailableQty, TotalQty,
             Ratio, SecondQty, Format(ContextResolved), ResolvedItemNo, ResolvedVariantCode);
 
