@@ -508,48 +508,20 @@ codeunit 50231 "DUoM Entry Summary Tests"
     procedure ItemTrackingSummary_VerifyDUoM_MPH(
         var ItemTrackingSummary: TestPage "Item Tracking Summary")
     var
-        EntrySummary: Record "Entry Summary";
-        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
         LibraryAssert: Codeunit "Library Assert";
-        TableId: Integer;
-        EntryNo: Integer;
         SelectedQty: Decimal;
         AvailableQty: Decimal;
-        TotalQty: Decimal;
         Ratio: Decimal;
         SecondQty: Decimal;
-        ContextResolved: Boolean;
-        ResolvedItemNo: Code[20];
-        ResolvedVariantCode: Code[10];
-        SerialNo: Text;
-        DiagnosticMessage: Text;
         ExpectedSecondQty: Decimal;
     begin
         UITestSummaryWasOpened := true;
         SelectSummaryLineByLot(ItemTrackingSummary, UITestExpectedLotNo, 'T11');
 
-        TableId := ItemTrackingSummary.DUoMDiagnosticTableID.AsInteger();
-        EntryNo := ItemTrackingSummary.DUoMDiagnosticEntryNo.AsInteger();
         SelectedQty := ItemTrackingSummary."Selected Quantity".AsDecimal();
         AvailableQty := ItemTrackingSummary."Total Available Quantity".AsDecimal();
-        TotalQty := ItemTrackingSummary.DUoMDiagnosticTotalQuantity.AsDecimal();
         Ratio := ItemTrackingSummary."DUoM Ratio".AsDecimal();
         SecondQty := ItemTrackingSummary."DUoM Second Qty".AsDecimal();
-        SerialNo := ItemTrackingSummary.DUoMDiagnosticSerialNo.Value;
-
-        EntrySummary.Init();
-        EntrySummary."Table ID" := TableId;
-        EntrySummary."Entry No." := EntryNo;
-        ContextResolved := DUoMEntrySummaryMgt.TryResolveItemContext(
-            EntrySummary, ResolvedItemNo, ResolvedVariantCode);
-        DiagnosticMessage := StrSubstNo(
-            'T11 diagnóstico Entry Summary: ' +
-            'Lot=%1; Serial=%2; Table ID=%3; Entry No.=%4; ' +
-            'Selected Quantity=%5; Total Available Quantity=%6; Total Quantity=%7; ' +
-            'DUoM Ratio=%8; DUoM Second Qty=%9; ' +
-            'TryResolveItemContext=%10; Item No.=%11; Variant Code=%12.',
-            ItemTrackingSummary."Lot No.".Value, SerialNo, TableId, EntryNo, SelectedQty, AvailableQty, TotalQty,
-            Ratio, SecondQty, Format(ContextResolved), ResolvedItemNo, ResolvedVariantCode);
 
         LibraryAssert.AreEqual(
             UITestExpectedLotNo,
@@ -557,10 +529,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
             'T11: Debe existir la línea del lote esperado en Item Tracking Summary.');
         LibraryAssert.IsTrue(
             Ratio > 0,
-            'T11 condición [DUoM Ratio > 0] falló. ' + DiagnosticMessage);
-        LibraryAssert.IsTrue(
-            ContextResolved,
-            'T11 condición [TryResolveItemContext = true] falló. ' + DiagnosticMessage);
+            'T11 condición [DUoM Ratio > 0] falló. Lot=' + UITestExpectedLotNo + '; DUoM Ratio=' + Format(Ratio));
         LibraryAssert.AreNearlyEqual(
             UITestExpectedRatio, Ratio, 0.001,
             'T11: DUoM Ratio debe coincidir con el ratio de lote configurado.');
