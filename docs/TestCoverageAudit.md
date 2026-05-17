@@ -150,7 +150,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 - **T08:** carga inicial sin contexto resoluble: no error y campos a cero.
 - **T09:** Variable sin ratio de lote: no inventa ratio ni segunda cantidad.
 - **T10:** integración con ILE real generado por posting para poblar `Item Tracking Summary`.
-- **T11:** cobertura UI real: apertura de `Item Tracking Summary` desde `Item Tracking Lines` con acción estándar `Select Entries`, validando render poblado de `DUoM Ratio` y `DUoM Second Qty`.
+- **T11:** cobertura UI real: apertura de `Item Tracking Summary` desde `Item Tracking Lines` con acción estándar `Select Entries`, validando render poblado de `DUoM Ratio` y `DUoM Second Qty`, y diagnóstico explícito del buffer `Entry Summary` (`Lot/Serial`, `Table ID`, `Entry No.`, cantidades y resultado de `TryResolveItemContext`).
 
 > **Deuda técnica resuelta:** la cobertura UI real de `Item Tracking Summary / Seg. productos - Selec. movs.` queda cubierta en `50231` (T11).
 
