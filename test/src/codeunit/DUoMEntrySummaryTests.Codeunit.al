@@ -562,10 +562,10 @@ codeunit 50231 "DUoM Entry Summary Tests"
             'T11: Debe existir la línea del lote esperado en Item Tracking Summary.');
         LibraryAssert.IsTrue(
             Ratio > 0,
-            DiagnosticMessage);
+            'T11 condición [DUoM Ratio > 0] falló. ' + DiagnosticMessage);
         LibraryAssert.IsTrue(
             ContextResolved,
-            DiagnosticMessage);
+            'T11 condición [TryResolveItemContext = true] falló. ' + DiagnosticMessage);
         LibraryAssert.AreNearlyEqual(
             UITestExpectedRatio, Ratio, 0.001,
             'T11: DUoM Ratio debe coincidir con el ratio de lote configurado.');
