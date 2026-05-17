@@ -13,6 +13,9 @@
 ///   T09 — PopulateDUoMForEntrySummary en modo Variable sin ratio de lote: no falla.
 ///   T10 — Integración con ILE real de posting: poblamiento DUoM desde stock registrado.
 ///   T11 — UI real: apertura de Item Tracking Summary desde Item Tracking Lines (Select Entries).
+///   T12 — Fallback por ILE único (lote): resuelve Item No. + Variant Code.
+///   T13 — Fallback ambiguo (mismo lote en dos artículos): no resuelve contexto.
+///   T14 — Fallback sin lote/serie: no resuelve contexto.
 ///
 /// Modelo real (BC 27):
 ///   Entry Summary no tiene campos "Item No." ni "Variant Code".
@@ -472,6 +475,103 @@ codeunit 50231 "DUoM Entry Summary Tests"
         LibraryAssert.IsTrue(
             UITestSummaryWasOpened,
             'T11: Debe abrirse Item Tracking Summary al invocar Select Entries.');
+    end;
+
+    [Test]
+    procedure EntrySummary_FallbackUniqueILEByLot_ResolvesItemAndVariant()
+    var
+        Item: Record Item;
+        ItemVariant: Record "Item Variant";
+        ILE: Record "Item Ledger Entry";
+        EntrySummary: Record "Entry Summary";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        ResolvedItemNo: Code[20];
+        ResolvedVariantCode: Code[10];
+    begin
+        // [GIVEN] Un único ILE abierto/remanente para un lote con Item+Variant inequívocos
+        LibraryInventory.CreateItem(Item);
+        DUoMTestHelpers.CreateItemVariantWithCode(Item."No.", 'ROMANA', ItemVariant);
+        DUoMTestHelpers.CreateMinimalILEForEntrySummaryTest(Item."No.", ItemVariant.Code, 'LOT-FB-UNIQ', ILE);
+
+        // [GIVEN] Contexto principal no resoluble por Table ID + Entry No. (simula Tracking Spec temporal)
+        EntrySummary.Init();
+        EntrySummary."Table ID" := Database::"Tracking Specification";
+        EntrySummary."Entry No." := ILE."Entry No." + 999999;
+        EntrySummary."Lot No." := 'LOT-FB-UNIQ';
+
+        // [WHEN] Se intenta resolver el contexto de artículo
+        LibraryAssert.IsTrue(
+            DUoMEntrySummaryMgt.TryResolveItemContext(EntrySummary, ResolvedItemNo, ResolvedVariantCode),
+            'T12: Debe resolverse contexto por fallback ILE único.');
+
+        // [THEN] Se obtiene exactamente el Item No. y Variant Code del ILE candidato
+        LibraryAssert.AreEqual(
+            Item."No.", ResolvedItemNo,
+            'T12: Item No. resuelto debe coincidir con el ILE único.');
+        LibraryAssert.AreEqual(
+            ItemVariant.Code, ResolvedVariantCode,
+            'T12: Variant Code resuelto debe coincidir con el ILE único.');
+    end;
+
+    [Test]
+    procedure EntrySummary_FallbackAmbiguousILEByLot_ReturnsFalse()
+    var
+        ItemA: Record Item;
+        ItemB: Record Item;
+        ILE: Record "Item Ledger Entry";
+        EntrySummary: Record "Entry Summary";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        DUoMTestHelpers: Codeunit "DUoM Test Helpers";
+        LibraryInventory: Codeunit "Library - Inventory";
+        LibraryAssert: Codeunit "Library Assert";
+        ResolvedItemNo: Code[20];
+        ResolvedVariantCode: Code[10];
+    begin
+        // [GIVEN] El mismo lote aparece en ILE abiertos de dos artículos distintos
+        LibraryInventory.CreateItem(ItemA);
+        LibraryInventory.CreateItem(ItemB);
+        DUoMTestHelpers.CreateMinimalILEForEntrySummaryTest(ItemA."No.", '', 'LOT-FB-AMB', ILE);
+        DUoMTestHelpers.CreateMinimalILEForEntrySummaryTest(ItemB."No.", '', 'LOT-FB-AMB', ILE);
+
+        // [GIVEN] Contexto principal no resoluble por Tracking Specification físico
+        EntrySummary.Init();
+        EntrySummary."Table ID" := Database::"Tracking Specification";
+        EntrySummary."Entry No." := 999999;
+        EntrySummary."Lot No." := 'LOT-FB-AMB';
+
+        // [WHEN] Se intenta resolver el contexto
+        // [THEN] No debe resolver por ambigüedad y no debe inventar datos
+        LibraryAssert.IsFalse(
+            DUoMEntrySummaryMgt.TryResolveItemContext(EntrySummary, ResolvedItemNo, ResolvedVariantCode),
+            'T13: Con más de un contexto Item+Variant para el lote, debe devolver false.');
+        LibraryAssert.AreEqual('', ResolvedItemNo, 'T13: Item No. debe quedar vacío si no hay unicidad.');
+        LibraryAssert.AreEqual('', ResolvedVariantCode, 'T13: Variant Code debe quedar vacío si no hay unicidad.');
+    end;
+
+    [Test]
+    procedure EntrySummary_FallbackWithoutLotOrSerial_ReturnsFalse()
+    var
+        EntrySummary: Record "Entry Summary";
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
+        LibraryAssert: Codeunit "Library Assert";
+        ResolvedItemNo: Code[20];
+        ResolvedVariantCode: Code[10];
+    begin
+        // [GIVEN] Contexto no resoluble y sin lote/serie en Entry Summary
+        EntrySummary.Init();
+        EntrySummary."Table ID" := Database::"Tracking Specification";
+        EntrySummary."Entry No." := 999999;
+
+        // [WHEN] Se intenta resolver contexto
+        // [THEN] El fallback no aplica y debe devolver false sin datos
+        LibraryAssert.IsFalse(
+            DUoMEntrySummaryMgt.TryResolveItemContext(EntrySummary, ResolvedItemNo, ResolvedVariantCode),
+            'T14: Sin Lot No. ni Serial No., el fallback debe devolver false.');
+        LibraryAssert.AreEqual('', ResolvedItemNo, 'T14: Item No. debe permanecer vacío.');
+        LibraryAssert.AreEqual('', ResolvedVariantCode, 'T14: Variant Code debe permanecer vacío.');
     end;
 
     local procedure CreateAvailableLotInventoryForSales(var Item: Record Item; LotNo: Code[50]; Qty: Decimal)
