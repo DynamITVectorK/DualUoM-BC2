@@ -521,7 +521,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
         ContextResolved: Boolean;
         ResolvedItemNo: Code[20];
         ResolvedVariantCode: Code[10];
-        SerialNo: Code[50];
+        SerialNo: Text;
         DiagnosticMessage: Text;
         ExpectedSecondQty: Decimal;
     begin
@@ -535,7 +535,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
         TotalQty := ItemTrackingSummary.DUoMDiagTotalQty.AsDecimal();
         Ratio := ItemTrackingSummary."DUoM Ratio".AsDecimal();
         SecondQty := ItemTrackingSummary."DUoM Second Qty".AsDecimal();
-        SerialNo := CopyStr(ItemTrackingSummary.DUoMDiagSerialNo.Value, 1, MaxStrLen(SerialNo));
+        SerialNo := ItemTrackingSummary.DUoMDiagSerialNo.Value;
 
         EntrySummary.Init();
         EntrySummary."Table ID" := TableId;
@@ -607,7 +607,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
 
     local procedure BuildT11DiagnosticMessage(
         LotNo: Code[50];
-        SerialNo: Code[50];
+        SerialNo: Text;
         TableId: Integer;
         EntryNo: Integer;
         SelectedQty: Decimal;

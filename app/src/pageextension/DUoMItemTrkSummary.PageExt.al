@@ -23,21 +23,25 @@ pageextension 50130 "DUoM Item Trk Summary" extends "Item Tracking Summary"
             }
             field(DUoMDiagTableID; Rec."Table ID")
             {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
                 ApplicationArea = All;
                 Visible = false;
             }
             field(DUoMDiagEntryNo; Rec."Entry No.")
             {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
                 ApplicationArea = All;
                 Visible = false;
             }
             field(DUoMDiagTotalQty; Rec."Total Quantity")
             {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
                 ApplicationArea = All;
                 Visible = false;
             }
             field(DUoMDiagSerialNo; Rec."Serial No.")
             {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
                 ApplicationArea = All;
                 Visible = false;
             }

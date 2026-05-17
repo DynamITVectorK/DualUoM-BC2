@@ -70,7 +70,7 @@ codeunit 50132 "DUoM Entry Summary Mgt."
                         exit(false);
                     ItemNo := TrackingSpecification."Item No.";
                     VariantCode := TrackingSpecification."Variant Code";
-                    exit(ItemNo <> '');
+                    exit(true);
                 end;
         end;
 
