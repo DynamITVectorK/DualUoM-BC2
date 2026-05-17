@@ -27,7 +27,9 @@ codeunit 50132 "DUoM Entry Summary Mgt."
     ///   - Table ID 32 (Item Ledger Entry): Get por Entry No. (Entry No. = ILE Entry No.).
     ///   - Table ID 337 (Reservation Entry): FindFirst filtrado por Entry No.
     ///   - Table ID "Tracking Specification": FindFirst filtrado por Entry No.
-    ///   - Otros Table ID o Entry No. = 0: devuelve false.
+    ///   - Si lo anterior no resuelve, intenta fallback read-only por ILE abierto/remanente
+    ///     filtrado por lote/serie y solo acepta contexto único Item+Variante.
+    ///   - Otros casos: devuelve false.
     /// </summary>
     procedure TryResolveItemContext(
         EntrySummary: Record "Entry Summary";
@@ -42,39 +44,78 @@ codeunit 50132 "DUoM Entry Summary Mgt."
         ItemNo := '';
         VariantCode := '';
 
-        if EntrySummary."Entry No." = 0 then
+        if EntrySummary."Entry No." <> 0 then
+            case EntrySummary."Table ID" of
+                Database::"Item Ledger Entry":
+                    begin
+                        if ItemLedgerEntry.Get(EntrySummary."Entry No.") then begin
+                            ItemNo := ItemLedgerEntry."Item No.";
+                            VariantCode := ItemLedgerEntry."Variant Code";
+                            exit(true);
+                        end;
+                    end;
+                Database::"Reservation Entry":
+                    begin
+                        ReservationEntry.SetRange("Entry No.", EntrySummary."Entry No.");
+                        if ReservationEntry.FindFirst() then begin
+                            ItemNo := ReservationEntry."Item No.";
+                            VariantCode := ReservationEntry."Variant Code";
+                            exit(true);
+                        end;
+                    end;
+                Database::"Tracking Specification":
+                    begin
+                        TrackingSpecification.SetRange("Entry No.", EntrySummary."Entry No.");
+                        if TrackingSpecification.FindFirst() then begin
+                            ItemNo := TrackingSpecification."Item No.";
+                            VariantCode := TrackingSpecification."Variant Code";
+                            exit(true);
+                        end;
+                    end;
+            end;
+
+        exit(TryResolveFromUniqueOpenILE(EntrySummary, ItemNo, VariantCode));
+    end;
+
+    local procedure TryResolveFromUniqueOpenILE(
+        EntrySummary: Record "Entry Summary";
+        var ItemNo: Code[20];
+        var VariantCode: Code[10]
+    ): Boolean
+    var
+        ItemLedgerEntry: Record "Item Ledger Entry";
+        CandidateItemNo: Code[20];
+        CandidateVariantCode: Code[10];
+        FoundCandidate: Boolean;
+    begin
+        if (EntrySummary."Lot No." = '') and (EntrySummary."Serial No." = '') then
             exit(false);
 
-        case EntrySummary."Table ID" of
-            Database::"Item Ledger Entry":
-                begin
-                    if not ItemLedgerEntry.Get(EntrySummary."Entry No.") then
-                        exit(false);
-                    ItemNo := ItemLedgerEntry."Item No.";
-                    VariantCode := ItemLedgerEntry."Variant Code";
-                    exit(true);
-                end;
-            Database::"Reservation Entry":
-                begin
-                    ReservationEntry.SetRange("Entry No.", EntrySummary."Entry No.");
-                    if not ReservationEntry.FindFirst() then
-                        exit(false);
-                    ItemNo := ReservationEntry."Item No.";
-                    VariantCode := ReservationEntry."Variant Code";
-                    exit(true);
-                end;
-            Database::"Tracking Specification":
-                begin
-                    TrackingSpecification.SetRange("Entry No.", EntrySummary."Entry No.");
-                    if not TrackingSpecification.FindFirst() then
-                        exit(false);
-                    ItemNo := TrackingSpecification."Item No.";
-                    VariantCode := TrackingSpecification."Variant Code";
-                    exit(true);
-                end;
-        end;
+        if EntrySummary."Lot No." <> '' then
+            ItemLedgerEntry.SetRange("Lot No.", EntrySummary."Lot No.");
+        if EntrySummary."Serial No." <> '' then
+            ItemLedgerEntry.SetRange("Serial No.", EntrySummary."Serial No.");
+        ItemLedgerEntry.SetRange(Open, true);
+        ItemLedgerEntry.SetFilter("Remaining Quantity", '<>%1', 0);
 
-        exit(false);
+        if not ItemLedgerEntry.FindSet() then
+            exit(false);
+
+        repeat
+            if not FoundCandidate then begin
+                CandidateItemNo := ItemLedgerEntry."Item No.";
+                CandidateVariantCode := ItemLedgerEntry."Variant Code";
+                FoundCandidate := true;
+            end else
+                if (CandidateItemNo <> ItemLedgerEntry."Item No.") or
+                   (CandidateVariantCode <> ItemLedgerEntry."Variant Code")
+                then
+                    exit(false);
+        until ItemLedgerEntry.Next() = 0;
+
+        ItemNo := CandidateItemNo;
+        VariantCode := CandidateVariantCode;
+        exit(true);
     end;
 
     /// <summary>

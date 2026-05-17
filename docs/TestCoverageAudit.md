@@ -1,6 +1,6 @@
 # Auditoría de Cobertura de Tests — DualUoM-BC
 
-> **Fecha de auditoría:** 2026-04-20 — Actualizado: 2026-05-16 (Issue 351 / PR 352 — hardening UI Item Tracking Summary)
+> **Fecha de auditoría:** 2026-04-20 — Actualizado: 2026-05-17 (Issue 361 — fallback seguro ILE único para Entry Summary)
 > **Estado del repositorio auditado:** Phase 1 MVP completada
 
 ---
@@ -117,7 +117,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Value Entry Ext (TableExt 50121) | — | ✅ 50216, 50229 | **Completa** | DUoM Second Qty tras compra (T07) y venta (T08); signo abonos (50229 T-AUDIT-06/07) |
 | DUoM Tracking Spec Ext (TableExt 50122) | ✅ 50218 | ✅ 50218 (T05, T06) | **Completa** | T01–T04 unitarios, T05 E2E coherencia buffer→ILE, T06 modelo 1:N (Issue 22) |
 | DUoM Reservation Entry Ext (TableExt 50123) | — | ✅ 50219, 50221 | **Completa** | Persistencia y recarga TrackingSpec ↔ Reservation Entry cubiertas en tests E2E de tracking; la tabla es fuente de verdad per-lote del documento vivo |
-| DUoM Entry Summary Ext (TableExt 50129) | ✅ 50231 (T01–T09) | ✅ 50231 (T10) | **Completa** | Buffer `Entry Summary` cubierto en validaciones de lote/serie/cantidad seleccionada, carga inicial y resolución de contexto desde ILE real |
+| DUoM Entry Summary Ext (TableExt 50129) | ✅ 50231 (T01–T14) | ✅ 50231 (T10, T11) | **Completa** | Buffer `Entry Summary` cubierto en validaciones de lote/serie/cantidad seleccionada, carga inicial, UI real y fallback seguro de resolución de contexto por ILE único |
 | DUoM Calc Engine (cu 50101) | ✅ 50204 | — | **Completa** | Todos los modos, casos límite, rounding |
 | DUoM Purchase Subscribers (cu 50102) | ✅ 50205 | ✅ 50209, 50210, 50214 | **Completa** | Variable y AlwaysVariable cubiertos en 50214 |
 | DUoM Sales Subscribers (cu 50103) | ✅ 50206 | ✅ 50209, 50210, 50214 | **Completa** | Variable cubierto en 50214 |
@@ -130,7 +130,7 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 | DUoM Tracking Subscribers (cu 50109) | ✅ 50218 | ✅ 50218 (T05, T06) | **Completa** | T01–T04 unitarios (Lot No./Qty (Base) subscribers), T05 E2E, T06 modelo 1:N, T07 sin DUoM activo (Issue 22) |
 | DUoM Copy Item Mgt. (cu 50128) | ✅ 50230 | ✅ 50230 | **Completa** | T-COPYITEM-01..06: Fixed, Variable, variantes, omisión variante no existente, idempotencia, sin DUoM (Issue 34); T-COPYITEM-INT-01..03: flujo estándar Copy Item vía SetCopyItemBuffer+DoCopyItem (Issue 35) |
 | DUoM Entry Sum Subscribers (cu 50131) | ✅ 50231 (T01–T04) | — | **Completa** | Subscribers `OnAfterValidateEvent` de `Entry Summary`: precarga por lote, recálculo al validar `Selected Quantity`, modo Fixed con serie/lote y camino sin contexto resoluble |
-| DUoM Entry Summary Mgt. (cu 50132) | ✅ 50231 (T05–T09) | ✅ 50231 (T10) | **Completa** | `TryResolveItemContext` y `PopulateDUoMForEntrySummary` cubiertos con disponibilidad, prioridad de `Selected Quantity`, ausencia de ratio de lote y stock real posteado |
+| DUoM Entry Summary Mgt. (cu 50132) | ✅ 50231 (T05–T09, T12–T14) | ✅ 50231 (T10, T11) | **Completa** | `TryResolveItemContext` y `PopulateDUoMForEntrySummary` cubiertos con disponibilidad, prioridad de `Selected Quantity`, ausencia de ratio de lote, stock real posteado y fallback read-only por ILE con unicidad estricta |
 | DUoM Item Setup Page | — | — | **N/A** | Las page extensions se testean vía UI/E2E; fuera de alcance unitario |
 | DUoM Item UoM Subform (pageext) | ✅ 50212 | — | **Completa** | Condición de editabilidad Qty. Rounding Precision |
 | DUoM Item Trk Summary (pageext 50130) | — | ✅ 50231 (T11 UI real) | **Completa** | Cobertura UI real validada con flujo estándar `Sales Order -> Item Tracking Lines -> Select Entries -> Item Tracking Summary` y verificación de `DUoM Ratio`/`DUoM Second Qty` en página |
@@ -151,6 +151,9 @@ cerrar dichos gaps según los niveles de prioridad definidos en el issue de audi
 - **T09:** Variable sin ratio de lote: no inventa ratio ni segunda cantidad.
 - **T10:** integración con ILE real generado por posting para poblar `Item Tracking Summary`.
 - **T11:** cobertura UI real: apertura de `Item Tracking Summary` desde `Item Tracking Lines` con acción estándar `Select Entries`, validando render poblado de `DUoM Ratio` y `DUoM Second Qty`, y diagnóstico explícito del buffer `Entry Summary` (`Lot/Serial`, `Table ID`, `Entry No.`, cantidades y resultado de `TryResolveItemContext`).
+- **T12:** fallback por ILE único para `Entry Summary` con `Table ID = Tracking Specification` no resoluble físicamente: resuelve `Item No.` + `Variant Code` por lote inequívoco.
+- **T13:** fallback ambiguo (mismo lote en ILE de artículos distintos): devuelve `false` y no inventa contexto.
+- **T14:** fallback sin `Lot No.` ni `Serial No.`: devuelve `false`.
 
 > **Deuda técnica resuelta:** la cobertura UI real de `Item Tracking Summary / Seg. productos - Selec. movs.` queda cubierta en `50231` (T11).
 
@@ -251,7 +254,7 @@ o a hardening todavía pendiente sobre funcionalidad ya disponible:
 
 ## Estado Actual del Test Suite
 
-> **Última actualización:** Issue 351 / PR 352 — hardening UI Item Tracking Summary — 2026-05-16
+> **Última actualización:** Issue 361 — fallback seguro ILE único en Entry Summary — 2026-05-17
 
 | Codeunit | ID | Tests | Estado |
 |----------|----|-------|--------|
@@ -285,7 +288,7 @@ o a hardening todavía pendiente sobre funcionalidad ya disponible:
 | DUoM Sign Mgt Tests | 50228 | 23 tests | ✅ |
 | DUoM Doc Audit Tests | 50229 | 7 tests (T-AUDIT-01–07) | ✅ |
 | DUoM Copy Item Tests | 50230 | 9 tests (T-COPYITEM-01–06 + INT-01–03) | ✅ |
-| DUoM Entry Summary Tests | 50231 | 11 tests (T01–T11) | ✅ |
-| **TOTAL** | | **283 tests** | |
+| DUoM Entry Summary Tests | 50231 | 14 tests (T01–T14) | ✅ |
+| **TOTAL** | | **286 tests** | |
 
-> Total recalculado a partir de los codeunits actuales en `test/src/codeunit/` (`283` atributos `[Test]`).
+> Total recalculado a partir de los codeunits actuales en `test/src/codeunit/` (`286` atributos `[Test]`).
