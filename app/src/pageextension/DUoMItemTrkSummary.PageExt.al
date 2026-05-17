@@ -47,7 +47,10 @@ pageextension 50130 "DUoM Item Trk Summary" extends "Item Tracking Summary"
     end;
 
     trigger OnAfterGetCurrRecord()
+    var
+        DUoMEntrySummaryMgt: Codeunit "DUoM Entry Summary Mgt.";
     begin
+        DUoMEntrySummaryMgt.PopulateDUoMForEntrySummary(Rec);
         RefreshCaptionsAndTotals();
     end;
 
