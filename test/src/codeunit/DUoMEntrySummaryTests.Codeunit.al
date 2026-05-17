@@ -440,7 +440,10 @@ codeunit 50231 "DUoM Entry Summary Tests"
         ExpectedRatio: Decimal;
     begin
         // [GIVEN] Artículo DUoM Variable con tracking por lote y ratio de lote real
-        LotNo := 'LOT-UI-T11';
+        LotNo := CopyStr(
+            'LOT-UI-T11-' + DelChr(Format(CreateGuid()), '=', '{}-'),
+            1,
+            MaxStrLen(LotNo));
         PostedQty := 100;
         ExpectedRatio := 1.5;
 
@@ -634,7 +637,12 @@ codeunit 50231 "DUoM Entry Summary Tests"
             'T11: Debe existir la línea del lote esperado en Item Tracking Summary.');
         LibraryAssert.IsTrue(
             Ratio > 0,
-            'T11 condición [DUoM Ratio > 0] falló. Lot=' + UITestExpectedLotNo + '; DUoM Ratio=' + Format(Ratio));
+            'T11 condición [DUoM Ratio > 0] falló. ' +
+            'Lot=' + UITestExpectedLotNo +
+            '; SelectedQty=' + Format(SelectedQty) +
+            '; AvailableQty=' + Format(AvailableQty) +
+            '; DUoM Ratio=' + Format(Ratio) +
+            '; DUoM Second Qty=' + Format(SecondQty));
         LibraryAssert.AreNearlyEqual(
             UITestExpectedRatio, Ratio, 0.001,
             'T11: DUoM Ratio debe coincidir con el ratio de lote configurado.');
