@@ -8,6 +8,7 @@
 /// en BC 27. La información de artículo debe obtenerse desde el origen real:
 ///   - Table ID = 32 (Item Ledger Entry): Entry No. = ILE Entry No. → Get directo.
 ///   - Table ID = 337 (Reservation Entry): Entry No. filtra por RE → FindFirst.
+///   - Table ID = "Tracking Specification": Entry No. filtra por Tracking Spec → FindFirst.
 ///
 /// PopulateDUoMForEntrySummary rellena DUoM Ratio y DUoM Second Qty durante la
 /// carga inicial del buffer de la página Item Tracking Summary, usando Total Available
@@ -25,6 +26,7 @@ codeunit 50132 "DUoM Entry Summary Mgt."
     /// Implementación:
     ///   - Table ID 32 (Item Ledger Entry): Get por Entry No. (Entry No. = ILE Entry No.).
     ///   - Table ID 337 (Reservation Entry): FindFirst filtrado por Entry No.
+    ///   - Table ID "Tracking Specification": FindFirst filtrado por Entry No.
     ///   - Otros Table ID o Entry No. = 0: devuelve false.
     /// </summary>
     procedure TryResolveItemContext(
@@ -35,6 +37,7 @@ codeunit 50132 "DUoM Entry Summary Mgt."
     var
         ItemLedgerEntry: Record "Item Ledger Entry";
         ReservationEntry: Record "Reservation Entry";
+        TrackingSpecification: Record "Tracking Specification";
     begin
         ItemNo := '';
         VariantCode := '';
@@ -58,6 +61,15 @@ codeunit 50132 "DUoM Entry Summary Mgt."
                         exit(false);
                     ItemNo := ReservationEntry."Item No.";
                     VariantCode := ReservationEntry."Variant Code";
+                    exit(true);
+                end;
+            Database::"Tracking Specification":
+                begin
+                    TrackingSpecification.SetRange("Entry No.", EntrySummary."Entry No.");
+                    if not TrackingSpecification.FindFirst() then
+                        exit(false);
+                    ItemNo := TrackingSpecification."Item No.";
+                    VariantCode := TrackingSpecification."Variant Code";
                     exit(true);
                 end;
         end;

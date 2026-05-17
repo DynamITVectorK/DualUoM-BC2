@@ -21,6 +21,30 @@ pageextension 50130 "DUoM Item Trk Summary" extends "Item Tracking Summary"
                 Editable = false;
                 ToolTip = 'Specifies the secondary quantity for this selected lot/serial movement line.', Comment = 'ToolTip for DUoM Second Qty field in Item Tracking Summary; no placeholders.';
             }
+            field(DUoMDiagnosticTableID; Rec."Table ID")
+            {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
+                ApplicationArea = All;
+                Visible = false;
+            }
+            field(DUoMDiagnosticEntryNo; Rec."Entry No.")
+            {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
+                ApplicationArea = All;
+                Visible = false;
+            }
+            field(DUoMDiagnosticTotalQuantity; Rec."Total Quantity")
+            {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
+                ApplicationArea = All;
+                Visible = false;
+            }
+            field(DUoMDiagnosticSerialNo; Rec."Serial No.")
+            {
+                // Diagnóstico para tests UI automáticos (T11): no visible para usuario final.
+                ApplicationArea = All;
+                Visible = false;
+            }
         }
         addlast(content)
         {
