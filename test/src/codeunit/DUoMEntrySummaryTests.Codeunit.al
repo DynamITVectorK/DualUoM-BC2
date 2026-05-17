@@ -499,7 +499,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
         // [GIVEN] Contexto principal no resoluble por Table ID + Entry No. (simula Tracking Spec temporal)
         EntrySummary.Init();
         EntrySummary."Table ID" := Database::"Tracking Specification";
-        EntrySummary."Entry No." := ILE."Entry No." + 999999;
+        EntrySummary."Entry No." := ILE."Entry No." + GetUnresolvableEntryNo();
         EntrySummary."Lot No." := 'LOT-FB-UNIQ';
 
         // [WHEN] Se intenta resolver el contexto de artículo
@@ -539,7 +539,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
         // [GIVEN] Contexto principal no resoluble por Tracking Specification físico
         EntrySummary.Init();
         EntrySummary."Table ID" := Database::"Tracking Specification";
-        EntrySummary."Entry No." := 999999;
+        EntrySummary."Entry No." := GetUnresolvableEntryNo();
         EntrySummary."Lot No." := 'LOT-FB-AMB';
 
         // [WHEN] Se intenta resolver el contexto
@@ -563,7 +563,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
         // [GIVEN] Contexto no resoluble y sin lote/serie en Entry Summary
         EntrySummary.Init();
         EntrySummary."Table ID" := Database::"Tracking Specification";
-        EntrySummary."Entry No." := 999999;
+        EntrySummary."Entry No." := GetUnresolvableEntryNo();
 
         // [WHEN] Se intenta resolver contexto
         // [THEN] El fallback no aplica y debe devolver false sin datos
@@ -594,6 +594,11 @@ codeunit 50231 "DUoM Entry Summary Tests"
         DUoMTestHelpers.AssignLotToItemJnlLine(ItemJnlLine, LotNo, Qty);
         LibraryInventory.PostItemJournalLine(
             ItemJnlBatch."Journal Template Name", ItemJnlBatch.Name);
+    end;
+
+    local procedure GetUnresolvableEntryNo(): Integer
+    begin
+        exit(999999);
     end;
 
     [ModalPageHandler]
