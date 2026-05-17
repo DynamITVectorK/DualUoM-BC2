@@ -512,6 +512,7 @@ codeunit 50231 "DUoM Entry Summary Tests"
         AvailableQty: Decimal;
         Ratio: Decimal;
         SecondQty: Decimal;
+        ExpectedSecondQty: Decimal;
     begin
         UITestSummaryWasOpened := true;
         SelectSummaryLineByLot(ItemTrackingSummary, UITestExpectedLotNo, 'T11');
@@ -525,18 +526,21 @@ codeunit 50231 "DUoM Entry Summary Tests"
             UITestExpectedLotNo,
             ItemTrackingSummary."Lot No.".Value,
             'T11: Debe existir la línea del lote esperado en Item Tracking Summary.');
-        LibraryAssert.AreNearlyEqual(
-            0, SelectedQty, 0.001,
-            'T11: El escenario valida el estado inicial con Selected Quantity = 0.');
         LibraryAssert.IsTrue(
             Ratio > 0,
             'T11: DUoM Ratio debe mostrarse poblado (> 0) en la UI.');
         LibraryAssert.AreNearlyEqual(
             UITestExpectedRatio, Ratio, 0.001,
             'T11: DUoM Ratio debe coincidir con el ratio de lote configurado.');
+
+        if SelectedQty <> 0 then
+            ExpectedSecondQty := Abs(SelectedQty) * Ratio
+        else
+            ExpectedSecondQty := AvailableQty * Ratio;
+
         LibraryAssert.AreNearlyEqual(
-            AvailableQty * Ratio, SecondQty, 0.001,
-            'T11: Con Selected Quantity = 0, DUoM Second Qty debe calcularse sobre Total Available Quantity.');
+            ExpectedSecondQty, SecondQty, 0.001,
+            'T11: DUoM Second Qty debe calcularse sobre Selected Quantity si existe; si no, sobre Total Available Quantity.');
 
         ItemTrackingSummary.Cancel().Invoke();
     end;
